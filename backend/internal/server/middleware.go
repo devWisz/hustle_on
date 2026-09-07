@@ -1,0 +1,262 @@
+package server
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"log/slog"
+	"net"
+	"net/http"
+	"net/netip"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/sardhana/auth"
+	"github.com/sardhana/backend/internal/logging"
+	"github.com/sardhana/backend/pkg/apierr"
+)
+
+type ctxKey int
+
+const (
+	userKey ctxKey = iota
+	sessionKey
+)
+
+// requestID assigns an id to every request and echoes it back, so a user
+// reporting a failure can be matched to the exact log line.
+func (s *Server) requestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 8)
+		_, _ = rand.Read(buf)
+		id := hex.EncodeToString(buf)
+		w.Header().Set("X-Request-Id", id)
+		next.ServeHTTP(w, r.WithContext(logging.WithRequestID(r.Context(), id)))
+	})
+}
+
+// statusRecorder captures the status code for logging.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+	bytes  int
+}
+
+func (w *statusRecorder) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *statusRecorder) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.bytes += n
+	return n, err
+}
+
+func (s *Server) logRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+
+		// Query strings can carry tokens (the magic-link callback does), so the
+		// path is logged without them.
+		s.log.InfoContext(r.Context(), "request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", rec.status),
+			slog.Int("bytes", rec.bytes),
+			slog.Duration("took", time.Since(start)),
+			slog.String("request_id", logging.RequestID(r.Context())))
+	})
+}
+
+// recoverPanic keeps one bad request from taking the process down, and makes
+// sure the client gets a proper 500 rather than a dropped connection.
+func (s *Server) recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.log.ErrorContext(r.Context(), "panic recovered",
+					slog.Any("panic", rec),
+					slog.String("path", r.URL.Path),
+					slog.String("request_id", logging.RequestID(r.Context())))
+				s.writeError(w, r, apierr.Internal(errors.New("panic recovered")))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeaders sets the response headers that constrain what a browser will
+// do with our output. The API returns JSON only, so the policy can be as tight
+// as it gets: nothing is allowed to load, frame or execute.
+func (s *Server) securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
+		h.Set("Cross-Origin-Resource-Policy", "same-site")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+		if s.cfg.IsProduction() {
+			h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// cors answers only for origins on the configured allowlist. Credentials are
+// permitted, which is exactly why the origin can never be reflected blindly.
+func (s *Server) cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := strings.TrimRight(r.Header.Get("Origin"), "/")
+		allowed := origin != "" && s.originAllowed(origin)
+
+		if allowed {
+			h := w.Header()
+			h.Set("Access-Control-Allow-Origin", origin)
+			h.Set("Access-Control-Allow-Credentials", "true")
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			h.Set("Access-Control-Allow-Headers", "Content-Type, "+auth.CSRFHeader)
+			h.Set("Access-Control-Max-Age", "600")
+			h.Add("Vary", "Origin")
+		}
+		if r.Method == http.MethodOptions {
+			status := http.StatusNoContent
+			if !allowed {
+				status = http.StatusForbidden
+			}
+			w.WriteHeader(status)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) originAllowed(origin string) bool {
+	for _, o := range s.cfg.AllowedOrigins {
+		if strings.EqualFold(o, origin) {
+			return true
+		}
+	}
+	return false
+}
+
+// rateLimit applies a per-client budget. Authenticated callers are keyed by
+// user id so one office behind a single NAT address is not throttled as one
+// client, while anonymous traffic is keyed by address.
+func (s *Server) rateLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+		key := "ip:" + clientIP(r).String()
+		if !s.limiter.Allow(key) {
+			retry := s.limiter.RetryAfter(key)
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+			s.writeError(w, r, apierr.TooManyRequests(""))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// attachSession resolves the session cookie, if any, and stores the user on
+// the request context. It never rejects: routes decide what they require.
+func (s *Server) attachSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sess, user, err := s.auth.Authenticate(r.Context(), r)
+		if err == nil {
+			ctx := context.WithValue(r.Context(), userKey, user)
+			ctx = context.WithValue(ctx, sessionKey, sess)
+			r = r.WithContext(ctx)
+			// Activity is recorded at most hourly to keep reads read-only.
+			if err := s.auth.Touch(r.Context(), sess, time.Hour); err != nil {
+				s.log.WarnContext(r.Context(), "touch session", slog.Any("error", err))
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// currentUser returns the signed-in user, if there is one.
+func currentUser(r *http.Request) (auth.User, bool) {
+	u, ok := r.Context().Value(userKey).(auth.User)
+	return u, ok
+}
+
+// requireUser returns the signed-in user or an unauthorised error.
+func requireUser(r *http.Request) (auth.User, error) {
+	u, ok := currentUser(r)
+	if !ok {
+		return auth.User{}, apierr.Unauthorized("")
+	}
+	return u, nil
+}
+
+// requireRole enforces the moderator and admin boundaries.
+func requireRole(r *http.Request, roles ...string) (auth.User, error) {
+	u, err := requireUser(r)
+	if err != nil {
+		return auth.User{}, err
+	}
+	for _, role := range roles {
+		if u.Role == role {
+			return u, nil
+		}
+	}
+	return auth.User{}, apierr.Forbidden("")
+}
+
+// checkCSRF guards every state-changing request from a browser.
+func (s *Server) checkCSRF(r *http.Request) error {
+	if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins); err != nil {
+		return apierr.Forbidden("This request could not be verified. Reload the page and try again.")
+	}
+	return nil
+}
+
+// clientIP extracts the caller's address.
+//
+// X-Forwarded-For is only honoured when the platform is running behind a proxy
+// that sets it; taking it from an arbitrary client would let anyone spoof their
+// address and sidestep every per-address limit.
+func clientIP(r *http.Request) netip.Addr {
+	if trustProxyHeaders {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			first, _, _ := strings.Cut(xff, ",")
+			if addr, err := netip.ParseAddr(strings.TrimSpace(first)); err == nil {
+				return addr
+			}
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return netip.Addr{}
+	}
+	return addr
+}
+
+// trustProxyHeaders is set at startup from TRUST_PROXY_HEADERS. It defaults to
+// false so a direct-to-internet deployment is safe out of the box.
+var trustProxyHeaders = false
+
+// SetTrustProxyHeaders configures forwarded-header handling.
+func SetTrustProxyHeaders(v bool) { trustProxyHeaders = v }
+
+func userAgent(r *http.Request) string {
+	ua := r.Header.Get("User-Agent")
+	if len(ua) > 500 {
+		return ua[:500]
+	}
+	return ua
+}

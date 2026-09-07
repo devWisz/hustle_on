@@ -1,0 +1,44 @@
+name: Preview database
+
+# Gives every pull request a real database: a Neon branch, copy-on-write from
+# main, deleted when the pull request closes. Reviewers test migrations against
+# production-shaped data without touching production.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  branch:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create the branch
+        id: neon
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Apply migrations to it
+        env:
+          DATABASE_URL_DIRECT: ${{ steps.neon.outputs.db_url }}
+        run: bash scripts/migrate.sh up
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}

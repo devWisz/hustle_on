@@ -1,0 +1,272 @@
+/**
+ * The icon set.
+ *
+ * Every icon is inline SVG. The product uses no emoji anywhere — an emoji
+ * renders differently on every platform, carries no accessible name, and reads
+ * as decoration next to the work people are publishing here.
+ *
+ * Outline icons inherit `currentColor` at 1.5px on a 24px grid. Brand marks
+ * are filled paths at their official proportions.
+ */
+
+interface IconProps {
+  className?: string;
+  size?: number;
+  /** Supplied only when the icon carries meaning on its own. */
+  title?: string;
+}
+
+function Svg({
+  children,
+  className,
+  size = 20,
+  title,
+  filled = false,
+}: IconProps & { children: React.ReactNode; filled?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
+      strokeWidth={filled ? undefined : 1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden={title ? undefined : true}
+      role={title ? "img" : undefined}
+    >
+      {title ? <title>{title}</title> : null}
+      {children}
+    </svg>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Svg {...props} filled>
+      <path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.8-6.86a1 1 0 0 0 0-1.7L9.53 4.3A1 1 0 0 0 8 5.14Z" />
+    </Svg>
+  );
+}
+
+export function UploadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </Svg>
+  );
+}
+
+export function WalletIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
+      <path d="M3 8v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H5a2 2 0 0 1-2-2Z" />
+      <circle cx="16.5" cy="14" r="1.1" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" />
+    </Svg>
+  );
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 4.5-1.5 6-1.5 6h15S18 13 18 8.5Z" />
+      <path d="M10.3 19a2 2 0 0 0 3.4 0" />
+    </Svg>
+  );
+}
+
+export function ClockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Svg>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="9" cy="8.5" r="3.5" />
+      <path d="M3 19.5a6 6 0 0 1 12 0" />
+      <path d="M16 6.2a3.5 3.5 0 0 1 0 6.6M17.5 19.5a6 6 0 0 0-2-4.5" />
+    </Svg>
+  );
+}
+
+export function MessageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 12.5c0 3.6-3.6 6.5-8 6.5a9.6 9.6 0 0 1-2.6-.35L5 20.5l1.1-3.1A6.9 6.9 0 0 1 4 12.5C4 8.9 7.6 6 12 6s8 2.9 8 6.5Z" />
+    </Svg>
+  );
+}
+
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5 5 6v6c0 4 3 7 7 8.5 4-1.5 7-4.5 7-8.5V6Z" />
+      <path d="m9.5 12 1.8 1.8L15 10" />
+    </Svg>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m6 6 12 12M18 6 6 18" />
+    </Svg>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Svg>
+  );
+}
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 12h15m0 0-5.5-5.5M19 12l-5.5 5.5" />
+    </Svg>
+  );
+}
+
+export function ExternalIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14 4h6v6" />
+      <path d="M20 4 11 13" />
+      <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+    </Svg>
+  );
+}
+
+export function SparkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5 13.8 9 19.5 10.8 13.8 12.6 12 18.2 10.2 12.6 4.5 10.8 10.2 9Z" />
+    </Svg>
+  );
+}
+
+export function BriefcaseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="7.5" width="18" height="12" rx="2" />
+      <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3 12h18" />
+    </Svg>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.54 3.54 0 0 0-5-5l-1.2 1.2" />
+      <path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.54 3.54 0 0 0 5 5l1.2-1.2" />
+    </Svg>
+  );
+}
+
+export function SpinnerIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden
+      style={{ animation: "spin 0.7s linear infinite" }}
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.5" />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </svg>
+  );
+}
+
+/* --- brand marks ---------------------------------------------------------- */
+
+export function XIcon({ className, size = 18, title = "X" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} role="img">
+      <title>{title}</title>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+export function GitHubIcon({ className, size = 18, title = "GitHub" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} role="img">
+      <title>{title}</title>
+      <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.41-5.25 5.69.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z" />
+    </svg>
+  );
+}
+
+export function YouTubeIcon({ className, size = 18, title = "YouTube" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} role="img">
+      <title>{title}</title>
+      <path d="M23.5 6.2a3 3 0 0 0-2.11-2.13C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.39.52A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.13c1.89.52 9.39.52 9.39.52s7.5 0 9.39-.52a3 3 0 0 0 2.11-2.13c.34-1.9.5-3.83.5-5.8a31.4 31.4 0 0 0-.5-5.8ZM9.6 15.57V8.43L15.82 12Z" />
+    </svg>
+  );
+}
+
+export function LinkedInIcon({ className, size = 18, title = "LinkedIn" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} role="img">
+      <title>{title}</title>
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13M7.12 20.45H3.55V9h3.57zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0" />
+    </svg>
+  );
+}
+
+export function SolanaIcon({ className, size = 16, title = "Solana" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} role="img">
+      <title>{title}</title>
+      <path d="M5.4 16.7a.8.8 0 0 1 .56-.23h15.3c.35 0 .53.43.28.68l-3.02 3.02a.8.8 0 0 1-.56.23H2.66a.4.4 0 0 1-.28-.68zM5.4 3.6a.8.8 0 0 1 .56-.23h15.3c.35 0 .53.43.28.68L18.52 7.1a.8.8 0 0 1-.56.23H2.66a.4.4 0 0 1-.28-.68zM18.52 10.1a.8.8 0 0 0-.56-.23H2.66a.4.4 0 0 0-.28.68L5.4 13.6a.8.8 0 0 0 .56.23h15.3a.4.4 0 0 0 .28-.68z" />
+    </svg>
+  );
+}
+
+/** Maps a social platform to its mark, so link rendering stays one component. */
+export const platformIcons = {
+  x: XIcon,
+  github: GitHubIcon,
+  youtube: YouTubeIcon,
+  linkedin: LinkedInIcon,
+  website: LinkIcon,
+} as const;

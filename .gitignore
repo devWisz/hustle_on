@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp/
+.yarn/
+
+# Builds
+dist/
+build/
+.next/
+out/
+bin/
+target/
+*.exe
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets and keys
+*.pem
+*.key
+keypairs/
+.anchor/
+test-ledger/
+
+# Tooling
+.DS_Store
+coverage/
+*.log
+.turbo/
+.vercel/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Go
+vendor/
+*.test

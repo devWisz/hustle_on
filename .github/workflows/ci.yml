@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch cancels the run still in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: |
+            backend/go.sum
+            auth/go.mod
+
+      - name: Verify formatting
+        run: |
+          unformatted=$(gofmt -l backend auth)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: |
+          cd auth && go vet ./...
+          cd ../backend && go vet ./...
+
+      - name: Test
+        run: |
+          cd auth && go test ./... -race -count=1
+          cd ../backend && go test ./... -race -count=1
+
+      - name: Build
+        run: cd backend && go build -trimpath ./...
+
+  web:
+    name: Next.js
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, admin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - run: npm ci
+        working-directory: ${{ matrix.app }}
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+        working-directory: ${{ matrix.app }}
+
+      - name: Build
+        run: npm run build
+        working-directory: ${{ matrix.app }}
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  contracts:
+    name: Anchor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cd contracts && cargo fmt --all --check
+
+      # Clippy without the Solana toolchain checks the program logic; the full
+      # BPF build and integration tests run in the release workflow, where the
+      # validator setup is worth the minutes.
+      - name: Clippy
+        run: cd contracts && cargo clippy --all-targets -- -D warnings
+
+  migrations:
+    name: Migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ["5432:5432"]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Every migration is applied and then rolled back in full, so a down file
+      # that does not actually reverse its up file fails here rather than during
+      # an incident.
+      - name: Apply and revert every migration
+        env:
+          DATABASE_URL_DIRECT: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          bash scripts/migrate.sh up
+          bash scripts/migrate.sh status
+          for _ in $(ls database/migrations/*.up.sql); do
+            bash scripts/migrate.sh down
+          done
