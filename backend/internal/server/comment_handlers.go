@@ -51,9 +51,10 @@ func (s *Server) handleAddComment(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	// Comment writes get a tighter budget than reads: this is the cheapest
-	// endpoint to abuse and the most visible when abused.
-	if !s.authLim.Allow("comment:" + user.ID) {
+	// Comment writes get a tighter budget than reads — this is the cheapest
+	// endpoint to abuse and the most visible when abused — but a budget of
+	// their own, wide enough that a comment followed by a reply is fine.
+	if !s.comLim.Allow("comment:" + user.ID) {
 		return apierr.TooManyRequests("You are commenting too quickly. Wait a moment.")
 	}
 

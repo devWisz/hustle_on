@@ -104,6 +104,10 @@ func (s *Store) ResolveReport(ctx context.Context, reportID, moderatorID, action
 	})
 }
 
+// writeAudit appends to the audit log inside an existing transaction.
+//
+// The encoded JSON is passed as a string: a []byte parameter is sent as bytea,
+// which Postgres will not cast to jsonb.
 func (s *Store) writeAudit(ctx context.Context, tx pgx.Tx, actorID, action, subjectType, subjectID string, meta map[string]any) error {
 	payload, err := json.Marshal(meta)
 	if err != nil {
@@ -112,7 +116,7 @@ func (s *Store) writeAudit(ctx context.Context, tx pgx.Tx, actorID, action, subj
 	_, err = tx.Exec(ctx, `
 		INSERT INTO audit_log (actor_id, action, subject_type, subject_id, metadata)
 		VALUES (NULLIF($1,'')::uuid, $2, $3, $4, $5::jsonb)`,
-		actorID, action, subjectType, subjectID, payload)
+		actorID, action, subjectType, subjectID, string(payload))
 	return normalize(err)
 }
 
@@ -125,7 +129,7 @@ func (s *Store) Audit(ctx context.Context, actorID, action, subjectType, subject
 	_, err = s.pool.Exec(ctx, `
 		INSERT INTO audit_log (actor_id, action, subject_type, subject_id, metadata)
 		VALUES (NULLIF($1,'')::uuid, $2, $3, $4, $5::jsonb)`,
-		actorID, action, subjectType, subjectID, payload)
+		actorID, action, subjectType, subjectID, string(payload))
 	return normalize(err)
 }
 

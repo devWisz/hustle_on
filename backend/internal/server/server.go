@@ -26,6 +26,7 @@ type Server struct {
 	media   *media.Storage
 	limiter *ratelimit.Limiter
 	authLim *ratelimit.Limiter
+	comLim  *ratelimit.Limiter
 	mux     *http.ServeMux
 }
 
@@ -41,6 +42,7 @@ func New(cfg config.Config, log *slog.Logger, st *store.Store, authSvc *auth.Ser
 		media:   storage,
 		limiter: ratelimit.New(cfg.RateLimitAnon),
 		authLim: ratelimit.New(cfg.RateLimitAuth),
+		comLim:  ratelimit.New(cfg.RateLimitComments),
 		mux:     http.NewServeMux(),
 	}
 	s.routes()

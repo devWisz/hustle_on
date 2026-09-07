@@ -98,6 +98,12 @@ func decode(r *http.Request, dst any) error {
 		if errors.As(err, &maxErr) {
 			return apierr.PayloadTooLarge("Request body is too large.")
 		}
+		// DisallowUnknownFields reports through the same error path as a syntax
+		// error. Saying which field was not recognised turns a stale client or
+		// a typo into a fixable message instead of a puzzle.
+		if field, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
+			return apierr.BadRequest("Unrecognised field " + field + " in the request body.")
+		}
 		return apierr.BadRequest("Request body is not valid JSON.")
 	}
 	// A second value in the stream means the client sent something unexpected.

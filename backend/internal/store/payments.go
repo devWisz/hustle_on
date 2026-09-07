@@ -77,7 +77,7 @@ func (s *Store) ConfirmSponsorship(ctx context.Context, signature string, slot i
 			SET status = 'confirmed', slot = $2, fee_amount = $3,
 			    raw_meta = $4::jsonb, confirmed_at = now()
 			WHERE signature = $1 AND status <> 'confirmed'
-			RETURNING id::text`, signature, slot, feeAmount, raw).Scan(&txID)
+			RETURNING id::text`, signature, slot, feeAmount, string(raw)).Scan(&txID)
 		if err != nil {
 			return normalize(err)
 		}

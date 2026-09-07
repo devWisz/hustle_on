@@ -49,9 +49,10 @@ type Config struct {
 	UploadMaxBytes   int64
 	UploadURLTTL     time.Duration
 
-	RateLimitAnon int
-	RateLimitUser int
-	RateLimitAuth int
+	RateLimitAnon     int
+	RateLimitUser     int
+	RateLimitAuth     int
+	RateLimitComments int
 }
 
 // IsProduction reports whether relaxed development behaviour is forbidden.
@@ -98,6 +99,9 @@ func Load() (Config, error) {
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 60),
 		RateLimitUser: envInt("RATE_LIMIT_USER", 240),
 		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
+		// Comments need their own budget: sharing the sign-in allowance meant a
+		// person posting a comment and then a reply was refused the second one.
+		RateLimitComments: envInt("RATE_LIMIT_COMMENTS", 20),
 	}
 
 	origins := env("CORS_ALLOWED_ORIGINS", c.WebURL+","+c.AdminURL)
