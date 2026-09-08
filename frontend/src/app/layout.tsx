@@ -10,8 +10,21 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+/**
+ * A deploy platform can hand an unset variable through as an empty string,
+ * which `??` passes along untouched and `new URL("")` then rejects, failing the
+ * build while Next collects page data. Blank is treated as absent here, and a
+ * bare host is assumed to be https, since that is how these values tend to get
+ * pasted into a dashboard. A genuinely malformed value is still left to throw.
+ */
+function resolveSiteUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!configured) return "http://localhost:3000";
+  return /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(resolveSiteUrl()),
   title: {
     default: "HustlerOn — Your hustle should be paid off",
     template: "%s — HustlerOn",
