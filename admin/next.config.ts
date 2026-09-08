@@ -5,9 +5,13 @@ import type { NextConfig } from "next";
  * than the public site's: no external images, no external media, nothing to
  * load from anywhere but this origin and the API.
  */
+// See the note in frontend/next.config.ts: development Fast Refresh needs
+// eval, production never does.
+const isDev = process.env.NODE_ENV !== "production";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "connect-src 'self' " + (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"),

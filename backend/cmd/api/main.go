@@ -66,7 +66,7 @@ func run() error {
 		MagicLinkTTL:    cfg.MagicLinkTTL,
 		MaxLinksPerHour: cfg.RateLimitAuth,
 		CSRFKey:         cfg.SessionSecret,
-		ProductName:     "Sardhana",
+		ProductName:     "HustlerOn",
 	}, st, mailer)
 	if err != nil {
 		return err

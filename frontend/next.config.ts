@@ -10,9 +10,15 @@ import type { NextConfig } from "next";
  * `object-src 'none'` with `base-uri 'none'` closes the two most common
  * injection escapes.
  */
+// Next's development Fast Refresh runtime evaluates code with eval(), so a
+// CSP without 'unsafe-eval' stops the client bundle hydrating and the whole
+// site becomes non-interactive under `next dev`. It is added for development
+// only; a production build never needs it and never gets it.
+const isDev = process.env.NODE_ENV !== "production";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' https: blob:",

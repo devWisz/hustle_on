@@ -28,14 +28,14 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-6">
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="max-w-xs">
-            <p className="text-[15px] font-semibold tracking-tight">Sardhana</p>
+            <p className="text-[15px] font-semibold tracking-tight">HustlerOn</p>
             <p className="mt-2 text-sm leading-relaxed text-fg-muted">
               Your hustle should be paid off. Publish the work, collect the support, get hired on
               the record.
             </p>
             <div className="mt-4 flex items-center gap-3 text-fg-subtle">
               <a
-                href="https://x.com/sardhana"
+                href="https://x.com/hustleron"
                 className="transition-colors hover:text-fg"
                 rel="me noreferrer"
                 target="_blank"
@@ -43,7 +43,7 @@ export function SiteFooter() {
                 <XIcon />
               </a>
               <a
-                href="https://github.com/sardhana"
+                href="https://github.com/hustleron"
                 className="transition-colors hover:text-fg"
                 rel="me noreferrer"
                 target="_blank"
@@ -72,7 +72,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 text-[13px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Sardhana</p>
+          <p>© {new Date().getFullYear()} HustlerOn</p>
           <p>Payments settle on Solana. Sponsorships are final once confirmed on chain.</p>
         </div>
       </div>

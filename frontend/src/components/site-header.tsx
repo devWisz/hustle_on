@@ -28,9 +28,9 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="Sardhana home">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="HustlerOn home">
           <Mark />
-          <span className="text-[15px] font-semibold tracking-tight">Sardhana</span>
+          <span className="text-[15px] font-semibold tracking-tight">HustlerOn</span>
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">

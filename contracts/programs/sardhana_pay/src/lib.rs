@@ -1,17 +1,4 @@
-//! Sardhana on-chain payments.
-//!
-//! Two flows live here:
-//!
-//! * **Sponsorship** — a one-shot transfer from a supporter to a creator, with
-//!   the platform fee split off in the same transaction.
-//! * **Hire escrow** — a client funds an engagement up front; milestones are
-//!   released to the talent as work is delivered, and anything unreleased
-//!   returns to the client after the deadline.
-//!
-//! The program holds no discretionary power over funds. It can pay the talent
-//! (only on the client's signature), refund the client (only after expiry), and
-//! take the configured fee (capped on chain at 10%). There is no instruction
-//! that lets the authority move somebody else's money.
+
 
 use anchor_lang::prelude::*;
 
@@ -21,7 +8,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("Sard1111111111111111111111111111111111111111");
+declare_id!("5aRAEcR35qrMCkkkhJHJ1UdwXWoTua3jggyeXqpb56nS");
 
 #[program]
 pub mod sardhana_pay {

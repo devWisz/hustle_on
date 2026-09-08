@@ -28,15 +28,13 @@ pub struct Sponsor<'info> {
     #[account(mut)]
     pub creator: UncheckedAccount<'info>,
 
-    /// Created on the creator's first sponsorship and reused afterwards.
+    /// CHECK: PDA storing running totals for the creator. Initialised if needed.
     #[account(
-        init_if_needed,
-        payer = sponsor,
-        space = 8 + CreatorStats::INIT_SPACE,
+        mut,
         seeds = [CREATOR_SEED, creator.key().as_ref()],
         bump
     )]
-    pub creator_stats: Account<'info, CreatorStats>,
+    pub creator_stats: UncheckedAccount<'info>,
 
     /// CHECK: constrained to the treasury recorded in config, so a caller
     /// cannot redirect the platform fee to an account of their choosing.
@@ -95,9 +93,45 @@ pub fn sponsor(ctx: Context<Sponsor>, amount: u64, memo_hash: [u8; 32]) -> Resul
         )?;
     }
 
-    let stats = &mut ctx.accounts.creator_stats;
-    stats.creator = ctx.accounts.creator.key();
-    stats.bump = ctx.bumps.creator_stats;
+    let creator_stats_info = &ctx.accounts.creator_stats;
+    let bump = ctx.bumps.creator_stats;
+    let mut stats = if creator_stats_info.data_is_empty() {
+        let creator_key = ctx.accounts.creator.key();
+        let signer_seeds: &[&[&[u8]]] = &[&[
+            CREATOR_SEED,
+            creator_key.as_ref(),
+            &[bump],
+        ]];
+        let space = 8 + CreatorStats::INIT_SPACE;
+        let rent = Rent::get()?;
+        let lamports = rent.minimum_balance(space);
+
+        anchor_lang::system_program::create_account(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::CreateAccount {
+                    from: ctx.accounts.sponsor.to_account_info(),
+                    to: creator_stats_info.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            lamports,
+            space as u64,
+            &crate::ID,
+        )?;
+
+        CreatorStats {
+            creator: ctx.accounts.creator.key(),
+            total_lamports: 0,
+            sponsor_count: 0,
+            bump,
+        }
+    } else {
+        require_keys_eq!(*creator_stats_info.owner, crate::ID);
+        let mut data: &[u8] = &creator_stats_info.try_borrow_data()?;
+        CreatorStats::try_deserialize(&mut data)?
+    };
+
     stats.total_lamports = stats
         .total_lamports
         .checked_add(payout)
@@ -106,6 +140,10 @@ pub fn sponsor(ctx: Context<Sponsor>, amount: u64, memo_hash: [u8; 32]) -> Resul
         .sponsor_count
         .checked_add(1)
         .ok_or(SardhanaError::MathOverflow)?;
+
+    let mut data = creator_stats_info.try_borrow_mut_data()?;
+    let mut writer = &mut data[..];
+    stats.try_serialize(&mut writer)?;
 
     emit!(SponsorshipMade {
         sponsor: ctx.accounts.sponsor.key(),

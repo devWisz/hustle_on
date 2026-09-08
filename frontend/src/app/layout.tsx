@@ -13,15 +13,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "Sardhana — Your hustle should be paid off",
-    template: "%s — Sardhana",
+    default: "HustlerOn — Your hustle should be paid off",
+    template: "%s — HustlerOn",
   },
   description:
     "Publish timelapses of the work you actually do. Get sponsored on chain, and get hired on the strength of a public track record.",
   openGraph: {
     type: "website",
-    siteName: "Sardhana",
-    title: "Sardhana — Your hustle should be paid off",
+    siteName: "HustlerOn",
+    title: "HustlerOn — Your hustle should be paid off",
     description:
       "Publish timelapses of the work you actually do. Get sponsored on chain, and get hired on the strength of a public track record.",
   },

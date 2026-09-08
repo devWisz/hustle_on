@@ -37,3 +37,4 @@ coverage/
 # Go
 vendor/
 *.test
+.neon
