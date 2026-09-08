@@ -33,7 +33,7 @@ continue, and get hired off the back of a public track record.
 cp .env.example .env          # fill in Neon, Resend and Solana values
 make setup                    # install per-workspace dependencies
 make db-migrate               # apply migrations to the Neon branch in DATABASE_URL
-make dev                      # backend :8080, frontend :3000, admin :3001
+make dev                      # backend :8085, frontend :3000, admin :3002
 ```
 
 Read `docs/getting-started.md` for the long version and `docs/security.md`

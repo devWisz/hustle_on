@@ -18,6 +18,6 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 # Runtime stage: distroless, non-root, no shell to be dropped into.
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/api /api
-EXPOSE 8080
+EXPOSE 8085
 USER nonroot:nonroot
 ENTRYPOINT ["/api"]

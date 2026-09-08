@@ -6,7 +6,7 @@
 | ---- | ------- | ---------- |
 | Go | 1.23+ | backend and auth module |
 | Node | 20+ | frontend and admin |
-| psql | 15+ | migrations |
+| psql | 15+ | migrations (optional: runner automatically falls back to Go) |
 | Rust + Anchor | 0.30.1 | the Solana program (optional for web work) |
 
 A Neon account, a Resend account and a Solana devnet wallet complete the set.
@@ -41,9 +41,9 @@ make setup            # once
 make dev
 ```
 
-- API — http://localhost:8080
+- API — http://localhost:8085
 - Web — http://localhost:3000
-- Admin — http://localhost:3001
+- Admin — http://localhost:3002
 
 ## 4. Sign in
 

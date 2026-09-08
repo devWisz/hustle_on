@@ -40,18 +40,19 @@ agree, and clients must be redeployed with the new id.
 
 ## Backend
 
-`backend/Dockerfile` builds a static binary into a distroless non-root image.
-It copies both module roots because the auth module is referenced by a `replace`
-directive.
+`backend/Dockerfile` builds a static binary into a distroless non-root image
+listening on port `8085`. It copies both module roots because the auth module
+is referenced by a `replace` directive.
 
-Point the platform's health check at `/health/ready`, which verifies the
-database, not `/health`, which only proves the process is alive.
+Point the platform's liveness check at `/health` (or `/healthz`) and the readiness
+check at `/health/ready`, which verifies the database connection.
 
 ## Frontends
 
-Both are standard Next.js applications. Set `NEXT_PUBLIC_API_URL`,
-`NEXT_PUBLIC_SITE_URL` and the Solana variables at build time — they are
-inlined into the bundle, so only non-secret values belong there.
+Both are standard Next.js applications (frontend on port `3000`, admin on port `3002`).
+Set `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL` and the Solana variables at build time
+— they are inlined into the bundle, so only non-secret values belong there. Frontend
+deployments can use Vercel, Node server environments, or Docker containers.
 
 Put the admin console behind whatever access control the organisation already
 has: a VPN, an identity-aware proxy or an IP allow list. The API's role check

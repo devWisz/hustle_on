@@ -60,4 +60,4 @@ when you need realistic structure without real user rows.
 
 Counter columns (`follower_count`, `comment_count`, `sponsor_total_lamports`)
 are denormalised for read speed and updated inside the same transaction as the
-row they count. `scripts/reconcile.sql` recomputes them if they ever drift.
+row they count. `database/queries/reconcile.sql` recomputes them if they ever drift.

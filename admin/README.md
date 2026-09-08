@@ -4,15 +4,17 @@ The moderation and operations console, a separate Next.js application so its
 code, its routes and its Content-Security-Policy never share a bundle with the
 public site.
 
-Runs on port 3001. It uses the same session cookie as the public app, and every
+Runs on port 3002. It uses the same session cookie as the public app, and every
 route it calls is behind `requireRole("admin", "moderator")` in the API — this
 app renders a console, it does not grant one.
 
 ## What it does
 
-- **Overview** — live platform figures read from the database.
-- **Reports** — the moderation queue, oldest first, with the actions a
-  moderator may take.
+- **Overview** — live platform figures and health metrics read from the database.
+- **Reports** — the moderation queue, oldest first, with the actions a moderator may take.
+- **Users** — user accounts, role visibility, and suspension management.
+- **Videos** — platform video moderation and status monitoring.
+- **Jobs** — client job postings inspection.
 
 ## Role boundaries
 

@@ -1,6 +1,6 @@
 # API reference
 
-Base URL: `${API_PUBLIC_URL}`, currently `http://localhost:8080` in development.
+Base URL: `${API_PUBLIC_URL}`, currently `http://localhost:8085` in development.
 All requests and responses are JSON. All state-changing requests need the
 session cookie plus the `X-Sardhana-CSRF` header.
 
@@ -31,10 +31,18 @@ keyset pagination — pass `nextCursor` back as `cursor`. Other lists take
 
 ## Operational
 
-| Method | Path | Access |
-| ------ | ---- | ------ |
-| GET | `/health` | public |
-| GET | `/health/ready` | public — checks the database |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| GET | `/health` | public | Process liveness and cluster info |
+| GET | `/healthz` | public | Alias for `/health` |
+| GET | `/health/ready` | public | Database connectivity check |
+
+## Development uploads
+
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| PUT | `/v1/uploads/local/{key...}` | public (dev) | Local direct upload endpoint |
+| GET | `/v1/uploads/local/{key...}` | public (dev) | Serve local uploaded media |
 
 ## Authentication
 
@@ -63,50 +71,59 @@ keyset pagination — pass `nextCursor` back as `cursor`. Other lists take
 
 ## Discovery
 
-| Method | Path | Access | Query |
-| ------ | ---- | ------ | ----- |
-| GET | `/v1/feed` | public | `limit`, `cursor`, `tag`, `q` |
-| GET | `/v1/videos/{slug}` | public | Owners also see their own drafts |
-| GET | `/v1/creators/{handle}` | public | `{creator, isFollowing}` |
-| GET | `/v1/creators/{handle}/videos` | public | `limit`, `offset` |
-| GET | `/v1/talent` | public | `skills`, `q`, `limit`, `offset` |
-| GET | `/v1/jobs` | public | `skills`, `q`, `remote`, `limit`, `offset` |
-| GET | `/v1/jobs/{slug}` | public | |
+| Method | Path | Access | Query | Notes |
+| ------ | ---- | ------ | ----- | ----- |
+| GET | `/v1/feed` | public | `limit`, `cursor`, `tag`, `q` | Keyset pagination via cursor |
+| GET | `/v1/videos/{slug}` | public | | Owners also see their own drafts |
+| GET | `/v1/creators/{handle}` | public | | Returns `{creator, isFollowing}` |
+| GET | `/v1/creators/{handle}/videos` | public | `limit`, `offset` | Published videos for creator |
+| GET | `/v1/talent` | public | `skills`, `q`, `limit`, `offset` | Searchable directory of builders |
+| GET | `/v1/jobs` | public | `skills`, `q`, `remote`, `limit`, `offset` | Open job postings |
+| GET | `/v1/jobs/{slug}` | public | | Single job details |
+| GET | `/v1/stats` | public | | Aggregated platform statistics |
 
 ## Publishing
 
-| Method | Path | Notes |
-| ------ | ---- | ----- |
-| POST | `/v1/uploads` | `{contentType, sizeBytes}` → presigned PUT URL and key |
-| POST | `/v1/videos` | `{storageKey, title, description, sessionMinutes, visibility, tags}` |
-| POST | `/v1/videos/{id}/uploaded` | `{sizeBytes, checksumSha256?}` |
-| POST | `/v1/videos/{id}/publish` | |
-| PATCH | `/v1/videos/{id}` | `{title?, description?, visibility?}` |
-| DELETE | `/v1/videos/{id}` | Soft delete; sponsorship history survives |
-| POST | `/v1/videos/{slug}/views` | public; deduplicated per viewer per day |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| POST | `/v1/uploads` | session | `{contentType, sizeBytes}` → presigned PUT URL and key |
+| POST | `/v1/videos` | session | `{storageKey, title, description, sessionMinutes, visibility, tags}` |
+| POST | `/v1/videos/{id}/uploaded` | session | `{sizeBytes, checksumSha256?}` |
+| POST | `/v1/videos/{id}/publish` | session | Transitions video to published |
+| PATCH | `/v1/videos/{id}` | session | `{title?, description?, visibility?}` |
+| DELETE | `/v1/videos/{id}` | session | Soft delete; sponsorship history survives |
+| POST | `/v1/videos/{slug}/views` | public | Coarse deduplicated view recording |
 
 The upload sequence is: request a URL, PUT the file to it, register the video
 against the returned key, mark it uploaded, publish.
 
 ## Discussion
 
-| Method | Path |
-| ------ | ---- |
-| GET | `/v1/videos/{slug}/comments` (public) |
-| POST | `/v1/videos/{slug}/comments` — `{body, parentId?}` |
-| DELETE | `/v1/comments/{id}` |
-| POST / DELETE | `/v1/comments/{id}/like` |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| GET | `/v1/videos/{slug}/comments` | public | Threaded comments list |
+| POST | `/v1/videos/{slug}/comments` | session | `{body, parentId?}` |
+| DELETE | `/v1/comments/{id}` | session | Soft delete |
+| POST | `/v1/comments/{id}/like` | session | Like comment |
+| DELETE | `/v1/comments/{id}/like` | session | Unlike comment |
 
 Replies are one level deep; a reply to a reply attaches to the top-level parent.
 
+## Following
+
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| POST | `/v1/creators/{handle}/follow` | session | Follow creator |
+| DELETE | `/v1/creators/{handle}/follow` | session | Unfollow creator |
+
 ## Sponsorship
 
-| Method | Path | Body |
-| ------ | ---- | ---- |
-| POST | `/v1/sponsorships` | `{creatorHandle, videoId?, amount, message?, isAnonymous}` |
-| POST | `/v1/sponsorships/{id}/signature` | `{signature, payer}` |
-| POST | `/v1/sponsorships/{id}/confirm` | `{signature, payer, payee, amount}` |
-| GET | `/v1/videos/{slug}/sponsors` | public |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| POST | `/v1/sponsorships` | session | `{creatorHandle, videoId?, amount, message?, isAnonymous}` → `{payTo, intentId}` |
+| POST | `/v1/sponsorships/{id}/signature` | session | `{signature, payer}` |
+| POST | `/v1/sponsorships/{id}/confirm` | session | `{signature, payer, payee, amount}` |
+| GET | `/v1/videos/{slug}/sponsors` | public | Top and recent sponsors for video |
 
 The create call returns `payTo` — the address to send to. Confirm verifies
 against the cluster; a 202 with `status: "pending"` means the transaction has
@@ -114,18 +131,29 @@ not finalized and the reconciler will settle it.
 
 ## Hiring
 
-| Method | Path | Access |
-| ------ | ---- | ------ |
-| POST | `/v1/jobs` | session |
-| POST | `/v1/jobs/{slug}/applications` | session |
-| GET | `/v1/jobs/{slug}/applications` | the client who posted it |
-| POST | `/v1/applications/{id}/status` | the client who posted it |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| POST | `/v1/jobs` | session | Post a new job |
+| POST | `/v1/jobs/{slug}/applications` | session | Apply for a job |
+| GET | `/v1/jobs/{slug}/applications` | session | The client who posted the job |
+| POST | `/v1/applications/{id}/status` | session | Update application status (`reviewing`, `accepted`, `rejected`) |
 
 ## Trust and safety
 
-| Method | Path | Access |
-| ------ | ---- | ------ |
-| POST | `/v1/reports` | session; always 202, duplicates are silent |
-| GET | `/v1/admin/stats` | moderator or admin |
-| GET | `/v1/admin/reports` | moderator or admin |
-| POST | `/v1/admin/reports/{id}/resolve` | moderator; account actions are admin only |
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| POST | `/v1/reports` | session | Report content or user; always 202, duplicates silent |
+
+## Admin console
+
+All admin endpoints require `admin` or `moderator` role. Actions modifying account status require `admin`.
+
+| Method | Path | Access | Notes |
+| ------ | ---- | ------ | ----- |
+| GET | `/v1/admin/stats` | moderator/admin | Platform dashboard metrics |
+| GET | `/v1/admin/health` | moderator/admin | System health and connection status |
+| GET | `/v1/admin/users` | moderator/admin | `limit`, `offset` — list accounts with roles |
+| GET | `/v1/admin/videos` | moderator/admin | `limit`, `offset` — list videos with moderation status |
+| GET | `/v1/admin/jobs` | moderator/admin | `limit`, `offset` — list job postings |
+| GET | `/v1/admin/reports` | moderator/admin | Moderation queue, oldest first |
+| POST | `/v1/admin/reports/{id}/resolve` | moderator/admin | `{action, note?}` — hide, remove, warn, or suspend |
