@@ -90,3 +90,29 @@ export function VideoGrid({ videos }: { videos: Video[] }) {
     </div>
   );
 }
+
+/**
+ * The grid's loading shape.
+ *
+ * It mirrors `VideoCard`'s geometry exactly — same aspect ratio, same avatar
+ * size, same line offsets — so nothing shifts position when the real cards
+ * replace it. A skeleton that does not match is worse than no skeleton.
+ */
+export function VideoGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index}>
+          <div className="aspect-video animate-pulse rounded-[var(--radius-card)] bg-surface-raised" />
+          <div className="mt-3 flex gap-3">
+            <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-surface-raised" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 w-4/5 animate-pulse rounded bg-surface-raised" />
+              <div className="h-3 w-2/5 animate-pulse rounded bg-surface-raised" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

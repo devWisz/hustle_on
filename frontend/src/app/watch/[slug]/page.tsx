@@ -8,6 +8,7 @@ import { SponsorPanel } from "@/components/sponsor-panel";
 import { CommentThread } from "@/components/comment-thread";
 import { FollowButton } from "@/components/follow-button";
 import { ReportButton } from "@/components/report-button";
+import { ShareButton } from "@/components/share-button";
 import { TimelapsePlayer } from "@/components/timelapse-player";
 import { ClockIcon } from "@/components/icons";
 import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
@@ -28,7 +29,8 @@ export async function generateMetadata({
 
   return {
     title: video.title,
-    description: video.description?.slice(0, 160) ?? `A work session by ${video.creator.displayName}.`,
+    description:
+      video.description?.slice(0, 160) ?? `A work session by ${video.creator.displayName}.`,
     openGraph: {
       title: video.title,
       description: video.description?.slice(0, 160),
@@ -57,7 +59,9 @@ export default async function WatchPage({ params }: { params: Promise<{ slug: st
         <div className="min-w-0">
           <TimelapsePlayer video={video} />
 
-          <h1 className="mt-6 text-[24px] font-semibold leading-snug tracking-tight">{video.title}</h1>
+          <h1 className="mt-6 text-[24px] font-semibold leading-snug tracking-tight">
+            {video.title}
+          </h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-muted">
             <span>{formatCount(video.viewCount)} views</span>
@@ -98,6 +102,11 @@ export default async function WatchPage({ params }: { params: Promise<{ slug: st
                 handle={video.creator.handle}
                 signedIn={Boolean(viewer)}
                 isSelf={viewer?.id === video.creator.id}
+              />
+              <ShareButton
+                title={video.title}
+                text={`A work session by ${video.creator.displayName}.`}
+                path={`/watch/${video.slug}`}
               />
               <ReportButton subjectType="video" subjectId={video.id} signedIn={Boolean(viewer)} />
             </div>
@@ -143,7 +152,6 @@ export default async function WatchPage({ params }: { params: Promise<{ slug: st
   );
 }
 
-
 function SponsorList({ sponsors, total }: { sponsors: Sponsorship[]; total: number }) {
   return (
     <Card className="p-5">
@@ -169,7 +177,10 @@ function SponsorList({ sponsors, total }: { sponsors: Sponsorship[]; total: numb
                 <p className="flex items-baseline justify-between gap-2 text-[13px]">
                   <span className="truncate font-medium">
                     {sponsor.sponsor ? (
-                      <Link href={`/creator/${sponsor.sponsor.handle}`} className="hover:text-accent">
+                      <Link
+                        href={`/creator/${sponsor.sponsor.handle}`}
+                        className="hover:text-accent"
+                      >
                         {sponsor.sponsor.displayName}
                       </Link>
                     ) : (
@@ -181,7 +192,9 @@ function SponsorList({ sponsors, total }: { sponsors: Sponsorship[]; total: numb
                   </span>
                 </p>
                 {sponsor.message ? (
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{sponsor.message}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">
+                    {sponsor.message}
+                  </p>
                 ) : null}
               </div>
             </li>

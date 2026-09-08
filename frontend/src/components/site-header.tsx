@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { apiServer } from "@/lib/api";
-import type { SelfUser } from "@/lib/types";
+import type { Notification, Page, SelfUser } from "@/lib/types";
 import { Avatar, ButtonLink } from "./ui";
 import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
+import { CommandPalette } from "./command-palette";
+import { NotificationBell } from "./notification-bell";
 import { UploadIcon } from "./icons";
 
 interface SessionResponse {
@@ -25,6 +27,12 @@ export const navigation = [
 export async function SiteHeader() {
   const session = await apiServer<SessionResponse>("/v1/auth/session", 0);
   const user = session?.authenticated ? session.user : undefined;
+
+  // Fetched here rather than in the bell so the unread count is right on first
+  // paint. A badge that only appears once you open the panel tells you nothing.
+  const notifications = user
+    ? await apiServer<Page<Notification>>("/v1/me/notifications?limit=8", 0)
+    : null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
@@ -48,12 +56,19 @@ export async function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <CommandPalette />
           {user ? (
             <>
-              <ButtonLink href="/upload" variant="secondary" size="sm" className="hidden sm:inline-flex">
+              <ButtonLink
+                href="/upload"
+                variant="secondary"
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
                 <UploadIcon size={16} />
                 Upload
               </ButtonLink>
+              <NotificationBell initialItems={notifications?.items ?? []} />
               <Link
                 href="/dashboard"
                 className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-surface-raised"

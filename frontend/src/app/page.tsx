@@ -3,7 +3,14 @@ import { apiServer } from "@/lib/api";
 import type { Page, Video, PublicUser } from "@/lib/types";
 import { VideoGrid } from "@/components/video-card";
 import { Avatar, ButtonLink, Card, Container, EmptyState, SectionHeading } from "@/components/ui";
-import { ArrowRightIcon, ShieldIcon, UploadIcon, WalletIcon, BriefcaseIcon } from "@/components/icons";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  ShieldIcon,
+  UploadIcon,
+  WalletIcon,
+  BriefcaseIcon,
+} from "@/components/icons";
 import { formatSol, formatUsd } from "@/lib/format";
 
 export const revalidate = 60;
@@ -53,22 +60,18 @@ function Hero() {
                 Watch what people are building
               </ButtonLink>
             </div>
-            
-            {/* Feature trust markers */}
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-fg-subtle">
-              <span className="flex items-center gap-1.5">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent/20 text-accent font-bold text-[10px]">✓</span>
-                Zero password friction
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent/20 text-accent font-bold text-[10px]">✓</span>
-                Direct Solana settlement
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent/20 text-accent font-bold text-[10px]">✓</span>
-                Milestone escrow safety
-              </span>
-            </div>
+
+            {/* The three promises the product has to keep, stated plainly. */}
+            <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[13px] text-fg-muted">
+              {TRUST_MARKERS.map((marker) => (
+                <li key={marker} className="flex items-center gap-2">
+                  <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <CheckIcon size={11} />
+                  </span>
+                  {marker}
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Right Column: Live Proof-of-Work & Escrow Showcase Card */}
@@ -80,6 +83,12 @@ function Hero() {
     </section>
   );
 }
+
+const TRUST_MARKERS = [
+  "No passwords to manage",
+  "Direct Solana settlement",
+  "Milestone escrow",
+] as const;
 
 function HeroShowcaseCard() {
   return (
@@ -108,12 +117,13 @@ function HeroShowcaseCard() {
       <div className="relative mt-4 overflow-hidden rounded-[var(--radius-card)] border border-border bg-neutral-950 p-4 text-white">
         <div className="flex items-center justify-between text-[11px] text-neutral-400">
           <span className="font-mono">hustler_escrow.rs</span>
-          <span className="flex items-center gap-1 text-neutral-300">
-            4h 25m timelapse
-          </span>
+          <span className="flex items-center gap-1 text-neutral-300">4h 25m timelapse</span>
         </div>
         <div className="my-4 font-mono text-[12px] leading-relaxed text-neutral-300">
-          <p><span className="text-sky-400">pub fn</span> <span className="text-amber-300">release_milestone</span>(ctx: Context, m: u8) {"{"}</p>
+          <p>
+            <span className="text-sky-400">pub fn</span>{" "}
+            <span className="text-amber-300">release_milestone</span>(ctx: Context, m: u8) {"{"}
+          </p>
           <p className="pl-4 text-emerald-400">{"// debit vault PDA & transfer lamports"}</p>
           <p className="pl-4">{"debit_vault(&vault, &talent, payout)?;"}</p>
           <p className="pl-4 text-neutral-500">{"emit!(MilestoneReleased { ... });"}</p>
@@ -140,7 +150,9 @@ function HeroShowcaseCard() {
             </span>
             <div>
               <p className="text-[12px] font-medium">Sponsorship received</p>
-              <p className="text-[11px] text-fg-subtle">&quot;Keep building the Solana engine!&quot;</p>
+              <p className="text-[11px] text-fg-subtle">
+                &quot;Keep building the Solana engine!&quot;
+              </p>
             </div>
           </div>
           <div className="text-right">
@@ -291,7 +303,9 @@ function OpenToWork({ people }: { people: PublicUser[] }) {
                   {person.headline ?? `${person.videoCount} published sessions`}
                 </p>
                 <p className="mt-3 text-[12px] text-fg-subtle">
-                  {person.hourlyRateUsd ? `${formatUsd(person.hourlyRateUsd)}/hr` : "Rate on request"}
+                  {person.hourlyRateUsd
+                    ? `${formatUsd(person.hourlyRateUsd)}/hr`
+                    : "Rate on request"}
                   {person.sponsorTotalLamports > 0
                     ? ` · ${formatSol(person.sponsorTotalLamports)} earned`
                     : ""}
@@ -319,16 +333,26 @@ function ClosingCta() {
                 The work is already happening. Put it on the record.
               </h2>
               <p className="mt-4 max-w-2xl text-[15px] sm:text-[16px] leading-relaxed text-fg-muted">
-                One session is enough to start. Publish the timelapse, link your accounts, connect a wallet, and
-                let sponsors support you directly on Solana while clients hire you with full confidence.
+                One session is enough to start. Publish the timelapse, link your accounts, connect a
+                wallet, and let sponsors support you directly on Solana while clients hire you with
+                full confidence.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:col-span-4 lg:flex-col lg:items-end">
-              <ButtonLink href="/login?intent=start" size="lg" className="w-full sm:w-auto lg:w-full text-center justify-center">
+              <ButtonLink
+                href="/login?intent=start"
+                size="lg"
+                className="w-full sm:w-auto lg:w-full text-center justify-center"
+              >
                 Create your profile
                 <ArrowRightIcon size={17} />
               </ButtonLink>
-              <ButtonLink href="/discover" variant="secondary" size="lg" className="w-full sm:w-auto lg:w-full text-center justify-center">
+              <ButtonLink
+                href="/discover"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto lg:w-full text-center justify-center"
+              >
                 Browse talent & sessions
               </ButtonLink>
             </div>

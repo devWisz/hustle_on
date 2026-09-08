@@ -6,6 +6,8 @@ import { VideoGrid } from "@/components/video-card";
 import { SocialLinks } from "@/components/social-links";
 import { FollowButton } from "@/components/follow-button";
 import { SponsorPanel } from "@/components/sponsor-panel";
+import { SessionHeatmap } from "@/components/session-heatmap";
+import { ShareButton } from "@/components/share-button";
 import { Avatar, Badge, ButtonLink, Card, Container, EmptyState, Stat } from "@/components/ui";
 import { UploadIcon } from "@/components/icons";
 import { formatCount, formatDate, formatSol, formatUsd, shortAddress } from "@/lib/format";
@@ -57,7 +59,11 @@ export default async function CreatorPage({ params }: { params: Promise<{ handle
         className="h-32 border-b border-border bg-surface-raised sm:h-44"
         style={
           creator.bannerUrl
-            ? { backgroundImage: `url(${creator.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+            ? {
+                backgroundImage: `url(${creator.bannerUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
             : undefined
         }
         aria-hidden
@@ -89,6 +95,12 @@ export default async function CreatorPage({ params }: { params: Promise<{ handle
                 initiallyFollowing={isFollowing}
               />
             )}
+            <ShareButton
+              title={`${creator.displayName} on HustlerOn`}
+              text={creator.headline}
+              path={`/creator/${creator.handle}`}
+              label="Share"
+            />
           </div>
         </div>
 
@@ -115,6 +127,12 @@ export default async function CreatorPage({ params }: { params: Promise<{ handle
               <SocialLinks links={creator.socialLinks} />
             </div>
 
+            {videos && videos.items.length > 0 ? (
+              <div className="mt-10">
+                <SessionHeatmap videos={videos.items} name={creator.displayName} />
+              </div>
+            ) : null}
+
             <section className="mt-10" aria-labelledby="sessions-heading">
               <h2 id="sessions-heading" className="mb-5 text-[17px] font-semibold">
                 Sessions
@@ -125,13 +143,17 @@ export default async function CreatorPage({ params }: { params: Promise<{ handle
                 <Card>
                   <EmptyState
                     icon={<UploadIcon size={24} />}
-                    title={isSelf ? "You have not published a session yet" : "No published sessions yet"}
+                    title={
+                      isSelf ? "You have not published a session yet" : "No published sessions yet"
+                    }
                     description={
                       isSelf
                         ? "Record a work session, upload the timelapse, and it appears here."
                         : "When this person publishes their first session it will show up here."
                     }
-                    action={isSelf ? <ButtonLink href="/upload">Upload a session</ButtonLink> : undefined}
+                    action={
+                      isSelf ? <ButtonLink href="/upload">Upload a session</ButtonLink> : undefined
+                    }
                   />
                 </Card>
               )}
@@ -170,7 +192,9 @@ export default async function CreatorPage({ params }: { params: Promise<{ handle
 
             {creator.openToWork && !isSelf ? (
               <Card className="p-5">
-                <h2 className="text-[15px] font-semibold">Hire {creator.displayName.split(" ")[0]}</h2>
+                <h2 className="text-[15px] font-semibold">
+                  Hire {creator.displayName.split(" ")[0]}
+                </h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
                   Post a role and invite them to apply. Funds sit in escrow until you release each
                   milestone.
