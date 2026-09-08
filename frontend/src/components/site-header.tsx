@@ -3,6 +3,7 @@ import { apiServer } from "@/lib/api";
 import type { SelfUser } from "@/lib/types";
 import { Avatar, ButtonLink } from "./ui";
 import { MobileNav } from "./mobile-nav";
+import { ThemeToggle } from "./theme-toggle";
 import { UploadIcon } from "./icons";
 
 interface SessionResponse {
@@ -76,6 +77,7 @@ export async function SiteHeader() {
               </ButtonLink>
             </>
           )}
+          <ThemeToggle />
           <MobileNav signedIn={Boolean(user)} />
         </div>
       </div>

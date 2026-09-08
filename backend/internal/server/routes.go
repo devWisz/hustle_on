@@ -12,7 +12,12 @@ func (s *Server) routes() {
 
 	// --- operational ---------------------------------------------------
 	m.HandleFunc("GET /health", s.wrap(s.handleHealth))
+	m.HandleFunc("GET /healthz", s.wrap(s.handleHealth))
 	m.HandleFunc("GET /health/ready", s.wrap(s.handleReady))
+
+	// --- local upload & streaming (dev) --------------------------------
+	m.HandleFunc("PUT /v1/uploads/local/{key...}", s.wrap(s.handleLocalUpload))
+	m.HandleFunc("GET /v1/uploads/local/{key...}", s.wrap(s.handleServeLocalUpload))
 
 	// --- public reads --------------------------------------------------
 	m.HandleFunc("GET /v1/feed", s.wrap(s.handleFeed))

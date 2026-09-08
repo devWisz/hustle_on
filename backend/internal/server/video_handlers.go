@@ -6,7 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -387,4 +390,49 @@ func decodeCursor(raw string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// handleLocalUpload accepts direct binary uploads in local development.
+func (s *Server) handleLocalUpload(w http.ResponseWriter, r *http.Request) error {
+	key := r.PathValue("key")
+	if key == "" {
+		return apierr.BadRequest("Missing storage key")
+	}
+	cleanKey := filepath.Clean(key)
+	if strings.HasPrefix(cleanKey, "..") || filepath.IsAbs(cleanKey) {
+		return apierr.BadRequest("Invalid storage key")
+	}
+
+	targetPath := filepath.Join("data", "uploads", cleanKey)
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return apierr.Internal(err)
+	}
+
+	out, err := os.Create(targetPath)
+	if err != nil {
+		return apierr.Internal(err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, r.Body); err != nil {
+		return apierr.Internal(err)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+// handleServeLocalUpload serves uploaded files for development video playback.
+func (s *Server) handleServeLocalUpload(w http.ResponseWriter, r *http.Request) error {
+	key := r.PathValue("key")
+	cleanKey := filepath.Clean(key)
+	if strings.HasPrefix(cleanKey, "..") || filepath.IsAbs(cleanKey) {
+		return apierr.NotFound("File")
+	}
+	targetPath := filepath.Join("data", "uploads", cleanKey)
+	if _, err := os.Stat(targetPath); err != nil {
+		return apierr.NotFound("File")
+	}
+	http.ServeFile(w, r, targetPath)
+	return nil
 }

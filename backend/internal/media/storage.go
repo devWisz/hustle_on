@@ -69,6 +69,11 @@ type Upload struct {
 	MaxBytes  int64     `json:"maxBytes"`
 }
 
+// IsLocal reports whether object storage is simulated locally in development.
+func (s *Storage) IsLocal() bool {
+	return s.cfg.AccessKey == "" || s.cfg.AccessKey == "replace-me" || strings.Contains(s.cfg.Endpoint, "localhost") || strings.Contains(s.cfg.Endpoint, "127.0.0.1")
+}
+
 // NewUpload validates the request and returns a presigned PUT URL.
 // The key embeds the owner id, so an object can always be traced back to the
 // account that requested it even if the database row is later removed.
@@ -89,6 +94,15 @@ func (s *Storage) NewUpload(userID, contentType string, declaredSize int64) (Upl
 	key := fmt.Sprintf("uploads/%s/%s/%s.%s",
 		userID, now.Format("2006/01"), hex.EncodeToString(suffix), ext)
 
+	if s.IsLocal() {
+		return Upload{
+			URL:       fmt.Sprintf("%s/v1/uploads/local/%s", strings.TrimRight(s.cfg.Endpoint, "/"), key),
+			Key:       key,
+			ExpiresAt: now.Add(s.cfg.URLTTL),
+			MaxBytes:  s.cfg.MaxBytes,
+		}, nil
+	}
+
 	signed, err := s.presignPut(key, contentType, now)
 	if err != nil {
 		return Upload{}, err
@@ -103,6 +117,9 @@ func (s *Storage) NewUpload(userID, contentType string, declaredSize int64) (Upl
 
 // PublicURL returns the read URL for a stored object.
 func (s *Storage) PublicURL(key string) string {
+	if s.IsLocal() {
+		return fmt.Sprintf("%s/v1/uploads/local/%s", strings.TrimRight(s.cfg.Endpoint, "/"), key)
+	}
 	if s.cfg.PublicURL == "" {
 		return ""
 	}

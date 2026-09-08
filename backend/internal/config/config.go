@@ -58,22 +58,63 @@ type Config struct {
 // IsProduction reports whether relaxed development behaviour is forbidden.
 func (c Config) IsProduction() bool { return c.Env == "production" }
 
+// loadDotEnv finds and loads .env from current or parent directories if not already set.
+func loadDotEnv() {
+	paths := []string{".env", "../.env", "../../.env"}
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				idx := strings.IndexByte(line, '=')
+				if idx <= 0 {
+					continue
+				}
+				key := strings.TrimSpace(line[:idx])
+				val := strings.TrimSpace(line[idx+1:])
+				if strings.HasPrefix(val, `"`) {
+					if end := strings.LastIndex(val, `"`); end > 0 {
+						val = val[1:end]
+					}
+				} else if strings.HasPrefix(val, `'`) {
+					if end := strings.LastIndex(val, `'`); end > 0 {
+						val = val[1:end]
+					}
+				} else {
+					if commentIdx := strings.Index(val, "#"); commentIdx != -1 {
+						val = strings.TrimSpace(val[:commentIdx])
+					}
+				}
+				if _, exists := os.LookupEnv(key); !exists {
+					_ = os.Setenv(key, val)
+				}
+			}
+			break
+		}
+	}
+}
+
 // Load reads configuration from the environment and validates it.
 func Load() (Config, error) {
+	loadDotEnv()
+
 	c := Config{
 		Env:      env("APP_ENV", "development"),
 		LogLevel: env("LOG_LEVEL", "info"),
 
-		Port:         env("API_PORT", "8080"),
-		PublicAPIURL: env("API_PUBLIC_URL", "http://localhost:8080"),
+		Port:         env("API_PORT", "8085"),
+		PublicAPIURL: env("API_PUBLIC_URL", "http://localhost:8085"),
 		WebURL:       env("WEB_PUBLIC_URL", "http://localhost:3000"),
-		AdminURL:     env("ADMIN_PUBLIC_URL", "http://localhost:3001"),
+		AdminURL:     env("ADMIN_PUBLIC_URL", "http://localhost:3002"),
 
 		DatabaseURL:      os.Getenv("DATABASE_URL"),
 		DatabaseMaxConns: int32(envInt("DATABASE_MAX_CONNS", 10)),
 
 		SessionSecret:     []byte(os.Getenv("SESSION_SECRET")),
-		SessionCookieName: env("SESSION_COOKIE_NAME", "sardhana_session"),
+		SessionCookieName: env("SESSION_COOKIE_NAME", "hustler_on_session"),
 		SessionTTL:        time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
 		MagicLinkTTL:      time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 

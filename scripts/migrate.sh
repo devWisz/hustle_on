@@ -21,7 +21,9 @@ if [[ -z "$DSN" ]]; then
   echo "error: set DATABASE_URL_DIRECT or DATABASE_URL" >&2
   exit 1
 fi
-command -v psql >/dev/null || { echo "error: psql not found" >&2; exit 1; }
+if ! command -v psql >/dev/null; then
+  exec bash -c "cd '$ROOT/backend' && go run ./cmd/migrate '${1:-up}'"
+fi
 
 psql_do() { psql "$DSN" -v ON_ERROR_STOP=1 -q "$@"; }
 

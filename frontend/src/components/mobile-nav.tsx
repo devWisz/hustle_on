@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { navigation } from "./site-header";
 import { MenuIcon, CloseIcon } from "./icons";
+import { ThemeToggle } from "./theme-toggle";
 
 /** The small-screen navigation. Closed by default, dismissed on Escape. */
 export function MobileNav({ signedIn }: { signedIn: boolean }) {
@@ -37,16 +38,20 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
 
       {open ? (
         <div className="fixed inset-0 z-50 bg-bg md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-          <div className="flex h-14 items-center justify-end px-5">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-[var(--radius-control)] p-2 text-fg-muted hover:text-fg"
-              aria-label="Close menu"
-              autoFocus
-            >
-              <CloseIcon />
-            </button>
+          <div className="flex h-14 items-center justify-between px-5 border-b border-border">
+            <span className="text-sm font-semibold tracking-tight">Menu</span>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-[var(--radius-control)] p-2 text-fg-muted hover:text-fg"
+                aria-label="Close menu"
+                autoFocus
+              >
+                <CloseIcon />
+              </button>
+            </div>
           </div>
           <nav aria-label="Mobile" className="flex flex-col gap-1 px-4">
             {navigation.map((item) => (

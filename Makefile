@@ -24,7 +24,7 @@ dev-backend: ## Run the Go API with live reload if air is installed
 dev-frontend: ## Run the public Next.js app on :3000
 	cd frontend && npm run dev
 
-dev-admin: ## Run the admin console on :3001
+dev-admin: ## Run the admin console on :3002
 	cd admin && npm run dev
 
 build: ## Build every deployable artifact

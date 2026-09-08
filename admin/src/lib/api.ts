@@ -1,6 +1,6 @@
 /** API access for the admin console. Mirrors the public app's client. */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
 
 export class ApiError extends Error {
   constructor(
@@ -14,9 +14,16 @@ export class ApiError extends Error {
 
 function csrfToken(): string {
   if (typeof document === "undefined") return "";
-  const name = `${process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "sardhana_session"}_csrf=`;
-  const hit = document.cookie.split("; ").find((c) => c.startsWith(name));
-  return hit ? decodeURIComponent(hit.slice(name.length)) : "";
+  const prefix = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
+  const name = `${prefix}_csrf=`;
+  const hit = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(name) || c.startsWith("sardhana_session_csrf=") || c.includes("_csrf="));
+  if (hit) {
+    const eq = hit.indexOf("=");
+    return eq !== -1 ? decodeURIComponent(hit.slice(eq + 1)) : "";
+  }
+  return "";
 }
 
 export async function api<T>(

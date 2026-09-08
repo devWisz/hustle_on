@@ -8,7 +8,8 @@ import { SponsorPanel } from "@/components/sponsor-panel";
 import { CommentThread } from "@/components/comment-thread";
 import { FollowButton } from "@/components/follow-button";
 import { ReportButton } from "@/components/report-button";
-import { ClockIcon, PlayIcon } from "@/components/icons";
+import { TimelapsePlayer } from "@/components/timelapse-player";
+import { ClockIcon } from "@/components/icons";
 import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
 
 interface SessionResponse {
@@ -54,7 +55,7 @@ export default async function WatchPage({ params }: { params: Promise<{ slug: st
     <Container width="wide" className="py-8 sm:py-10">
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
-          <Player video={video} />
+          <TimelapsePlayer video={video} />
 
           <h1 className="mt-6 text-[24px] font-semibold leading-snug tracking-tight">{video.title}</h1>
 
@@ -142,35 +143,6 @@ export default async function WatchPage({ params }: { params: Promise<{ slug: st
   );
 }
 
-function Player({ video }: { video: Video }) {
-  if (!video.playbackUrl) {
-    return (
-      <div className="flex aspect-video items-center justify-center rounded-[var(--radius-card)] border border-border bg-surface-raised text-fg-subtle">
-        <div className="text-center">
-          <PlayIcon size={30} />
-          <p className="mt-3 text-sm">This session is still processing.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-black">
-      {/* Native controls: no third-party player script, and the browser's own
-          accessibility affordances come for free. */}
-      <video
-        controls
-        preload="metadata"
-        playsInline
-        poster={video.thumbnailUrl}
-        className="aspect-video w-full"
-      >
-        <source src={video.playbackUrl} type="video/mp4" />
-        Your browser cannot play this video.
-      </video>
-    </div>
-  );
-}
 
 function SponsorList({ sponsors, total }: { sponsors: Sponsorship[]; total: number }) {
   return (

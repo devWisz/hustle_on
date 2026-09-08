@@ -19,12 +19,15 @@ const isDev = process.env.NODE_ENV !== "production";
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (isDev ? " 'unsafe-eval'" : ""),
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
-  "media-src 'self' https: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' " + (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080") +
-    " " + (process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com"),
+  "media-src 'self' https: blob: data:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' " +
+    (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085") +
+    " " +
+    (process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com") +
+    (isDev ? " ws://localhost:* wss://localhost:* http://localhost:* http://127.0.0.1:*" : ""),
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'none'",
@@ -41,23 +44,28 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const securityHeaders = [
+      { key: "Content-Security-Policy", value: csp },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-Frame-Options", value: "DENY" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+      },
+    ];
+
+    if (!isDev) {
+      securityHeaders.push({
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      });
+    }
+
     return [
       {
         source: "/:path*",
-        headers: [
-          { key: "Content-Security-Policy", value: csp },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "DENY" },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
-        ],
+        headers: securityHeaders,
       },
     ];
   },

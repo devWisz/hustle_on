@@ -49,12 +49,17 @@ func run() error {
 
 	// Without a Resend key outside production, login links are printed to the
 	// log instead of emailed. config.Load refuses this combination in
-	// production, so it cannot become the deployed behaviour by accident.
+	// production; here we wire whichever mailer is appropriate.
 	var mailer auth.Mailer
-	if cfg.ResendAPIKey != "" {
-		mailer = auth.NewResendMailer(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailReplyTo)
+	if cfg.ResendAPIKey != "" && !strings.Contains(cfg.ResendAPIKey, "replace") {
+		resend := auth.NewResendMailer(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailReplyTo)
+		if !cfg.IsProduction() {
+			mailer = devCompositeMailer{primary: resend, logger: auth.LogMailer{Out: os.Stdout}}
+		} else {
+			mailer = resend
+		}
 	} else {
-		log.Warn("no RESEND_API_KEY set; login links will be written to the log")
+		log.Warn("no real RESEND_API_KEY set; login links will be written to the log")
 		mailer = auth.LogMailer{Out: os.Stdout}
 	}
 
@@ -73,13 +78,21 @@ func run() error {
 	}
 
 	chain := solana.New(cfg.SolanaRPCURL, cfg.SolanaCluster)
+
+	storageEndpoint := cfg.StorageEndpoint
+	storagePublicURL := cfg.StoragePublicURL
+	if cfg.StorageKeyID == "replace-me" || cfg.StorageKeyID == "" {
+		storageEndpoint = cfg.PublicAPIURL
+		storagePublicURL = cfg.PublicAPIURL
+	}
+
 	storage := media.New(media.Config{
-		Endpoint:  cfg.StorageEndpoint,
+		Endpoint:  storageEndpoint,
 		Bucket:    cfg.StorageBucket,
 		Region:    cfg.StorageRegion,
 		AccessKey: cfg.StorageKeyID,
 		SecretKey: cfg.StorageSecret,
-		PublicURL: cfg.StoragePublicURL,
+		PublicURL: storagePublicURL,
 		MaxBytes:  cfg.UploadMaxBytes,
 		URLTTL:    cfg.UploadURLTTL,
 	})
@@ -92,4 +105,17 @@ func run() error {
 
 	api := server.New(cfg, log, st, authSvc, chain, storage)
 	return api.ListenAndServe(ctx)
+}
+
+type devCompositeMailer struct {
+	primary auth.Mailer
+	logger  auth.Mailer
+}
+
+func (m devCompositeMailer) Send(ctx context.Context, msg auth.Message) error {
+	_ = m.logger.Send(ctx, msg)
+	if m.primary != nil {
+		_ = m.primary.Send(ctx, msg)
+	}
+	return nil
 }
