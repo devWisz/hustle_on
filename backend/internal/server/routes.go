@@ -29,6 +29,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /v1/talent", s.wrap(s.handleTalent))
 	m.HandleFunc("GET /v1/jobs", s.wrap(s.handleListJobs))
 	m.HandleFunc("GET /v1/jobs/{slug}", s.wrap(s.handleJob))
+	m.HandleFunc("GET /v1/stats", s.wrap(s.handlePublicStats))
 	m.HandleFunc("POST /v1/videos/{slug}/views", s.wrap(s.handleRecordView))
 
 	// --- authentication ------------------------------------------------
@@ -84,6 +85,10 @@ func (s *Server) routes() {
 
 	// --- admin console (moderator or admin only) -------------------------
 	m.HandleFunc("GET /v1/admin/stats", s.wrap(s.handleAdminStats))
+	m.HandleFunc("GET /v1/admin/health", s.wrap(s.handleAdminHealth))
+	m.HandleFunc("GET /v1/admin/users", s.wrap(s.handleAdminUsers))
+	m.HandleFunc("GET /v1/admin/videos", s.wrap(s.handleAdminVideos))
+	m.HandleFunc("GET /v1/admin/jobs", s.wrap(s.handleAdminJobs))
 	m.HandleFunc("GET /v1/admin/reports", s.wrap(s.handleAdminReports))
 	m.HandleFunc("POST /v1/admin/reports/{id}/resolve", s.wrap(s.handleResolveReport))
 

@@ -1,32 +1,39 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { apiServer } from "@/lib/api";
-import type { Page, Video, PublicUser } from "@/lib/types";
-import { VideoGrid } from "@/components/video-card";
+import type { Job, Page, PublicStats, PublicUser, Video } from "@/lib/types";
+import { VideoGrid, VideoGridSkeleton } from "@/components/video-card";
 import { Avatar, ButtonLink, Card, Container, EmptyState, SectionHeading } from "@/components/ui";
 import {
   ArrowRightIcon,
+  BriefcaseIcon,
   CheckIcon,
+  SearchIcon,
   ShieldIcon,
   UploadIcon,
   WalletIcon,
-  BriefcaseIcon,
 } from "@/components/icons";
-import { formatSol, formatUsd } from "@/lib/format";
+import { formatSol, formatUsd, timeAgo } from "@/lib/format";
 
 export const revalidate = 60;
 
-export default async function HomePage() {
-  const [feed, talent] = await Promise.all([
-    apiServer<Page<Video>>("/v1/feed?limit=6"),
-    apiServer<Page<PublicUser>>("/v1/talent?limit=4"),
-  ]);
-
+export default function HomePage() {
   return (
     <>
       <Hero />
+      <Suspense fallback={<StatsStripSkeleton />}>
+        <LiveStats />
+      </Suspense>
       <HowItWorks />
-      <LatestSessions videos={feed?.items ?? []} />
-      <OpenToWork people={talent?.items ?? []} />
+      <Suspense fallback={<SessionsSkeleton />}>
+        <LatestSessions />
+      </Suspense>
+      <Suspense fallback={null}>
+        <OpenToWork />
+      </Suspense>
+      <Suspense fallback={null}>
+        <OpenRoles />
+      </Suspense>
       <ClosingCta />
     </>
   );
@@ -37,7 +44,6 @@ function Hero() {
     <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface/40 to-bg">
       <Container width="wide" className="py-16 sm:py-24">
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
-          {/* Left Column: Heading & CTAs */}
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-[12px] font-medium text-fg-muted">
               <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse" />
@@ -51,7 +57,29 @@ function Hero() {
               sponsor it directly on Solana, and clients who need your talent hire you from a track
               record they can actually watch.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <form action="/discover" className="relative mt-8 max-w-lg">
+              <SearchIcon
+                size={16}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle"
+              />
+              <input
+                type="search"
+                name="q"
+                placeholder="Search sessions, skills, or people"
+                aria-label="Search the catalog"
+                className="h-12 w-full rounded-[var(--radius-control)] border border-border bg-surface pl-10 pr-28
+                           text-sm placeholder:text-fg-subtle shadow-[var(--shadow-card)]
+                           transition-colors hover:border-border-strong focus:border-accent"
+              />
+              <button
+                type="submit"
+                className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2 rounded-[6px] bg-accent px-4
+                           text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+              >
+                Search
+              </button>
+            </form>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <ButtonLink href="/login?intent=start" size="lg">
                 Start publishing
                 <ArrowRightIcon size={17} />
@@ -60,8 +88,6 @@ function Hero() {
                 Watch what people are building
               </ButtonLink>
             </div>
-
-            {/* The three promises the product has to keep, stated plainly. */}
             <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[13px] text-fg-muted">
               {TRUST_MARKERS.map((marker) => (
                 <li key={marker} className="flex items-center gap-2">
@@ -73,8 +99,6 @@ function Hero() {
               ))}
             </ul>
           </div>
-
-          {/* Right Column: Live Proof-of-Work & Escrow Showcase Card */}
           <div className="lg:col-span-5">
             <HeroShowcaseCard />
           </div>
@@ -93,7 +117,6 @@ const TRUST_MARKERS = [
 function HeroShowcaseCard() {
   return (
     <div className="relative mx-auto w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-surface p-5 shadow-[var(--shadow-raised)]">
-      {/* Top Header with Live Session Status */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-3">
           <Avatar name="Alex Vance" size={38} />
@@ -112,8 +135,6 @@ function HeroShowcaseCard() {
           Timelapse Ready
         </span>
       </div>
-
-      {/* Session Preview Screen */}
       <div className="relative mt-4 overflow-hidden rounded-[var(--radius-card)] border border-border bg-neutral-950 p-4 text-white">
         <div className="flex items-center justify-between text-[11px] text-neutral-400">
           <span className="font-mono">hustler_escrow.rs</span>
@@ -139,10 +160,7 @@ function HeroShowcaseCard() {
           </span>
         </div>
       </div>
-
-      {/* On-Chain Events & Stats */}
       <div className="mt-4 space-y-2.5">
-        {/* Recent Sponsorship */}
         <div className="flex items-center justify-between rounded-[var(--radius-control)] border border-border bg-bg px-3.5 py-2.5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
@@ -150,9 +168,7 @@ function HeroShowcaseCard() {
             </span>
             <div>
               <p className="text-[12px] font-medium">Sponsorship received</p>
-              <p className="text-[11px] text-fg-subtle">
-                &quot;Keep building the Solana engine!&quot;
-              </p>
+              <p className="text-[11px] text-fg-subtle">&quot;Keep building the Solana engine!&quot;</p>
             </div>
           </div>
           <div className="text-right">
@@ -160,8 +176,6 @@ function HeroShowcaseCard() {
             <p className="text-[10px] text-fg-subtle">settled</p>
           </div>
         </div>
-
-        {/* Milestone Escrow Status */}
         <div className="flex items-center justify-between rounded-[var(--radius-control)] border border-border bg-bg px-3.5 py-2.5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface text-fg">
@@ -172,14 +186,59 @@ function HeroShowcaseCard() {
               <p className="text-[11px] text-fg-subtle">Smart contract audit</p>
             </div>
           </div>
-          <div className="text-right">
-            <span className="inline-block rounded bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
-              Released
-            </span>
-          </div>
+          <span className="inline-block rounded bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
+            Released
+          </span>
         </div>
       </div>
     </div>
+  );
+}
+
+async function LiveStats() {
+  const stats = await apiServer<PublicStats>("/v1/stats");
+  if (!stats) return null;
+
+  const items = [
+    { label: "Published sessions", value: stats.publishedVideos.toLocaleString() },
+    { label: "Builders", value: stats.users.toLocaleString() },
+    { label: "Open roles", value: stats.openJobs.toLocaleString() },
+    {
+      label: "Sponsored on-chain",
+      value: formatSol(stats.sponsorTotalLamports),
+    },
+  ];
+
+  return (
+    <section className="border-b border-border bg-surface">
+      <Container width="wide" className="py-6">
+        <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          {items.map((item) => (
+            <div key={item.label}>
+              <dt className="text-[12px] text-fg-subtle">{item.label}</dt>
+              <dd className="mt-1 text-[20px] font-semibold tabular-nums tracking-tight">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Container>
+    </section>
+  );
+}
+
+function StatsStripSkeleton() {
+  return (
+    <section className="border-b border-border bg-surface" aria-hidden>
+      <Container width="wide" className="py-6">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-3 w-24 animate-pulse rounded bg-surface-raised" />
+              <div className="h-6 w-16 animate-pulse rounded bg-surface-raised" />
+            </div>
+          ))}
+        </div>
+      </Container>
+    </section>
   );
 }
 
@@ -203,7 +262,7 @@ const steps = [
 
 function HowItWorks() {
   return (
-    <section className="border-b border-border bg-surface">
+    <section className="border-b border-border">
       <Container width="wide" className="py-16 sm:py-20">
         <div className="grid gap-8 sm:grid-cols-3 sm:gap-10">
           {steps.map((step, index) => (
@@ -221,9 +280,8 @@ function HowItWorks() {
             </div>
           ))}
         </div>
-
-        <div className="mt-12 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-bg p-6 sm:flex-row sm:items-center sm:gap-6">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-accent">
+        <div className="mt-12 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:flex-row sm:items-center sm:gap-6">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <ShieldIcon size={20} />
           </span>
           <p className="text-sm leading-relaxed text-fg-muted">
@@ -240,9 +298,27 @@ function HowItWorks() {
   );
 }
 
-function LatestSessions({ videos }: { videos: Video[] }) {
+function SessionsSkeleton() {
   return (
     <section className="border-b border-border">
+      <Container width="wide" className="py-16 sm:py-20">
+        <div className="mb-8 h-7 w-40 animate-pulse rounded bg-surface-raised" />
+        <VideoGridSkeleton />
+      </Container>
+    </section>
+  );
+}
+
+async function LatestSessions() {
+  const [feed, health] = await Promise.all([
+    apiServer<Page<Video>>("/v1/feed?limit=6"),
+    apiServer<{ status: string }>("/health/ready"),
+  ]);
+  const videos = feed?.items ?? [];
+  const apiDown = !health;
+
+  return (
+    <section className="border-b border-border bg-surface">
       <Container width="wide" className="py-16 sm:py-20">
         <SectionHeading
           title="Latest sessions"
@@ -263,8 +339,12 @@ function LatestSessions({ videos }: { videos: Video[] }) {
           <Card>
             <EmptyState
               icon={<UploadIcon size={26} />}
-              title="Nothing published yet"
-              description="The feed fills up as people publish their sessions. Yours can be the first."
+              title={apiDown ? "Catalog is connecting" : "Nothing published yet"}
+              description={
+                apiDown
+                  ? "The public site is up. Sessions appear here as soon as the API and database are reachable."
+                  : "The feed fills up as people publish their sessions. Yours can be the first."
+              }
               action={<ButtonLink href="/upload">Publish a session</ButtonLink>}
             />
           </Card>
@@ -274,11 +354,13 @@ function LatestSessions({ videos }: { videos: Video[] }) {
   );
 }
 
-function OpenToWork({ people }: { people: PublicUser[] }) {
+async function OpenToWork() {
+  const talent = await apiServer<Page<PublicUser>>("/v1/talent?limit=4");
+  const people = talent?.items ?? [];
   if (people.length === 0) return null;
 
   return (
-    <section className="border-b border-border bg-surface">
+    <section className="border-b border-border">
       <Container width="wide" className="py-16 sm:py-20">
         <SectionHeading
           title="Open to work"
@@ -319,6 +401,53 @@ function OpenToWork({ people }: { people: PublicUser[] }) {
   );
 }
 
+async function OpenRoles() {
+  const result = await apiServer<Page<Job>>("/v1/jobs?limit=3");
+  const jobs = result?.items ?? [];
+  if (jobs.length === 0) return null;
+
+  return (
+    <section className="border-b border-border bg-surface">
+      <Container width="wide" className="py-16 sm:py-20">
+        <SectionHeading
+          title="Open roles"
+          description="Funded up front. Released against delivered work."
+          action={
+            <Link
+              href="/jobs"
+              className="hidden items-center gap-1.5 text-sm text-fg-muted transition-colors hover:text-fg sm:inline-flex"
+            >
+              See all roles
+              <ArrowRightIcon size={15} />
+            </Link>
+          }
+        />
+        <ul className="grid gap-4 lg:grid-cols-3">
+          {jobs.map((job) => (
+            <Card as="li" key={job.id} className="p-5">
+              <Link href={`/jobs/${job.slug}`} className="block">
+                <p className="text-[12px] text-fg-subtle">
+                  {job.client.displayName}
+                  {job.publishedAt ? ` · ${timeAgo(job.publishedAt)}` : ""}
+                </p>
+                <h3 className="mt-1.5 text-[15px] font-semibold leading-snug">{job.title}</h3>
+                <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-fg-muted">
+                  {job.description}
+                </p>
+                <p className="mt-3 text-[13px] font-medium tabular-nums">
+                  {job.budgetMinUsd && job.budgetMaxUsd
+                    ? `${formatUsd(job.budgetMinUsd)} – ${formatUsd(job.budgetMaxUsd)}`
+                    : "Budget on request"}
+                </p>
+              </Link>
+            </Card>
+          ))}
+        </ul>
+      </Container>
+    </section>
+  );
+}
+
 function ClosingCta() {
   return (
     <section className="py-16 sm:py-24">
@@ -342,7 +471,7 @@ function ClosingCta() {
               <ButtonLink
                 href="/login?intent=start"
                 size="lg"
-                className="w-full sm:w-auto lg:w-full text-center justify-center"
+                className="w-full justify-center text-center sm:w-auto lg:w-full"
               >
                 Create your profile
                 <ArrowRightIcon size={17} />
@@ -351,7 +480,7 @@ function ClosingCta() {
                 href="/discover"
                 variant="secondary"
                 size="lg"
-                className="w-full sm:w-auto lg:w-full text-center justify-center"
+                className="w-full justify-center text-center sm:w-auto lg:w-full"
               >
                 Browse talent & sessions
               </ButtonLink>

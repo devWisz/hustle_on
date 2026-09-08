@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const cookieName = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "sardhana_session";
+  const cookieName = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
   if (request.cookies.has(cookieName)) return NextResponse.next();
 
   const login = new URL("/login", request.url);

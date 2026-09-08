@@ -144,6 +144,30 @@ type Notification struct {
 	CreatedAt time.Time      `json:"createdAt"`
 }
 
+// PublicStats is the anonymous homepage snapshot. Report counts stay off this
+// payload so the public site cannot be used to probe the moderation queue.
+type PublicStats struct {
+	Users            int   `json:"users"`
+	PublishedVideos  int   `json:"publishedVideos"`
+	OpenJobs         int   `json:"openJobs"`
+	ConfirmedSponsor int   `json:"confirmedSponsorships"`
+	SponsorLamports  int64 `json:"sponsorTotalLamports"`
+}
+
+// AdminUser is the operator directory row. Email is included because this
+// surface is already gated to moderator and admin roles.
+type AdminUser struct {
+	ID          string    `json:"id"`
+	Handle      string    `json:"handle"`
+	DisplayName string    `json:"displayName"`
+	Email       string    `json:"email"`
+	Role        string    `json:"role"`
+	Status      string    `json:"status"`
+	VideoCount  int       `json:"videoCount"`
+	OpenToWork  bool      `json:"openToWork"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 // Page is the envelope for every list endpoint. Cursors are opaque to clients.
 type Page[T any] struct {
 	Items      []T    `json:"items"`

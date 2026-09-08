@@ -2,6 +2,13 @@ import type { ApiErrorBody } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
 
+/** Shared session cookie name. Must match the API default. */
+export const SESSION_COOKIE =
+  process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
+
+/** Fail fast so a missing API cannot stall the whole page. */
+const FETCH_TIMEOUT_MS = 4000;
+
 /** An error carrying the API's stable code and any per-field messages. */
 export class ApiError extends Error {
   readonly status: number;
@@ -28,8 +35,7 @@ export class ApiError extends Error {
  */
 function csrfToken(): string {
   if (typeof document === "undefined") return "";
-  const prefix = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
-  const name = `${prefix}_csrf=`;
+  const name = `${SESSION_COOKIE}_csrf=`;
   const hit = document.cookie
     .split("; ")
     .find((c) => c.startsWith(name) || c.startsWith("sardhana_session_csrf=") || c.includes("_csrf="));
@@ -70,6 +76,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     headers: requestHeaders,
     credentials: "include",
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal: rest.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
     ...(revalidate === undefined ? {} : { next: { revalidate } }),
   });
 
@@ -98,6 +105,7 @@ export async function apiServer<T>(path: string, revalidate = 30): Promise<T | n
     const response = await fetch(`${API_URL}${path}`, {
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       next: { revalidate },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) return null;
     return (await response.json()) as T;

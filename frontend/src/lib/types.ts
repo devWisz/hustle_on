@@ -128,6 +128,14 @@ export interface Page<T> {
   nextCursor?: string;
 }
 
+export interface PublicStats {
+  users: number;
+  publishedVideos: number;
+  openJobs: number;
+  confirmedSponsorships: number;
+  sponsorTotalLamports: number;
+}
+
 export interface ApiErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };
   requestId?: string;

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { SiteHeader } from "@/components/site-header";
+import { Suspense } from "react";
+import { HeaderFallback, SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
@@ -10,6 +11,12 @@ const inter = Inter({
   display: "swap",
   variable: "--font-inter",
 });
+
+/**
+ * Apply a stored theme before first paint so the page does not flash the
+ * system default and then swap.
+ */
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
 
 /**
  * A deploy platform can hand an unset variable through as an empty string,
@@ -52,9 +59,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-dvh flex flex-col antialiased">
-        {/* The first stop for a keyboard user on every page. */}
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50
@@ -64,7 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <ToastProvider>
-          <SiteHeader />
+          <Suspense fallback={<HeaderFallback />}>
+            <SiteHeader />
+          </Suspense>
           <main id="main" className="flex-1">
             {children}
           </main>

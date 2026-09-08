@@ -2,6 +2,9 @@
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
 
+const SESSION_COOKIE = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
+const FETCH_TIMEOUT_MS = 6000;
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -14,8 +17,7 @@ export class ApiError extends Error {
 
 function csrfToken(): string {
   if (typeof document === "undefined") return "";
-  const prefix = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
-  const name = `${prefix}_csrf=`;
+  const name = `${SESSION_COOKIE}_csrf=`;
   const hit = document.cookie
     .split("; ")
     .find((c) => c.startsWith(name) || c.startsWith("sardhana_session_csrf=") || c.includes("_csrf="));
@@ -43,6 +45,7 @@ export async function api<T>(
     headers,
     credentials: "include",
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (response.status === 204) return undefined as T;
@@ -74,6 +77,7 @@ export async function apiServer<T>(
     const response = await fetch(`${API_URL}${path}`, {
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       cache: "no-store",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) return { data: null, status: response.status };
     return { data: (await response.json()) as T, status: response.status };

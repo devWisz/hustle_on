@@ -186,3 +186,75 @@ func (s *Store) Stats(ctx context.Context) (PlatformStats, error) {
 		&st.ConfirmedSponsor, &st.SponsorLamports, &st.OpenJobs)
 	return st, normalize(err)
 }
+
+func (s *Store) PublicStats(ctx context.Context) (domain.PublicStats, error) {
+	var st domain.PublicStats
+	err := s.pool.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM users WHERE status = 'active'),
+		       (SELECT count(*) FROM videos WHERE status = 'published'),
+		       (SELECT count(*) FROM jobs WHERE status = 'open'),
+		       (SELECT count(*) FROM sponsorships WHERE status = 'confirmed'),
+		       (SELECT COALESCE(sum(amount),0) FROM sponsorships WHERE status = 'confirmed')`).Scan(
+		&st.Users, &st.PublishedVideos, &st.OpenJobs, &st.ConfirmedSponsor, &st.SponsorLamports)
+	return st, normalize(err)
+}
+
+func (s *Store) AdminUsers(ctx context.Context, search string, limit, offset int) ([]domain.AdminUser, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT u.id::text, u.handle::text, u.display_name, u.email::text,
+		       u.role::text, u.status::text, p.video_count, p.open_to_work, u.created_at
+		FROM users u
+		JOIN profiles p ON p.user_id = u.id
+		WHERE $1 = ''
+		   OR u.handle ILIKE '%' || $1 || '%'
+		   OR u.display_name ILIKE '%' || $1 || '%'
+		   OR u.email ILIKE '%' || $1 || '%'
+		ORDER BY u.created_at DESC
+		LIMIT $2 OFFSET $3`, search, limit, offset)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	defer rows.Close()
+	out := []domain.AdminUser{}
+	for rows.Next() {
+		var u domain.AdminUser
+		if err := rows.Scan(&u.ID, &u.Handle, &u.DisplayName, &u.Email,
+			&u.Role, &u.Status, &u.VideoCount, &u.OpenToWork, &u.CreatedAt); err != nil {
+			return nil, normalize(err)
+		}
+		out = append(out, u)
+	}
+	return out, normalize(rows.Err())
+}
+
+func (s *Store) AdminVideos(ctx context.Context, search string, limit, offset int) ([]domain.Video, error) {
+	rows, err := s.pool.Query(ctx, videoSelect+`
+		WHERE ($1 = '' OR v.title ILIKE '%' || $1 || '%' OR u.handle ILIKE '%' || $1 || '%')
+		ORDER BY v.created_at DESC
+		LIMIT $2 OFFSET $3`, search, limit, offset)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	defer rows.Close()
+	return collectVideos(rows)
+}
+
+func (s *Store) AdminJobs(ctx context.Context, search string, limit, offset int) ([]domain.Job, error) {
+	rows, err := s.pool.Query(ctx, jobSelect+`
+		WHERE ($1 = '' OR j.title ILIKE '%' || $1 || '%' OR u.handle ILIKE '%' || $1 || '%')
+		ORDER BY j.created_at DESC
+		LIMIT $2 OFFSET $3`, search, limit, offset)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	defer rows.Close()
+	out := []domain.Job{}
+	for rows.Next() {
+		j, err := scanJob(rows)
+		if err != nil {
+			return nil, normalize(err)
+		}
+		out = append(out, j)
+	}
+	return out, normalize(rows.Err())
+}

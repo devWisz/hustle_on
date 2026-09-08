@@ -6,7 +6,7 @@ import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { CommandPalette } from "./command-palette";
 import { NotificationBell } from "./notification-bell";
-import { UploadIcon } from "./icons";
+import { SearchIcon, UploadIcon } from "./icons";
 
 interface SessionResponse {
   authenticated: boolean;
@@ -19,6 +19,64 @@ export const navigation = [
   { href: "/jobs", label: "Roles" },
 ] as const;
 
+function HeaderChrome({ children }: { children: React.ReactNode }) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5 sm:px-6">
+        {children}
+      </div>
+    </header>
+  );
+}
+
+function Brand() {
+  return (
+    <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="HustlerOn home">
+      <Mark />
+      <span className="text-[15px] font-semibold tracking-tight">HustlerOn</span>
+    </Link>
+  );
+}
+
+function HeaderSearch() {
+  return (
+    <form action="/discover" className="relative hidden min-w-0 max-w-xs flex-1 lg:block">
+      <SearchIcon
+        size={15}
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+      />
+      <input
+        type="search"
+        name="q"
+        placeholder="Search sessions"
+        aria-label="Search sessions"
+        className="h-8 w-full rounded-[var(--radius-control)] border border-border bg-surface pl-8 pr-3
+                   text-[13px] placeholder:text-fg-subtle transition-colors hover:border-border-strong focus:border-accent"
+      />
+    </form>
+  );
+}
+
+/** Shown while the session fetch resolves so the page chrome never jumps. */
+export function HeaderFallback() {
+  return (
+    <HeaderChrome>
+      <Brand />
+      <nav aria-hidden className="hidden items-center gap-1 md:flex">
+        {navigation.map((item) => (
+          <span key={item.href} className="px-3 py-1.5 text-sm text-fg-muted">
+            {item.label}
+          </span>
+        ))}
+      </nav>
+      <div className="ml-auto flex items-center gap-2">
+        <div className="h-8 w-8 animate-pulse rounded-[var(--radius-control)] bg-surface-raised" />
+        <div className="h-8 w-28 animate-pulse rounded-[var(--radius-control)] bg-surface-raised" />
+      </div>
+    </HeaderChrome>
+  );
+}
+
 /**
  * The site header, rendered on the server so the signed-in state is correct on
  * first paint — no flash of the signed-out navigation while a client fetch
@@ -28,75 +86,70 @@ export async function SiteHeader() {
   const session = await apiServer<SessionResponse>("/v1/auth/session", 0);
   const user = session?.authenticated ? session.user : undefined;
 
-  // Fetched here rather than in the bell so the unread count is right on first
-  // paint. A badge that only appears once you open the panel tells you nothing.
   const notifications = user
     ? await apiServer<Page<Notification>>("/v1/me/notifications?limit=8", 0)
     : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="HustlerOn home">
-          <Mark />
-          <span className="text-[15px] font-semibold tracking-tight">HustlerOn</span>
-        </Link>
+    <HeaderChrome>
+      <Brand />
 
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
-                         transition-colors hover:bg-surface-raised hover:text-fg"
+      <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+        {navigation.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
+                       transition-colors hover:bg-surface-raised hover:text-fg"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      <HeaderSearch />
+
+      <div className="ml-auto flex items-center gap-2">
+        <CommandPalette />
+        {user ? (
+          <>
+            <ButtonLink
+              href="/upload"
+              variant="secondary"
+              size="sm"
+              className="hidden sm:inline-flex"
             >
-              {item.label}
+              <UploadIcon size={16} />
+              Upload
+            </ButtonLink>
+            <NotificationBell initialItems={notifications?.items ?? []} />
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-surface-raised"
+              aria-label={`Signed in as ${user.displayName}`}
+            >
+              <Avatar name={user.displayName} src={user.avatarUrl} size={28} />
+              <span className="hidden text-sm text-fg-muted lg:inline">{user.handle}</span>
             </Link>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <CommandPalette />
-          {user ? (
-            <>
-              <ButtonLink
-                href="/upload"
-                variant="secondary"
-                size="sm"
-                className="hidden sm:inline-flex"
-              >
-                <UploadIcon size={16} />
-                Upload
-              </ButtonLink>
-              <NotificationBell initialItems={notifications?.items ?? []} />
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-surface-raised"
-                aria-label={`Signed in as ${user.displayName}`}
-              >
-                <Avatar name={user.displayName} src={user.avatarUrl} size={28} />
-                <span className="hidden text-sm text-fg-muted lg:inline">{user.handle}</span>
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="hidden rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
-                           transition-colors hover:text-fg sm:inline-flex"
-              >
-                Sign in
-              </Link>
-              <ButtonLink href="/login?intent=start" size="sm">
-                Start publishing
-              </ButtonLink>
-            </>
-          )}
-          <ThemeToggle />
-          <MobileNav signedIn={Boolean(user)} />
-        </div>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="hidden rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
+                         transition-colors hover:text-fg sm:inline-flex"
+            >
+              Sign in
+            </Link>
+            <ButtonLink href="/login?intent=start" size="sm">
+              Start publishing
+            </ButtonLink>
+          </>
+        )}
+        <ThemeToggle />
+        <MobileNav signedIn={Boolean(user)} />
       </div>
-    </header>
+    </HeaderChrome>
   );
 }
 
