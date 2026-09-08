@@ -14,26 +14,35 @@ import { PlayIcon } from "./icons";
  */
 export function VideoCard({ video, priority = false }: { video: Video; priority?: boolean }) {
   return (
-    <article className="group">
+    <article className="group relative">
       <Link
         href={`/watch/${video.slug}`}
-        className="block overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-raised"
+        className="relative block overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-raised transition-all duration-300 group-hover:-translate-y-1 group-hover:border-accent/40 group-hover:shadow-[var(--shadow-raised)]"
       >
-        <div className="relative aspect-video">
+        <div className="relative aspect-video overflow-hidden">
           {video.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={video.thumbnailUrl}
               alt=""
               loading={priority ? "eager" : "lazy"}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-fg-subtle">
-              <PlayIcon size={28} />
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-surface to-surface-raised text-fg-subtle">
+              <PlayIcon size={32} />
             </div>
           )}
-          <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
+
+          {/* Hover play button pulse overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-fg shadow-lg transition-transform duration-300 group-hover:scale-110">
+              <PlayIcon size={20} />
+            </span>
+          </div>
+
+          {/* Glass duration badge */}
+          <span className="absolute bottom-2 right-2 rounded-md border border-white/10 bg-black/70 px-2 py-0.5 text-[11px] font-mono font-medium tabular-nums text-white backdrop-blur-md shadow-sm">
             {formatDuration(video.durationSeconds)}
           </span>
         </div>
