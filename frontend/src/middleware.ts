@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * opaque here. The API validates every request on its own, so a forged cookie
  * gets someone a rendered shell and nothing else.
  */
-const PROTECTED = ["/dashboard", "/settings", "/upload", "/jobs/new", "/notifications"];
+const PROTECTED = ["/dashboard", "/settings", "/jobs/new", "/notifications"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -28,7 +28,6 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/settings/:path*",
-    "/upload/:path*",
     "/jobs/new",
     "/notifications",
   ],
