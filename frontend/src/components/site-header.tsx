@@ -16,9 +16,8 @@ interface SessionResponse {
 export const navigation = [
   { href: "/discover", label: "Explore" },
   { href: "/upload", label: "Upload & Earn" },
-  { href: "/hire", label: "Hire Talent" },
-  { href: "/jobs", label: "Client Gigs" },
-  { href: "/admin/verification", label: "Admin Queue" },
+  { href: "/hire", label: "Hire" },
+  { href: "/jobs", label: "Gigs" },
 ] as const;
 
 function HeaderChrome({ children }: { children: React.ReactNode }) {

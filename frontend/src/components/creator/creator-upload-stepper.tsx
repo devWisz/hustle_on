@@ -199,10 +199,10 @@ export function CreatorUploadStepper({ userWallet }: { userWallet?: string }) {
             <ArrowRightIcon size={16} />
           </Link>
           <Link
-            href="/admin/verification"
+            href="/creator/how-to-earn"
             className="inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-surface px-5 py-2.5 text-sm font-medium text-fg hover:bg-surface-raised"
           >
-            View from Admin Verification Queue
+            View Bounty Structure
           </Link>
           <button
             onClick={() => {

@@ -222,19 +222,24 @@ export default function CreatorSubmissionsPage() {
         ))}
       </div>
 
-      {/* Admin Queue Callout */}
-      <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-[var(--radius-card)] border border-dashed border-border bg-surface p-5">
-        <div>
-          <h4 className="text-sm font-semibold text-fg">Are you a platform moderator or administrator?</h4>
-          <p className="text-xs text-fg-muted mt-0.5">
-            Switch to the Admin Panel to review pending timelapses, verify code authenticity, and approve listing releases.
-          </p>
+      {/* Verification SLA info */}
+      <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-[var(--radius-card)] border border-border bg-surface p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <CheckIcon size={16} />
+          </span>
+          <div>
+            <h4 className="text-sm font-semibold text-fg">Automated & Human Verification SLA</h4>
+            <p className="text-xs text-fg-muted mt-0.5">
+              Submissions undergo SHA-256 frame integrity checks followed by moderator proof review within 4 hours.
+            </p>
+          </div>
         </div>
         <Link
-          href="/admin/verification"
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-surface px-4 py-2 text-xs font-medium text-fg hover:bg-surface-raised"
+          href="/creator/how-to-earn"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-surface-raised px-4 py-2 text-xs font-medium text-fg hover:border-border-strong"
         >
-          Open Admin Verification Queue <ArrowRightIcon size={14} />
+          Review Guidelines <ArrowRightIcon size={14} />
         </Link>
       </div>
     </Container>
