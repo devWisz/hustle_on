@@ -54,3 +54,24 @@ func TestBase58RoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateSignature(t *testing.T) {
+	// 64 zero bytes is a structurally valid signature: this checks the encoding,
+	// not whether any such transaction exists.
+	valid := base58.Encode(make([]byte, ed25519.SignatureSize))
+	if err := ValidateSignature(valid); err != nil {
+		t.Errorf("a well-formed signature was rejected: %v", err)
+	}
+	// Right length as a string, wrong length once decoded — which is exactly the
+	// case that reaches an RPC node as an unhelpful "invalid param".
+	for _, bad := range []string{
+		"",
+		"not base58 at all!",
+		base58.Encode(make([]byte, 32)),
+		"4pRtHJ2vLpQxMk9nWfYbZcAe6TgUdSvRnKmJhGfDsAqWeRtYuIoPlKjHgFdSaZxCvBnM1234567",
+	} {
+		if err := ValidateSignature(bad); err == nil {
+			t.Errorf("signature %q was accepted", bad)
+		}
+	}
+}

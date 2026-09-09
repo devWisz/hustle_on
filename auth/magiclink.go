@@ -64,7 +64,6 @@ func (s *Service) StartLogin(ctx context.Context, req LoginRequest) error {
 		UserID:    userID,
 		Email:     email,
 		TokenHash: digest,
-		Purpose:   "login",
 		ExpiresAt: now.Add(s.cfg.MagicLinkTTL),
 		IP:        req.IP,
 		UserAgent: truncate(req.UserAgent, 500),

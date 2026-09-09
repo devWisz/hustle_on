@@ -35,3 +35,25 @@ address returns the same response and takes the same path as a known one.
 
 Wallets are separate from identity. Connecting a wallet requires signing a
 server-issued nonce, so pasting somebody else's address proves nothing.
+
+The wallet proof and the sign-in link answer different questions. A signature
+identifies the key that should be paid; a link identifies the account. Someone
+who compromises an inbox therefore cannot move anybody's SOL, because the payout
+address is pinned to a key they do not hold.
+
+## Testing
+
+The rules are tested against an in-memory `Store`, so the whole module runs with
+no database:
+
+```bash
+go test ./... -race
+```
+
+Keep it that way. These are exactly the rules you want covered by tests that
+always run, everywhere, with no setup.
+
+## Further reading
+
+`docs/auth.md` documents the flows end to end, including what each step
+guarantees and why.

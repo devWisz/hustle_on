@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Privacy" };
 const sections = [
   {
     title: "What we collect",
-    body: "Your email address, the profile and content you choose to publish, the wallet addresses you attach, and coarse technical data needed to keep the service running — the address a request came from and the browser it came from, retained for rate limiting and abuse investigation.",
+    body: "Your email address, the profile and timelapses you choose to publish, the wallet address you verify for payouts, and coarse technical data needed to keep the service running — the address a request came from and the browser it came from, kept for rate limiting and abuse investigation.",
   },
   {
     title: "What we do not collect",
@@ -14,19 +14,19 @@ const sections = [
   },
   {
     title: "View counts",
-    body: "Views are deduplicated using a salted, one-way digest of your address, browser and the day — not the values themselves. It is enough to stop a refresh loop inflating a count, and not enough to identify you.",
+    body: "Views are deduplicated using a one-way digest of your address salted with the day, not the address itself. That is enough to stop a refresh loop inflating a count, and not enough to identify you or to link what you watched today with what you watch tomorrow.",
   },
   {
     title: "What is public",
-    body: "Your handle, display name, profile, published sessions, comments, and the total you have been sponsored. Sponsorships you send anonymously do not show your name to anyone, including the creator.",
+    body: "Your handle, display name, bio, published timelapses, payout address, and the total you have received. A donation you send while signed out shows no name at all.",
   },
   {
     title: "What is on chain",
-    body: "Transactions are permanent and public by the nature of a blockchain. Amounts, wallet addresses and timestamps are visible to anyone. Sponsorship messages are stored in our database, and only a hash of the message reaches the chain.",
+    body: "Donations are Solana transactions, which are permanent and public by nature. Amounts, wallet addresses and timestamps are visible to anyone, forever. The message attached to a donation is stored in our database and never sent to the chain.",
   },
   {
     title: "Deletion",
-    body: "You can remove any session at any time. Deleting your account removes your profile, content and email from the database; transactions already settled on chain cannot be deleted by anyone.",
+    body: "You can withdraw any timelapse at any time. Deleting your account removes your profile, your email and your content from the database. Transactions already settled on chain cannot be deleted by anyone.",
   },
 ] as const;
 
@@ -49,7 +49,10 @@ export default function PrivacyPage() {
 
       <p className="mt-10 text-sm text-fg-muted">
         Questions about your data go to{" "}
-        <a href="mailto:privacy@sardhana.com" className="font-medium text-fg underline underline-offset-4">
+        <a
+          href="mailto:privacy@sardhana.com"
+          className="font-medium text-fg underline underline-offset-4"
+        >
           privacy@sardhana.com
         </a>
         .

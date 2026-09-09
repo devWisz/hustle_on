@@ -26,7 +26,6 @@ type MagicLink struct {
 	UserID     string
 	Email      string
 	TokenHash  []byte
-	Purpose    string
 	ExpiresAt  time.Time
 	ConsumedAt *time.Time
 	IP         netip.Addr
@@ -40,7 +39,6 @@ type Session struct {
 	ID         string
 	UserID     string
 	TokenHash  []byte
-	Generation int
 	IP         netip.Addr
 	UserAgent  string
 	ExpiresAt  time.Time
@@ -54,7 +52,8 @@ func (s Session) Valid(now time.Time) bool {
 	return s.RevokedAt == nil && now.Before(s.ExpiresAt)
 }
 
-// WalletChallenge is a nonce the user must sign to prove wallet ownership.
+// WalletChallenge is a nonce the account must sign to prove it controls the
+// address donations will be sent to.
 type WalletChallenge struct {
 	UserID    string
 	Address   string
@@ -85,7 +84,10 @@ type Store interface {
 
 	CreateWalletChallenge(ctx context.Context, c WalletChallenge) error
 	ConsumeWalletChallenge(ctx context.Context, userID, address, nonce string, now time.Time) error
-	AttachWallet(ctx context.Context, userID, address string, primary bool) error
+	// SetPayoutAddress records a proven address. An address belongs to one
+	// account only, so claiming one already held elsewhere must fail rather
+	// than move it.
+	SetPayoutAddress(ctx context.Context, userID, address string, at time.Time) error
 }
 
 // Mailer delivers transactional email. resend.go provides the implementation.

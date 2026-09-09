@@ -72,28 +72,6 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
       <Button type="submit" size="lg" className="mt-4 w-full" loading={state === "sending"}>
         Send sign-in link
       </Button>
-
-      <div className="mt-6 border-t border-border pt-5">
-        <p className="text-[12px] font-medium uppercase tracking-wider text-fg-subtle">
-          Demo Accounts (Fast Login)
-        </p>
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setEmail("maya@example.com")}
-            className="rounded-[var(--radius-control)] border border-border bg-surface px-2.5 py-1 text-[12px] font-medium text-fg-muted hover:border-border-strong hover:text-fg transition-colors"
-          >
-            maya@example.com (Creator)
-          </button>
-          <button
-            type="button"
-            onClick={() => setEmail("dev@example.com")}
-            className="rounded-[var(--radius-control)] border border-border bg-surface px-2.5 py-1 text-[12px] font-medium text-fg-muted hover:border-border-strong hover:text-fg transition-colors"
-          >
-            dev@example.com (Client)
-          </button>
-        </div>
-      </div>
     </form>
   );
 }

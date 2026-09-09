@@ -1,0 +1,398 @@
+package store
+
+import (
+	"context"
+	"encoding/base64"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/sardhana/backend/internal/domain"
+)
+
+// timelapseColumns is the projection every timelapse read shares. Which of
+// these fields survive into JSON is decided per audience in the handlers; the
+// query itself stays identical so the shapes cannot drift.
+const timelapseColumns = `t.id::text, t.slug, t.title, t.summary,
+	COALESCE(t.github_url, ''), COALESCE(t.x_url, ''), t.status::text,
+	COALESCE(t.thumbnail_url, ''), COALESCE(t.playback_url, ''),
+	COALESCE(t.duration_seconds, 0), COALESCE(t.session_minutes, 0),
+	t.view_count, t.donation_count, t.donation_total_lamports,
+	COALESCE(t.review_note, ''), t.submitted_at, t.published_at, t.created_at,
+	u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, '')`
+
+const timelapseFrom = ` FROM timelapses t JOIN users u ON u.id = t.user_id`
+
+func scanTimelapse(row pgx.Row) (domain.Timelapse, error) {
+	var t domain.Timelapse
+	err := row.Scan(&t.ID, &t.Slug, &t.Title, &t.Summary,
+		&t.GitHubURL, &t.XURL, &t.Status,
+		&t.ThumbnailURL, &t.PlaybackURL, &t.DurationSecs, &t.SessionMinutes,
+		&t.ViewCount, &t.DonationCount, &t.DonationTotal,
+		&t.ReviewNote, &t.SubmittedAt, &t.PublishedAt, &t.CreatedAt,
+		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL)
+	return t, err
+}
+
+func collectTimelapses(rows pgx.Rows) ([]domain.Timelapse, error) {
+	defer rows.Close()
+	out := []domain.Timelapse{}
+	for rows.Next() {
+		t, err := scanTimelapse(rows)
+		if err != nil {
+			return nil, normalize(err)
+		}
+		out = append(out, t)
+	}
+	return out, normalize(rows.Err())
+}
+
+// Feed returns published timelapses, newest first.
+//
+// Paging is keyset rather than OFFSET: the cursor names the last row seen, so a
+// donation landing between two page loads cannot shuffle a row from page two
+// onto page one, and the cost of page fifty is the same as page one.
+func (s *Store) Feed(ctx context.Context, cursor string, limit int) (domain.Page[domain.Timelapse], error) {
+	before, beforeID, err := decodeCursor(cursor)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+timelapseColumns+timelapseFrom+`
+		WHERE t.status = 'published'
+		  AND ($1::timestamptz IS NULL OR (t.published_at, t.id) < ($1, $2::uuid))
+		ORDER BY t.published_at DESC, t.id DESC
+		LIMIT $3`, before, beforeID, limit+1)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, normalize(err)
+	}
+	items, err := collectTimelapses(rows)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
+	return paginate(items, limit), nil
+}
+
+// BySlug returns one timelapse regardless of status. Callers decide who may see
+// a row that is not published; this method does not, because the creator's own
+// dashboard and the review queue both need to read unpublished rows.
+func (s *Store) BySlug(ctx context.Context, slug string) (domain.Timelapse, error) {
+	t, err := scanTimelapse(s.pool.QueryRow(ctx,
+		`SELECT `+timelapseColumns+timelapseFrom+` WHERE t.slug = $1`, slug))
+	return t, normalize(err)
+}
+
+// ByID returns one timelapse by primary key.
+func (s *Store) ByID(ctx context.Context, id string) (domain.Timelapse, error) {
+	t, err := scanTimelapse(s.pool.QueryRow(ctx,
+		`SELECT `+timelapseColumns+timelapseFrom+` WHERE t.id = $1`, id))
+	return t, normalize(err)
+}
+
+// CreatorTimelapses lists a creator's published work.
+func (s *Store) CreatorTimelapses(ctx context.Context, handle string, limit int) ([]domain.Timelapse, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+timelapseColumns+timelapseFrom+`
+		WHERE u.handle = $1 AND t.status = 'published'
+		ORDER BY t.published_at DESC
+		LIMIT $2`, handle, limit)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	return collectTimelapses(rows)
+}
+
+// MyTimelapses lists everything an account has, in any state, so the dashboard
+// can show drafts and rejections alongside published work.
+func (s *Store) MyTimelapses(ctx context.Context, userID string, limit int) ([]domain.Timelapse, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+timelapseColumns+timelapseFrom+`
+		WHERE t.user_id = $1 AND t.status <> 'removed'
+		ORDER BY t.created_at DESC
+		LIMIT $2`, userID, limit)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	return collectTimelapses(rows)
+}
+
+// ReviewQueue lists submissions awaiting a decision, oldest first: whoever has
+// been waiting longest is next.
+func (s *Store) ReviewQueue(ctx context.Context, limit int) ([]domain.Timelapse, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+timelapseColumns+timelapseFrom+`
+		WHERE t.status = 'in_review'
+		ORDER BY t.submitted_at ASC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	return collectTimelapses(rows)
+}
+
+// NewTimelapse is the input for creating a draft.
+type NewTimelapse struct {
+	UserID         string
+	Slug           string
+	Title          string
+	Summary        string
+	GitHubURL      string
+	XURL           string
+	StorageKey     string
+	SessionMinutes int
+}
+
+// Create inserts a draft. The row exists before any bytes do, which is what
+// gives the upload URL an owner to be issued against.
+func (s *Store) Create(ctx context.Context, in NewTimelapse) (domain.Timelapse, error) {
+	var id string
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO timelapses (user_id, slug, title, summary, github_url, x_url,
+		                        storage_key, session_minutes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id::text`,
+		in.UserID, in.Slug, in.Title, in.Summary,
+		nullText(in.GitHubURL), nullText(in.XURL), nullText(in.StorageKey), in.SessionMinutes).Scan(&id)
+	if err != nil {
+		return domain.Timelapse{}, normalize(err)
+	}
+	return s.ByID(ctx, id)
+}
+
+// TimelapseUpdate carries the fields a creator may edit before submitting.
+type TimelapseUpdate struct {
+	Title          *string
+	Summary        *string
+	GitHubURL      *string
+	XURL           *string
+	SessionMinutes *int
+}
+
+// Update edits a draft or a rejected submission.
+//
+// The status predicate is the authorisation, not a convenience: a creator
+// cannot rewrite the write-up of something already approved, and cannot edit a
+// row out from under a reviewer who is looking at it.
+func (s *Store) Update(ctx context.Context, id, userID string, up TimelapseUpdate) (domain.Timelapse, error) {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE timelapses SET
+			title           = COALESCE($3, title),
+			summary         = COALESCE($4, summary),
+			github_url      = COALESCE(NULLIF($5, ''), github_url),
+			x_url           = COALESCE(NULLIF($6, ''), x_url),
+			session_minutes = COALESCE($7, session_minutes)
+		WHERE id = $1 AND user_id = $2 AND status IN ('draft', 'uploaded', 'rejected')`,
+		id, userID, up.Title, up.Summary,
+		derefOr(up.GitHubURL), derefOr(up.XURL), up.SessionMinutes)
+	if err != nil {
+		return domain.Timelapse{}, normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.Timelapse{}, ErrNotFound
+	}
+	return s.ByID(ctx, id)
+}
+
+// MarkUploaded records that the bytes arrived and stores the playback URL.
+func (s *Store) MarkUploaded(ctx context.Context, id, userID, playbackURL string, byteSize int64, durationSeconds int) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE timelapses
+		SET status = 'uploaded', playback_url = $3, byte_size = $4, duration_seconds = $5
+		WHERE id = $1 AND user_id = $2 AND status = 'draft'`,
+		id, userID, playbackURL, byteSize, durationSeconds)
+	if err != nil {
+		return normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Submit moves an upload into the review queue.
+//
+// Only a row that already has media and has not been submitted can move, so a
+// creator cannot queue an empty draft, and resubmitting clears the previous
+// decision rather than leaving a stale rejection attached to a fresh attempt.
+func (s *Store) Submit(ctx context.Context, id, userID string, at time.Time) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE timelapses
+		SET status = 'in_review', submitted_at = $3,
+		    review_note = NULL, reviewed_by = NULL, reviewed_at = NULL
+		WHERE id = $1 AND user_id = $2
+		  AND status IN ('uploaded', 'rejected')
+		  AND playback_url IS NOT NULL`,
+		id, userID, at)
+	if err != nil {
+		return normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Approve publishes a submission and credits the creator's published count.
+//
+// Both writes happen in one transaction: a published row whose creator's count
+// does not include it would be visibly wrong on the profile it appears on.
+func (s *Store) Approve(ctx context.Context, id, reviewerID string, at time.Time) error {
+	return s.tx(ctx, func(tx pgx.Tx) error {
+		var creatorID string
+		err := tx.QueryRow(ctx, `
+			UPDATE timelapses
+			SET status = 'published', published_at = $3, reviewed_by = $2, reviewed_at = $3,
+			    review_note = NULL
+			WHERE id = $1 AND status = 'in_review'
+			RETURNING user_id::text`, id, reviewerID, at).Scan(&creatorID)
+		if err != nil {
+			return normalize(err)
+		}
+		_, err = tx.Exec(ctx,
+			`UPDATE users SET timelapse_count = timelapse_count + 1 WHERE id = $1`, creatorID)
+		return normalize(err)
+	})
+}
+
+// Reject declines a submission with a reason the creator will read.
+func (s *Store) Reject(ctx context.Context, id, reviewerID, note string, at time.Time) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE timelapses
+		SET status = 'rejected', review_note = $3, reviewed_by = $2, reviewed_at = $4
+		WHERE id = $1 AND status = 'in_review'`,
+		id, reviewerID, note, at)
+	if err != nil {
+		return normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Remove withdraws a timelapse.
+//
+// The row is kept rather than deleted, because donations reference it and a
+// supporter's record of what they gave to must not disappear. A published row
+// being withdrawn also gives the creator's count back.
+func (s *Store) Remove(ctx context.Context, id, userID string) error {
+	return s.tx(ctx, func(tx pgx.Tx) error {
+		// The old status has to be read before the UPDATE overwrites it, since
+		// only a row that was published should give a count back.
+		var creatorID, status string
+		err := tx.QueryRow(ctx, `
+			SELECT user_id::text, status::text FROM timelapses
+			WHERE id = $1 AND ($2 = '' OR user_id = $2::uuid) AND status <> 'removed'
+			FOR UPDATE`, id, userID).Scan(&creatorID, &status)
+		if err != nil {
+			return normalize(err)
+		}
+		if _, err := tx.Exec(ctx,
+			`UPDATE timelapses SET status = 'removed' WHERE id = $1`, id); err != nil {
+			return normalize(err)
+		}
+		if status == "published" {
+			_, err = tx.Exec(ctx,
+				`UPDATE users SET timelapse_count = greatest(timelapse_count - 1, 0) WHERE id = $1`,
+				creatorID)
+		}
+		return normalize(err)
+	})
+}
+
+// RecordView counts a viewer at most once per day.
+//
+// The unique indexes on timelapse_views do the deduplication, so a refresh loop
+// inserts nothing and the counter below is only touched when the insert was
+// genuinely new.
+func (s *Store) RecordView(ctx context.Context, timelapseID, viewerID string, fingerprint []byte) error {
+	return s.tx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO timelapse_views (timelapse_id, viewer_id, viewer_fingerprint)
+			VALUES ($1, NULLIF($2,'')::uuid, $3)
+			ON CONFLICT DO NOTHING`, timelapseID, viewerID, fingerprint)
+		if err != nil {
+			return normalize(err)
+		}
+		if tag.RowsAffected() == 0 {
+			return nil
+		}
+		_, err = tx.Exec(ctx,
+			`UPDATE timelapses SET view_count = view_count + 1 WHERE id = $1`, timelapseID)
+		return normalize(err)
+	})
+}
+
+// StorageKey returns the object key recorded for a timelapse. The key is never
+// part of any JSON payload; it is read here so the API can check ownership and
+// build the playback URL itself rather than trusting a client to supply either.
+func (s *Store) StorageKey(ctx context.Context, id string) (string, error) {
+	var key string
+	err := s.pool.QueryRow(ctx,
+		`SELECT COALESCE(storage_key, '') FROM timelapses WHERE id = $1`, id).Scan(&key)
+	return key, normalize(err)
+}
+
+// SlugTaken reports whether a slug is already in use.
+func (s *Store) SlugTaken(ctx context.Context, slug string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM timelapses WHERE slug = $1)`, slug).Scan(&exists)
+	return exists, normalize(err)
+}
+
+// --- cursor helpers -------------------------------------------------------
+
+// paginate trims the extra row a keyset query fetches to detect a next page,
+// and turns it into a cursor.
+func paginate(items []domain.Timelapse, limit int) domain.Page[domain.Timelapse] {
+	if len(items) <= limit {
+		return domain.Page[domain.Timelapse]{Items: items}
+	}
+	last := items[limit-1]
+	items = items[:limit]
+	return domain.Page[domain.Timelapse]{Items: items, NextCursor: encodeCursor(last)}
+}
+
+// encodeCursor packs the sort key of the last row seen. It is base64 to signal
+// that clients should treat it as opaque and pass it back unchanged.
+func encodeCursor(t domain.Timelapse) string {
+	if t.PublishedAt == nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(
+		[]byte(t.PublishedAt.UTC().Format(time.RFC3339Nano) + "|" + t.ID))
+}
+
+// ErrBadCursor is returned when a cursor cannot be decoded.
+var ErrBadCursor = errors.New("store: cursor is not valid")
+
+func decodeCursor(cursor string) (*time.Time, *string, error) {
+	if cursor == "" {
+		return nil, nil, nil
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		return nil, nil, ErrBadCursor
+	}
+	stamp, id, ok := strings.Cut(string(raw), "|")
+	if !ok {
+		return nil, nil, ErrBadCursor
+	}
+	at, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		return nil, nil, ErrBadCursor
+	}
+	return &at, &id, nil
+}
+
+// derefOr renders a nil pointer as the empty string, which the UPDATE above
+// reads as "leave this column alone".
+func derefOr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}

@@ -1,14 +1,24 @@
 # Documentation
 
-| Document | What it covers |
-| -------- | -------------- |
-| [getting-started.md](getting-started.md) | Running the whole stack locally |
-| [architecture.md](architecture.md) | How the pieces fit and why they are split that way |
-| [security.md](security.md) | The threat model and every control that answers it |
-| [api.md](api.md) | Every endpoint, its access level and its shape |
-| [data-model.md](data-model.md) | Tables, relationships and the invariants they hold |
-| [design-system.md](design-system.md) | Tokens, type scale, components and interface rules |
-| [payments.md](payments.md) | The sponsorship and escrow flows end to end |
-| [deployment.md](deployment.md) | Environments, secrets and release procedure |
-| [contributing.md](contributing.md) | How to work in this repository |
-| [adr/](adr/) | Architecture decision records |
+Start with whichever question you actually have.
+
+| Document | Answers |
+| --- | --- |
+| [getting-started.md](getting-started.md) | How do I run this locally? |
+| [workflow.md](workflow.md) | What happens between an upload and a donation? |
+| [auth.md](auth.md) | How does signing in and wallet proof work? |
+| [architecture.md](architecture.md) | What are the pieces and why these ones? |
+| [database.md](database.md) | What does the schema look like, and why? |
+| [api.md](api.md) | What endpoints exist? |
+| [payments.md](payments.md) | How is a donation verified? |
+| [security.md](security.md) | What is defended, and how? |
+| [design-system.md](design-system.md) | What are the interface rules? |
+| [deployment.md](deployment.md) | How does this go to production? |
+| [contributing.md](contributing.md) | How do I change it? |
+
+Decisions that were hard to make, and the reasoning at the time, are in
+[adr/](adr/). They are not updated when the code changes — they record what was
+true when the decision was taken.
+
+If you are reading one file first, read [workflow.md](workflow.md). Everything
+else in the product exists to serve the path it describes.

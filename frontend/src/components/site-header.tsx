@@ -1,166 +1,80 @@
 import Link from "next/link";
 import { apiServer } from "@/lib/api";
-import type { Notification, Page, SelfUser } from "@/lib/types";
+import type { SessionResponse } from "@/lib/types";
 import { Avatar, ButtonLink } from "./ui";
-import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
-import { CommandPalette } from "./command-palette";
-import { NotificationBell } from "./notification-bell";
-import { SearchIcon, UploadIcon } from "./icons";
-
-interface SessionResponse {
-  authenticated: boolean;
-  user?: SelfUser;
-}
-
-export const navigation = [
-  { href: "/discover", label: "Explore" },
-  { href: "/upload", label: "Upload & Earn" },
-  { href: "/hire", label: "Hire" },
-  { href: "/jobs", label: "Gigs" },
-] as const;
-
-function HeaderChrome({ children }: { children: React.ReactNode }) {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-5 sm:px-6">
-        {children}
-      </div>
-    </header>
-  );
-}
-
-function Brand() {
-  return (
-    <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="HustlerOn home">
-      <Mark />
-      <span className="text-[15px] font-semibold tracking-tight">HustlerOn</span>
-    </Link>
-  );
-}
-
-function HeaderSearch() {
-  return (
-    <form action="/discover" className="relative hidden min-w-0 max-w-xs flex-1 lg:block">
-      <SearchIcon
-        size={15}
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle"
-      />
-      <input
-        type="search"
-        name="q"
-        placeholder="Search sessions"
-        aria-label="Search sessions"
-        className="h-8 w-full rounded-[var(--radius-control)] border border-border bg-surface pl-8 pr-3
-                   text-[13px] placeholder:text-fg-subtle transition-colors hover:border-border-strong focus:border-accent"
-      />
-    </form>
-  );
-}
-
-/** Shown while the session fetch resolves so the page chrome never jumps. */
-export function HeaderFallback() {
-  return (
-    <HeaderChrome>
-      <Brand />
-      <nav aria-hidden className="hidden items-center gap-1 md:flex">
-        {navigation.map((item) => (
-          <span key={item.href} className="px-3 py-1.5 text-sm text-fg-muted">
-            {item.label}
-          </span>
-        ))}
-      </nav>
-      <div className="ml-auto flex items-center gap-2">
-        <div className="h-8 w-8 animate-pulse rounded-[var(--radius-control)] bg-surface-raised" />
-        <div className="h-8 w-28 animate-pulse rounded-[var(--radius-control)] bg-surface-raised" />
-      </div>
-    </HeaderChrome>
-  );
-}
 
 /**
- * The site header, rendered on the server so the signed-in state is correct on
- * first paint — no flash of the signed-out navigation while a client fetch
- * resolves.
+ * The site header.
+ *
+ * It renders on the server so the signed-in state is correct on first paint —
+ * a header that flashes "Sign in" and then swaps to an avatar is the single
+ * most noticeable way an app looks unfinished.
  */
 export async function SiteHeader() {
   const session = await apiServer<SessionResponse>("/v1/auth/session", 0);
   const user = session?.authenticated ? session.user : undefined;
 
-  const notifications = user
-    ? await apiServer<Page<Notification>>("/v1/me/notifications?limit=8", 0)
-    : null;
-
   return (
-    <HeaderChrome>
-      <Brand />
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-5 sm:px-6">
+        <Wordmark />
 
-      <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-        {navigation.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
-                       transition-colors hover:bg-surface-raised hover:text-fg"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+        <nav aria-label="Main" className="hidden items-center gap-5 text-sm sm:flex">
+          <NavLink href="/">Timelapses</NavLink>
+          {user ? <NavLink href="/dashboard">Dashboard</NavLink> : null}
+          {user?.role === "admin" ? <NavLink href="/admin">Review</NavLink> : null}
+        </nav>
 
-      <HeaderSearch />
-
-      <div className="ml-auto flex items-center gap-2">
-        <CommandPalette />
-        {user ? (
-          <>
-            <ButtonLink
-              href="/upload"
-              variant="secondary"
-              size="sm"
-              className="hidden sm:inline-flex"
-            >
-              <UploadIcon size={16} />
-              Upload
-            </ButtonLink>
-            <NotificationBell initialItems={notifications?.items ?? []} />
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 rounded-full p-0.5 pr-2 transition-colors hover:bg-surface-raised"
-              aria-label={`Signed in as ${user.displayName}`}
-            >
-              <Avatar name={user.displayName} src={user.avatarUrl} size={28} />
-              <span className="hidden text-sm text-fg-muted lg:inline">{user.handle}</span>
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link
-              href="/login"
-              className="hidden rounded-[var(--radius-control)] px-3 py-1.5 text-sm text-fg-muted
-                         transition-colors hover:text-fg sm:inline-flex"
-            >
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
+          {user ? (
+            <>
+              <ButtonLink href="/upload" size="sm">
+                Upload
+              </ButtonLink>
+              <Link
+                href={`/creator/${user.handle}`}
+                className="rounded-full transition-opacity hover:opacity-80"
+                aria-label={`Your profile, ${user.displayName}`}
+              >
+                <Avatar name={user.displayName} src={user.avatarUrl} size={30} />
+              </Link>
+            </>
+          ) : (
+            <ButtonLink href="/login" variant="secondary" size="sm">
               Sign in
-            </Link>
-            <ButtonLink href="/login?intent=start" size="sm">
-              Start publishing
             </ButtonLink>
-          </>
-        )}
-        <ThemeToggle />
-        <MobileNav signedIn={Boolean(user)} />
+          )}
+        </div>
       </div>
-    </HeaderChrome>
+    </header>
   );
 }
 
-/** The wordmark's glyph: three ascending bars, for sessions stacking up. */
-function Mark() {
+/** Shown while the server component above is still resolving the session. */
+export function HeaderFallback() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="text-accent">
-      <rect x="2" y="11" width="4" height="7" rx="1.2" fill="currentColor" opacity="0.45" />
-      <rect x="8" y="7" width="4" height="11" rx="1.2" fill="currentColor" opacity="0.7" />
-      <rect x="14" y="2" width="4" height="16" rx="1.2" fill="currentColor" />
-    </svg>
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-5 sm:px-6">
+        <Wordmark />
+      </div>
+    </header>
+  );
+}
+
+function Wordmark() {
+  return (
+    <Link href="/" className="text-[15px] font-semibold tracking-tight">
+      Sardhana
+    </Link>
+  );
+}
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="text-fg-muted transition-colors hover:text-fg">
+      {children}
+    </Link>
   );
 }

@@ -31,20 +31,21 @@ function resolveSiteUrl(): string {
   return /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
 }
 
+const DESCRIPTION =
+  "Timelapses of real work, reviewed before they go up and funded in SOL by the people who want to see more of them.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(resolveSiteUrl()),
   title: {
-    default: "HustlerOn — Your hustle should be paid off",
-    template: "%s — HustlerOn",
+    default: "Sardhana — timelapses of real work",
+    template: "%s — Sardhana",
   },
-  description:
-    "Publish timelapses of the work you actually do. Get sponsored on chain, and get hired on the strength of a public track record.",
+  description: DESCRIPTION,
   openGraph: {
     type: "website",
-    siteName: "HustlerOn",
-    title: "HustlerOn — Your hustle should be paid off",
-    description:
-      "Publish timelapses of the work you actually do. Get sponsored on chain, and get hired on the strength of a public track record.",
+    siteName: "Sardhana",
+    title: "Sardhana — timelapses of real work",
+    description: DESCRIPTION,
   },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },

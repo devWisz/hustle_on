@@ -3,11 +3,10 @@ import type { ApiErrorBody } from "./types";
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
 
 /** Shared session cookie name. Must match the API default. */
-export const SESSION_COOKIE =
-  process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustler_on_session";
+export const SESSION_COOKIE = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "sardhana_session";
 
 /** Fail fast so a missing API cannot stall the whole page. */
-const FETCH_TIMEOUT_MS = 4000;
+const FETCH_TIMEOUT_MS = 8000;
 
 /** An error carrying the API's stable code and any per-field messages. */
 export class ApiError extends Error {
@@ -35,15 +34,9 @@ export class ApiError extends Error {
  */
 function csrfToken(): string {
   if (typeof document === "undefined") return "";
-  const name = `${SESSION_COOKIE}_csrf=`;
-  const hit = document.cookie
-    .split("; ")
-    .find((c) => c.startsWith(name) || c.startsWith("sardhana_session_csrf=") || c.includes("_csrf="));
-  if (hit) {
-    const eq = hit.indexOf("=");
-    return eq !== -1 ? decodeURIComponent(hit.slice(eq + 1)) : "";
-  }
-  return "";
+  const prefix = `${SESSION_COOKIE}_csrf=`;
+  const hit = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  return hit ? decodeURIComponent(hit.slice(prefix.length)) : "";
 }
 
 interface RequestOptions extends Omit<RequestInit, "body"> {

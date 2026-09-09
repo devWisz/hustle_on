@@ -34,6 +34,9 @@ interface Toast {
 
 interface ToastContextValue {
   toast: (message: string, tone?: ToastTone) => void;
+  /** Convenience wrappers, so call sites read as what happened. */
+  success: (message: string) => void;
+  error: (message: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -76,7 +79,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = useMemo(() => ({ toast }), [toast]);
+  const value = useMemo(
+    () => ({
+      toast,
+      success: (message: string) => toast(message, "success"),
+      error: (message: string) => toast(message, "error"),
+    }),
+    [toast],
+  );
 
   return (
     <ToastContext.Provider value={value}>
@@ -101,11 +111,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 item.tone === "error" ? "text-danger" : "text-accent",
               )}
             >
-              {item.tone === "error" ? (
-                <CloseIcon size={16} />
-              ) : (
-                <CheckIcon size={16} />
-              )}
+              {item.tone === "error" ? <CloseIcon size={16} /> : <CheckIcon size={16} />}
             </span>
             <p className="flex-1 text-[13px] leading-relaxed">{item.message}</p>
             <button
@@ -131,5 +137,5 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
  * render, and it keeps these components usable in isolation.
  */
 export function useToast(): ToastContextValue {
-  return useContext(ToastContext) ?? { toast: () => {} };
+  return useContext(ToastContext) ?? { toast: () => {}, success: () => {}, error: () => {} };
 }

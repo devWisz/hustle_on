@@ -2,305 +2,326 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
+import { formatDuration } from "@/lib/format";
+import type { Timelapse, Upload } from "@/lib/types";
 import { Button, Card, Field, Input, Textarea } from "./ui";
-import { UploadIcon, CheckIcon } from "./icons";
-
-interface UploadTarget {
-  url: string;
-  key: string;
-  expiresAt: string;
-  maxBytes: number;
-}
-
-type Phase = "details" | "uploading" | "finishing" | "done";
-
-/** Only what the bucket accepts; the API enforces the same list server-side. */
-const ACCEPTED = "video/mp4,video/quicktime,video/webm,video/x-matroska";
-
-/** Above this the browser is not asked to hash the file — the pipeline does it. */
-const CHECKSUM_LIMIT = 256 * 1024 * 1024;
+import { UploadIcon } from "./icons";
 
 /**
- * Publishing a session.
+ * The submission form.
  *
- * The file goes from the browser straight to object storage using a URL the
- * API signs, so a large upload never occupies an API process, and the
- * credentials that authorise it never reach this page.
+ * It is one form rather than a wizard, because everything on it is needed
+ * before a human can review the result, and splitting that across four steps
+ * only hides how much is being asked for. The multi-step part is the upload
+ * itself, which is reported as progress rather than as pages.
  */
+
+const MIN_SUMMARY = 40;
+
+type Stage = "idle" | "uploading" | "recording" | "submitting" | "done";
+
 export function UploadForm() {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [duration, setDuration] = useState(0);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [summary, setSummary] = useState("");
   const [sessionMinutes, setSessionMinutes] = useState("");
-  const [tags, setTags] = useState("");
-  const [visibility, setVisibility] = useState("public");
+  const [githubUrl, setGithubUrl] = useState("");
+  const [xUrl, setXUrl] = useState("");
 
-  const [phase, setPhase] = useState<Phase>("details");
+  const [stage, setStage] = useState<Stage>("idle");
   const [progress, setProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const busy = stage !== "idle" && stage !== "done";
+
+  async function pickFile(chosen: File | null) {
+    setFile(chosen);
+    setDuration(0);
+    if (chosen) setDuration(await readDuration(chosen));
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
+    setError("");
     setFieldErrors({});
 
     if (!file) {
-      setError("Choose the timelapse file to upload.");
+      setError("Choose a video file to upload.");
+      return;
+    }
+    const minutes = Number(sessionMinutes);
+    if (!Number.isFinite(minutes) || minutes < 1) {
+      setFieldErrors({ sessionMinutes: "Enter how long the session actually took." });
       return;
     }
 
     try {
-      setPhase("uploading");
+      // 1. Ask for a destination. The API names the object key and signs it;
+      //    the browser only gets permission to write to that one key.
+      setStage("uploading");
       setProgress(0);
-
-      const target = await api<UploadTarget>("/v1/uploads", {
+      const upload = await api<Upload>("/v1/uploads", {
         body: { contentType: file.type, sizeBytes: file.size },
       });
 
-      await putFile(target.url, file, setProgress);
+      // 2. Send the bytes straight to storage, never through the API.
+      await putFile(upload.url, file, setProgress);
 
-      setPhase("finishing");
-      const { id } = await api<{ id: string }>("/v1/videos", {
+      // 3. Record the submission against the object that was just written.
+      setStage("recording");
+      const created = await api<Timelapse>("/v1/timelapses", {
         body: {
-          storageKey: target.key,
           title: title.trim(),
-          description: description.trim(),
-          sessionMinutes: Number(sessionMinutes) || 0,
-          visibility,
-          tags: tags
-            .split(",")
-            .map((tag) => tag.trim().toLowerCase())
-            .filter(Boolean),
+          summary: summary.trim(),
+          githubUrl: githubUrl.trim(),
+          xUrl: xUrl.trim(),
+          storageKey: upload.key,
+          sessionMinutes: Math.round(minutes),
         },
       });
-
-      await api(`/v1/videos/${id}/uploaded`, {
-        body: {
-          sizeBytes: file.size,
-          checksumSha256: file.size <= CHECKSUM_LIMIT ? await sha256Hex(file) : "",
-        },
+      await api(`/v1/timelapses/${created.id}/uploaded`, {
+        body: { sizeBytes: file.size, durationSeconds: Math.round(duration) },
       });
 
-      await api(`/v1/videos/${id}/publish`, { method: "POST" });
+      // 4. Hand it to review. Nothing is public until somebody approves it.
+      setStage("submitting");
+      await api(`/v1/timelapses/${created.id}/submit`, { method: "POST" });
 
-      setPhase("done");
+      setStage("done");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setPhase("details");
+      setStage("idle");
+      setProgress(0);
       if (err instanceof ApiError) {
         setFieldErrors(err.fields);
-        setError(err.message);
+        setError(Object.keys(err.fields).length ? "" : err.message);
       } else {
-        setError("The upload did not complete. Nothing was published.");
+        setError(err instanceof Error ? err.message : "Upload failed. Try again.");
       }
     }
   }
 
-  if (phase === "done") {
-    return (
-      <Card className="p-8 text-center">
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <CheckIcon size={22} />
-        </div>
-        <h2 className="mt-4 text-[17px] font-semibold">Session published</h2>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-fg-muted">
-          It is processing now and will appear on your profile and in the feed within a few minutes.
-        </p>
-        <div className="mt-6 flex justify-center gap-2">
-          <Button variant="secondary" onClick={() => router.push("/dashboard")}>
-            Go to dashboard
-          </Button>
-          <Button
-            onClick={() => {
-              setFile(null);
-              setTitle("");
-              setDescription("");
-              setSessionMinutes("");
-              setTags("");
-              setPhase("details");
-              setProgress(0);
-            }}
-          >
-            Publish another
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  const busy = phase === "uploading" || phase === "finishing";
-
   return (
-    <form onSubmit={submit} className="space-y-6">
-      <Card className="p-6">
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          disabled={busy}
-          className="flex w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-card)]
-                     border border-dashed border-border-strong bg-surface-raised px-6 py-12
-                     transition-colors hover:border-accent disabled:opacity-60"
+    <form onSubmit={submit} className="space-y-8" noValidate>
+      <Card className="p-5">
+        <Field
+          label="Timelapse file"
+          htmlFor="file"
+          hint="MP4, MOV, WebM or MKV. The video itself uploads straight to storage."
+          error={fieldErrors.contentType ?? fieldErrors.sizeBytes}
         >
-          <UploadIcon size={26} className="text-fg-subtle" />
-          <span className="text-sm font-medium">
-            {file ? file.name : "Choose your timelapse file"}
-          </span>
-          <span className="text-[13px] text-fg-subtle">
-            {file
-              ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
-              : "MP4, MOV, WebM or MKV. Up to 2 GB."}
-          </span>
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept={ACCEPTED}
-          className="sr-only"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        />
-
-        {busy ? (
-          <div className="mt-5">
-            <div
-              className="h-1.5 overflow-hidden rounded-full bg-surface-raised"
-              role="progressbar"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Upload progress"
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              ref={fileInput}
+              id="file"
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+              onChange={(e) => void pickFile(e.target.files?.[0] ?? null)}
+              className="sr-only"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy}
             >
-              <div
-                className="h-full bg-accent transition-[width] duration-200"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="mt-2 text-[13px] text-fg-muted">
-              {phase === "uploading" ? `Uploading ${progress}%` : "Finishing up"}
-            </p>
+              <UploadIcon size={16} />
+              {file ? "Choose a different file" : "Choose a file"}
+            </Button>
+            {file ? (
+              <span className="text-[13px] text-fg-muted">
+                {file.name} · {(file.size / 1_048_576).toFixed(1)} MB
+                {duration > 0 ? ` · ${formatDuration(duration)}` : ""}
+              </span>
+            ) : null}
           </div>
-        ) : null}
+        </Field>
+
+        {stage === "uploading" ? <ProgressBar value={progress} /> : null}
       </Card>
 
-      <Card className="space-y-5 p-6">
+      <Card className="space-y-5 p-5">
         <Field label="Title" htmlFor="title" error={fieldErrors.title}>
           <Input
             id="title"
-            required
-            maxLength={120}
             value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Write-ahead log, day 14"
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            placeholder="Rewriting the borrow-checker pass"
+            required
           />
         </Field>
 
         <Field
-          label="What you worked on"
-          htmlFor="description"
-          hint="What you set out to do, and what actually happened."
-          error={fieldErrors.description}
+          label="What you did"
+          htmlFor="summary"
+          hint="The part a viewer cannot get from watching. What you were trying to do, what went wrong, what you ended up with."
+          error={fieldErrors.summary}
         >
           <Textarea
-            id="description"
-            rows={5}
-            maxLength={5000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            id="summary"
+            rows={8}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            maxLength={4000}
+            required
           />
+          <p className="mt-1.5 text-right text-[12px] tabular-nums text-fg-subtle">
+            {summary.trim().length < MIN_SUMMARY
+              ? `${MIN_SUMMARY - summary.trim().length} more characters needed`
+              : `${summary.trim().length} / 4000`}
+          </p>
         </Field>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field
-            label="Session length in minutes"
-            htmlFor="sessionMinutes"
-            hint="The real time behind the timelapse."
-            error={fieldErrors.sessionMinutes}
-          >
-            <Input
-              id="sessionMinutes"
-              inputMode="numeric"
-              value={sessionMinutes}
-              onChange={(event) => setSessionMinutes(event.target.value)}
-              placeholder="360"
-            />
-          </Field>
-
-          <Field label="Visibility" htmlFor="visibility" error={fieldErrors.visibility}>
-            <select
-              id="visibility"
-              value={visibility}
-              onChange={(event) => setVisibility(event.target.value)}
-              className="h-10 w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 text-sm"
-            >
-              <option value="public">Public — in the feed</option>
-              <option value="unlisted">Unlisted — anyone with the link</option>
-              <option value="private">Private — only you</option>
-            </select>
-          </Field>
-        </div>
-
-        <Field label="Tags" htmlFor="tags" hint="Up to eight, comma separated." error={fieldErrors.tags}>
+        <Field
+          label="Session length in minutes"
+          htmlFor="sessionMinutes"
+          hint="How long the work actually took, not the length of the clip."
+          error={fieldErrors.sessionMinutes}
+        >
           <Input
-            id="tags"
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
-            placeholder="rust, databases"
+            id="sessionMinutes"
+            type="number"
+            min="1"
+            max="10080"
+            inputMode="numeric"
+            value={sessionMinutes}
+            onChange={(e) => setSessionMinutes(e.target.value)}
+            className="max-w-40 tabular-nums"
+            required
+          />
+        </Field>
+      </Card>
+
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-[15px] font-semibold">Where the work lives</h2>
+          <p className="mt-1 text-[13px] text-fg-muted">
+            Both optional, but they are what let someone check the work rather than take your word
+            for it.
+          </p>
+        </div>
+        <Field label="GitHub URL" htmlFor="githubUrl" error={fieldErrors.githubUrl}>
+          <Input
+            id="githubUrl"
+            type="url"
+            value={githubUrl}
+            onChange={(e) => setGithubUrl(e.target.value)}
+            placeholder="https://github.com/you/project"
+          />
+        </Field>
+        <Field label="X URL" htmlFor="xUrl" error={fieldErrors.xUrl}>
+          <Input
+            id="xUrl"
+            type="url"
+            value={xUrl}
+            onChange={(e) => setXUrl(e.target.value)}
+            placeholder="https://x.com/you"
           />
         </Field>
       </Card>
 
       {error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-[13px] text-danger">
           {error}
         </p>
       ) : null}
 
-      <div className="flex justify-end">
-        <Button type="submit" size="lg" loading={busy} disabled={!file || !title.trim()}>
-          Publish session
+      <div className="flex items-center gap-4">
+        <Button type="submit" size="lg" loading={busy}>
+          {stageLabel(stage)}
         </Button>
+        <p className="text-[13px] text-fg-muted">
+          Goes to review first. You will see the decision on your dashboard.
+        </p>
       </div>
     </form>
   );
 }
 
+function stageLabel(stage: Stage): string {
+  switch (stage) {
+    case "uploading":
+      return "Uploading video…";
+    case "recording":
+      return "Saving details…";
+    case "submitting":
+      return "Sending to review…";
+    default:
+      return "Submit for review";
+  }
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="mt-4">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-surface-raised"
+        role="progressbar"
+        aria-valuenow={Math.round(value)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Upload progress"
+      >
+        <div
+          className="h-full bg-accent transition-[width] duration-200"
+          style={{ width: `${value}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-right text-[12px] tabular-nums text-fg-subtle">
+        {Math.round(value)}%
+      </p>
+    </div>
+  );
+}
+
 /**
- * Uploads to the presigned URL.
+ * Uploads the file to the presigned URL.
  *
- * XMLHttpRequest rather than fetch: it reports upload progress, which fetch
- * still cannot do, and a two-gigabyte upload with no progress bar is a broken
- * experience.
+ * XMLHttpRequest rather than fetch, only because it reports upload progress:
+ * a two-gigabyte upload with no feedback is indistinguishable from a hang.
  */
-function putFile(url: string, file: File, onProgress: (percent: number) => void): Promise<void> {
+function putFile(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("PUT", url, true);
     request.setRequestHeader("Content-Type", file.type);
-
-    request.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    });
-    request.addEventListener("load", () =>
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
+    };
+    request.onload = () =>
       request.status >= 200 && request.status < 300
         ? resolve()
-        : reject(new Error(`Upload failed with status ${request.status}`)),
-    );
-    request.addEventListener("error", () => reject(new Error("Upload failed")));
-    request.addEventListener("abort", () => reject(new Error("Upload cancelled")));
+        : reject(new Error(`Upload failed with status ${request.status}.`));
+    request.onerror = () => reject(new Error("The upload could not reach storage."));
     request.send(file);
   });
 }
 
-/** Hex SHA-256 of a file, so the API can detect a corrupted upload. */
-async function sha256Hex(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+/**
+ * Reads the clip's runtime from the file itself, so the creator does not have
+ * to type a number the browser already knows.
+ */
+function readDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(video.duration) ? video.duration : 0);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(0);
+    };
+    video.src = url;
+  });
 }

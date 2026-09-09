@@ -4,7 +4,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,11 +33,8 @@ type Config struct {
 	EmailFrom    string
 	EmailReplyTo string
 
-	SolanaCluster   string
-	SolanaRPCURL    string
-	SolanaProgramID string
-	Treasury        string
-	PlatformFeeBPS  int
+	SolanaCluster string
+	SolanaRPCURL  string
 
 	StorageEndpoint  string
 	StorageBucket    string
@@ -49,10 +45,8 @@ type Config struct {
 	UploadMaxBytes   int64
 	UploadURLTTL     time.Duration
 
-	RateLimitAnon     int
-	RateLimitUser     int
-	RateLimitAuth     int
-	RateLimitComments int
+	RateLimitAnon int
+	RateLimitAuth int
 }
 
 // IsProduction reports whether relaxed development behaviour is forbidden.
@@ -114,7 +108,7 @@ func Load() (Config, error) {
 		DatabaseMaxConns: int32(envInt("DATABASE_MAX_CONNS", 10)),
 
 		SessionSecret:     []byte(os.Getenv("SESSION_SECRET")),
-		SessionCookieName: env("SESSION_COOKIE_NAME", "hustler_on_session"),
+		SessionCookieName: env("SESSION_COOKIE_NAME", "sardhana_session"),
 		SessionTTL:        time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
 		MagicLinkTTL:      time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
@@ -122,11 +116,8 @@ func Load() (Config, error) {
 		EmailFrom:    env("EMAIL_FROM", "Sardhana <login@localhost>"),
 		EmailReplyTo: os.Getenv("EMAIL_REPLY_TO"),
 
-		SolanaCluster:   env("SOLANA_CLUSTER", "devnet"),
-		SolanaRPCURL:    env("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
-		SolanaProgramID: os.Getenv("SOLANA_PROGRAM_ID"),
-		Treasury:        os.Getenv("PLATFORM_TREASURY"),
-		PlatformFeeBPS:  envInt("PLATFORM_FEE_BPS", 250),
+		SolanaCluster: env("SOLANA_CLUSTER", "devnet"),
+		SolanaRPCURL:  env("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
 
 		StorageEndpoint:  os.Getenv("STORAGE_ENDPOINT"),
 		StorageBucket:    os.Getenv("STORAGE_BUCKET"),
@@ -138,11 +129,8 @@ func Load() (Config, error) {
 		UploadURLTTL:     time.Duration(envInt("UPLOAD_URL_TTL_MINUTES", 15)) * time.Minute,
 
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 60),
-		RateLimitUser: envInt("RATE_LIMIT_USER", 240),
+		// Sign-in attempts get their own, far tighter budget than page traffic.
 		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
-		// Comments need their own budget: sharing the sign-in allowance meant a
-		// person posting a comment and then a reply was refused the second one.
-		RateLimitComments: envInt("RATE_LIMIT_COMMENTS", 20),
 	}
 
 	origins := env("CORS_ALLOWED_ORIGINS", c.WebURL+","+c.AdminURL)
@@ -166,9 +154,6 @@ func (c Config) validate() error {
 	}
 	if len(c.AllowedOrigins) == 0 {
 		problems = append(problems, "CORS_ALLOWED_ORIGINS must list at least one origin")
-	}
-	if c.PlatformFeeBPS < 0 || c.PlatformFeeBPS > 1000 {
-		problems = append(problems, "PLATFORM_FEE_BPS must be between 0 and 1000")
 	}
 
 	if c.IsProduction() {
@@ -194,9 +179,6 @@ func (c Config) validate() error {
 	}
 	return nil
 }
-
-// ErrMissing is returned when a required variable is absent.
-var ErrMissing = errors.New("missing configuration")
 
 func env(key, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {

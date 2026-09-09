@@ -1,126 +1,96 @@
-/** Shapes returned by the API. These mirror `backend/internal/domain`. */
-
-export type SocialPlatform = "x" | "github" | "youtube" | "linkedin" | "website";
-
-export interface SocialLink {
-  platform: SocialPlatform;
-  username: string;
-  url: string;
-  verified: boolean;
-}
+/**
+ * The API's wire types.
+ *
+ * These mirror `backend/internal/domain`. When a field changes there it must
+ * change here, which is the point: the compiler is what stops a page from
+ * rendering a field the server stopped sending.
+ */
 
 export interface Creator {
   id: string;
   handle: string;
   displayName: string;
   avatarUrl?: string;
-  wallet?: string;
 }
 
-export interface PublicUser {
-  id: string;
-  handle: string;
-  displayName: string;
-  headline?: string;
+export interface PublicUser extends Creator {
   bio?: string;
-  location?: string;
-  avatarUrl?: string;
-  bannerUrl?: string;
-  skills: string[];
-  openToWork: boolean;
-  hourlyRateUsd?: number;
-  followerCount: number;
-  videoCount: number;
-  sponsorTotalLamports: number;
-  primaryWallet?: string;
-  socialLinks: SocialLink[];
+  /** Where donations to this creator are sent. Absent until they verify one. */
+  payoutAddress?: string;
+  timelapseCount: number;
+  donationCount: number;
+  donationTotalLamports: number;
   joinedAt: string;
 }
 
 export interface SelfUser extends PublicUser {
   email: string;
   emailVerified: boolean;
-  role: "member" | "moderator" | "admin";
+  role: "member" | "admin";
+  payoutVerified: boolean;
 }
 
-export interface Wallet {
-  address: string;
-  isPrimary: boolean;
-  addedAt: string;
-}
+/** The lifecycle a submission moves through, in order. */
+export type TimelapseStatus =
+  "draft" | "uploaded" | "in_review" | "published" | "rejected" | "removed";
 
-export interface Video {
+export interface Timelapse {
   id: string;
   slug: string;
   title: string;
-  description?: string;
-  status: string;
-  visibility: string;
+  summary: string;
+  githubUrl?: string;
+  xUrl?: string;
+  status: TimelapseStatus;
   thumbnailUrl?: string;
   playbackUrl?: string;
   durationSeconds: number;
   sessionMinutes: number;
-  tags: string[];
   viewCount: number;
-  commentCount: number;
-  sponsorCount: number;
-  sponsorTotalLamports: number;
+  donationCount: number;
+  donationTotalLamports: number;
   creator: Creator;
+  /** Only present on the creator's own view and in the review queue. */
+  reviewNote?: string;
+  submittedAt?: string;
   publishedAt?: string;
   createdAt: string;
 }
 
-export interface Comment {
+export interface Donation {
   id: string;
-  videoId: string;
-  parentId?: string;
-  body: string;
-  likeCount: number;
-  replyCount: number;
-  author: Creator;
-  editedAt?: string;
-  createdAt: string;
-  replies?: Comment[];
-}
-
-export interface Sponsorship {
-  id: string;
-  amount: number;
-  mint?: string;
+  amountLamports: number;
   message?: string;
-  status: string;
+  status: "pending" | "submitted" | "confirmed" | "failed";
   signature?: string;
-  isAnonymous: boolean;
-  sponsor?: Creator;
-  videoId?: string;
+  /** Absent when the donation came from someone who was not signed in. */
+  donor?: Creator;
+  timelapseId?: string;
+  confirmedAt?: string;
   createdAt: string;
 }
 
-export interface Job {
+/** What the client needs to build the transfer, fixed by the server. */
+export interface DonationIntent {
   id: string;
-  slug: string;
-  title: string;
-  description: string;
-  skills: string[];
-  engagement: "fixed" | "hourly" | "milestone";
-  budgetMinUsd?: number;
-  budgetMaxUsd?: number;
-  isRemote: boolean;
-  location?: string;
-  status: string;
-  applicationCount: number;
-  client: Creator;
-  publishedAt?: string;
-  closesAt?: string;
-  createdAt: string;
+  recipient: string;
+  amountLamports: number;
+  cluster: string;
 }
 
-export interface Notification {
-  id: string;
-  kind: string;
-  payload: Record<string, unknown>;
-  readAt?: string;
-  createdAt: string;
+export interface Stats {
+  creators: number;
+  publishedTimelapses: number;
+  sessionMinutesRecorded: number;
+  confirmedDonations: number;
+  donationTotalLamports: number;
+}
+
+export interface Upload {
+  url: string;
+  key: string;
+  expiresAt: string;
+  maxBytes: number;
 }
 
 export interface Page<T> {
@@ -128,15 +98,16 @@ export interface Page<T> {
   nextCursor?: string;
 }
 
-export interface PublicStats {
-  users: number;
-  publishedVideos: number;
-  openJobs: number;
-  confirmedSponsorships: number;
-  sponsorTotalLamports: number;
+export interface ApiErrorBody {
+  error?: {
+    code?: string;
+    message?: string;
+    fields?: Record<string, string>;
+  };
+  requestId?: string;
 }
 
-export interface ApiErrorBody {
-  error: { code: string; message: string; fields?: Record<string, string> };
-  requestId?: string;
+export interface SessionResponse {
+  authenticated: boolean;
+  user?: SelfUser;
 }

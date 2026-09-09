@@ -1,75 +1,101 @@
 # Payments
 
-Two flows: sponsorship, which is immediate, and hire escrow, which is staged.
+A donation is a plain SOL transfer from the donor's wallet to the creator's.
+There is no on-chain program, no escrow, no platform fee, and no custody.
+Sardhana's only role is to know which address to send to and to check afterwards
+that the transfer really happened.
 
-## Sponsorship
+## The flow
 
 ```
-sponsor          frontend            API                  chain
-  │                 │                 │                     │
-  │  amount, note   │                 │                     │
-  ├────────────────▶│  POST /v1/sponsorships                │
-  │                 ├────────────────▶│  intent: pending    │
-  │                 │◀────────────────┤  payTo, amount      │
-  │  wallet signs   │                 │                     │
-  ├────────────────▶├─────────────────────────────────────▶ │  transfer
-  │                 │◀───────────────────────────────────── │  signature
-  │                 │  POST .../signature                   │
-  │                 ├────────────────▶│  status: submitted  │
-  │                 │  POST .../confirm                     │
-  │                 ├────────────────▶│  getTransaction ───▶│
-  │                 │                 │◀─── balances ───────│
-  │                 │◀────────────────┤  status: confirmed  │
+POST /v1/donations                  intent: recipient and amount fixed by the server
+      ▼
+wallet signs and broadcasts         the browser talks to the chain, not to us
+      ▼
+POST /v1/donations/{id}/confirm     signature handed back
+      ▼
+solana.VerifyTransfer               transaction re-read at finalized commitment
+      ▼
+status = 'confirmed'                counters credited in one transaction
 ```
 
-**The destination is the server's.** `payTo` comes from `wallets` in our
-database. A client that could choose it could redirect money while showing the
-creator's name.
+## Why the intent comes first
 
-**Verification reads balances, not logs.** `VerifyTransfer` requires the
-finalized transaction, no `meta.err`, the recipient's balance up by at least
-the expected lamports, and the payer's balance down. A transaction that emits
-convincing logs but transfers nothing fails all of that.
+The recipient is read from the creator's verified `payout_address`, never from
+the request. The amount is fixed at the same moment. Both are stored before
+anything is signed.
 
-**Nothing is credited before confirmation.** The intent row is `pending` until
-the chain says otherwise, so an abandoned flow never touches a total.
+That ordering is what makes the confirmation meaningful: it compares the chain
+against numbers the client did not get to choose after the fact. Without it,
+"confirm this signature for this amount to this address" would be a claim the
+API had no independent basis to check.
 
-**A closed tab is not a lost payment.** `ReconcilePayments` sweeps `submitted`
-transactions every thirty seconds and settles them. Both paths are idempotent:
-`ConfirmSponsorship` matches only rows not already confirmed.
+## What verification actually checks
 
-**Failure is recorded.** A transaction that failed on chain marks the
-sponsorship failed rather than leaving it pending forever.
+`backend/internal/solana/client.go` reads the transaction back and inspects the
+**balance deltas** in the transaction meta:
 
-## Hire escrow
+- The transaction did not fail on chain.
+- The recipient's balance rose by at least the promised lamports.
+- The payer's balance fell.
 
-Escrow lives entirely in the Anchor program.
+It does not decode instructions and it does not read logs. The delta is what
+actually happened; a transaction that emits convincing logs and transfers
+nothing fails here. Requiring the payer to be out of pocket means a transfer
+credited from some third account is not the transfer that was claimed.
 
-1. **`create_engagement`** — the client funds a vault PDA in the same
-   instruction that creates the engagement. An unfunded engagement is a
-   promise, and escrow exists so the talent need not accept promises.
-2. **`release_milestone`** — the client signs; the talent is paid, minus the
-   fee. A bitmap makes a second release of the same milestone impossible.
-3. **`refund_engagement`** — after `expires_at`, whatever is unreleased returns
-   to the client. The deadline is what stops a client from pulling funds out
-   from under work already underway.
+Commitment is `finalized`, not `confirmed`. Money is only credited once the
+transaction can no longer be rolled back by a fork.
 
-The vault is a separate PDA from the engagement state. Combining them entangles
-the rent-exempt minimum with the escrow balance, and a withdrawal that empties
-the account would delete the state with it.
+## Nothing is credited twice
 
-Postgres mirrors this in `engagements` and `engagement_milestones` for the
-interface. The chain remains the source of truth for balances.
+`donations.signature` is `UNIQUE`. A transaction already recorded against
+another intent is rejected by the database, below the code that tried.
 
-## Fees
+`ConfirmDonation` moves the status and both counters in a single transaction,
+with `status = 'submitted'` in the predicate. A retried confirmation of the same
+row updates nothing, so a network retry cannot double a total.
 
-The platform fee is basis points on each payment, split off in the same
-transaction as the payout. `MAX_FEE_BPS` caps it at 10% in the program, and
-both paying instructions constrain the treasury account to the one in config,
-so a caller cannot collect the fee themselves.
+## Nothing is lost
 
-## Amounts
+`worker.SettleDonations` sweeps every two minutes for intents that were signed
+but never confirmed back to us — the donor closed the tab, the request failed,
+the RPC was down. It verifies them the same way and credits them late. Intents
+that never received a signature are written off after thirty minutes.
 
-Lamports, as integers, everywhere — in the API, the database (`bigint`) and the
-program (`u64`). Floating point never touches a monetary value; SOL exists only
-as a display format in `lib/format.ts`.
+This is why `confirm` answers `202` rather than an error when the RPC is
+unreachable: the chain is unreachable, not wrong, and the money may well have
+moved. Telling a donor their donation failed at that moment would be a lie.
+
+## Responses
+
+| Situation | Status | Meaning |
+| --- | --- | --- |
+| Verified | `200 confirmed` | Credited |
+| Not finalized yet | `202 submitted` | Retry in a moment |
+| RPC unreachable | `202 submitted` | The settle worker will finish it |
+| Failed or mismatched | `400`, marked `failed` | It will never settle |
+| Signature not valid base58 | `422` | Caught at the edge |
+| Signature already recorded | `409` | — |
+
+## Configuration
+
+```bash
+SOLANA_CLUSTER=devnet                        # mainnet-beta is required in production
+SOLANA_RPC_URL=https://api.devnet.solana.com
+```
+
+That is the entire payment configuration. There is no program id, no treasury
+address and no fee, because there is nothing between the two wallets.
+
+The cluster is shown in the site footer on every page. Which chain real money
+settles on is not a detail to bury.
+
+## What the platform cannot do
+
+It holds no private key, so it cannot move anyone's SOL. It cannot reverse a
+confirmed transaction — nobody can. It cannot redirect a donation, because the
+recipient comes from an address the creator proved they control.
+
+If the API is compromised, an attacker can lie about what is displayed. They
+cannot take the money, because it never passes through here.

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { ButtonLink, SpinnerCard } from "./ui-extra";
+import { ButtonLink, SpinnerCard } from "./ui";
 
 /**
  * Consumes a magic-link token.
@@ -33,7 +33,8 @@ export function VerifyClient() {
     api("/v1/auth/verify", { body: { token } })
       .then(() => {
         const next = params.get("next");
-        const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+        const destination =
+          next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
         router.replace(destination);
       })
       .catch((err: unknown) => {

@@ -20,7 +20,6 @@ func (s *Service) Issue(ctx context.Context, user User, ip netip.Addr, userAgent
 	sess := Session{
 		UserID:     user.ID,
 		TokenHash:  digest,
-		Generation: 1,
 		IP:         ip,
 		UserAgent:  truncate(userAgent, 500),
 		ExpiresAt:  now.Add(s.cfg.SessionTTL),

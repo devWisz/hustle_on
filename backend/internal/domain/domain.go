@@ -1,188 +1,116 @@
-// Package domain holds the entities the API exposes. These structs are the
-// wire contract: JSON tags here are what clients see, so a field added to the
-// database is invisible until it is added here deliberately.
+// Package domain holds the entities the API exposes.
+//
+// These structs are the wire contract. JSON tags here are what clients see, so
+// a column added to the database stays invisible until it is added to a struct
+// in this file deliberately — which is how email addresses and review notes
+// stay off public payloads.
 package domain
 
 import "time"
 
-// PublicUser is the profile shape returned for any visitor.
-// Email and role are absent by design; they are not public information.
-type PublicUser struct {
-	ID          string   `json:"id"`
-	Handle      string   `json:"handle"`
-	DisplayName string   `json:"displayName"`
-	Headline    string   `json:"headline,omitempty"`
-	Bio         string   `json:"bio,omitempty"`
-	Location    string   `json:"location,omitempty"`
-	AvatarURL   string   `json:"avatarUrl,omitempty"`
-	BannerURL   string   `json:"bannerUrl,omitempty"`
-	Skills      []string `json:"skills"`
-	OpenToWork  bool     `json:"openToWork"`
-	HourlyRate  *float64 `json:"hourlyRateUsd,omitempty"`
-
-	FollowerCount int          `json:"followerCount"`
-	VideoCount    int          `json:"videoCount"`
-	SponsorTotal  int64        `json:"sponsorTotalLamports"`
-	PrimaryWallet string       `json:"primaryWallet,omitempty"`
-	SocialLinks   []SocialLink `json:"socialLinks"`
-	JoinedAt      time.Time    `json:"joinedAt"`
-}
-
-// SelfUser adds the fields a signed-in user may see about themselves.
-type SelfUser struct {
-	PublicUser
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"emailVerified"`
-	Role          string `json:"role"`
-}
-
-type SocialLink struct {
-	Platform string `json:"platform"`
-	Username string `json:"username"`
-	URL      string `json:"url"`
-	Verified bool   `json:"verified"`
-}
-
-type Wallet struct {
-	Address   string    `json:"address"`
-	IsPrimary bool      `json:"isPrimary"`
-	AddedAt   time.Time `json:"addedAt"`
-}
-
-// Video is a published timelapse.
-type Video struct {
-	ID             string     `json:"id"`
-	Slug           string     `json:"slug"`
-	Title          string     `json:"title"`
-	Description    string     `json:"description,omitempty"`
-	Status         string     `json:"status"`
-	Visibility     string     `json:"visibility"`
-	ThumbnailURL   string     `json:"thumbnailUrl,omitempty"`
-	PlaybackURL    string     `json:"playbackUrl,omitempty"`
-	DurationSecs   int        `json:"durationSeconds"`
-	SessionMinutes int        `json:"sessionMinutes"`
-	Tags           []string   `json:"tags"`
-	ViewCount      int        `json:"viewCount"`
-	CommentCount   int        `json:"commentCount"`
-	SponsorCount   int        `json:"sponsorCount"`
-	SponsorTotal   int64      `json:"sponsorTotalLamports"`
-	Creator        Creator    `json:"creator"`
-	PublishedAt    *time.Time `json:"publishedAt,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt"`
-}
-
-// Creator is the compact author reference embedded in lists.
+// Creator is the compact author reference embedded in lists and cards.
 type Creator struct {
 	ID          string `json:"id"`
 	Handle      string `json:"handle"`
 	DisplayName string `json:"displayName"`
 	AvatarURL   string `json:"avatarUrl,omitempty"`
-	Wallet      string `json:"wallet,omitempty"`
 }
 
-type Comment struct {
-	ID         string     `json:"id"`
-	VideoID    string     `json:"videoId"`
-	ParentID   string     `json:"parentId,omitempty"`
-	Body       string     `json:"body"`
-	LikeCount  int        `json:"likeCount"`
-	ReplyCount int        `json:"replyCount"`
-	Author     Creator    `json:"author"`
-	EditedAt   *time.Time `json:"editedAt,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	Replies    []Comment  `json:"replies,omitempty"`
+// PublicUser is the profile shape returned to any visitor. Email, role and
+// review history are absent by design; none of them are public information.
+type PublicUser struct {
+	ID          string `json:"id"`
+	Handle      string `json:"handle"`
+	DisplayName string `json:"displayName"`
+	Bio         string `json:"bio,omitempty"`
+	AvatarURL   string `json:"avatarUrl,omitempty"`
+
+	// The address donations to this creator are sent to. Public because a donor
+	// needs it to build the transaction.
+	PayoutAddress string `json:"payoutAddress,omitempty"`
+
+	TimelapseCount int       `json:"timelapseCount"`
+	DonationCount  int       `json:"donationCount"`
+	DonationTotal  int64     `json:"donationTotalLamports"`
+	JoinedAt       time.Time `json:"joinedAt"`
 }
 
-type Sponsorship struct {
-	ID          string    `json:"id"`
-	Amount      int64     `json:"amount"`
-	Mint        string    `json:"mint,omitempty"`
-	Message     string    `json:"message,omitempty"`
-	Status      string    `json:"status"`
-	Signature   string    `json:"signature,omitempty"`
-	IsAnonymous bool      `json:"isAnonymous"`
-	Sponsor     *Creator  `json:"sponsor,omitempty"`
-	VideoID     string    `json:"videoId,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
+// SelfUser adds the fields an account may see about itself.
+type SelfUser struct {
+	PublicUser
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"emailVerified"`
+	Role          string `json:"role"`
+	// True once the payout address has been proven by a signature.
+	PayoutVerified bool `json:"payoutVerified"`
 }
 
-type Job struct {
-	ID           string     `json:"id"`
-	Slug         string     `json:"slug"`
-	Title        string     `json:"title"`
-	Description  string     `json:"description"`
-	Skills       []string   `json:"skills"`
-	Engagement   string     `json:"engagement"`
-	BudgetMin    *float64   `json:"budgetMinUsd,omitempty"`
-	BudgetMax    *float64   `json:"budgetMaxUsd,omitempty"`
-	IsRemote     bool       `json:"isRemote"`
-	Location     string     `json:"location,omitempty"`
-	Status       string     `json:"status"`
-	Applications int        `json:"applicationCount"`
-	Client       Creator    `json:"client"`
-	PublishedAt  *time.Time `json:"publishedAt,omitempty"`
-	ClosesAt     *time.Time `json:"closesAt,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt"`
+// Timelapse is one published — or pending — work session.
+type Timelapse struct {
+	ID      string `json:"id"`
+	Slug    string `json:"slug"`
+	Title   string `json:"title"`
+	Summary string `json:"summary"`
+
+	GitHubURL string `json:"githubUrl,omitempty"`
+	XURL      string `json:"xUrl,omitempty"`
+
+	Status         string `json:"status"`
+	ThumbnailURL   string `json:"thumbnailUrl,omitempty"`
+	PlaybackURL    string `json:"playbackUrl,omitempty"`
+	DurationSecs   int    `json:"durationSeconds"`
+	SessionMinutes int    `json:"sessionMinutes"`
+
+	ViewCount     int   `json:"viewCount"`
+	DonationCount int   `json:"donationCount"`
+	DonationTotal int64 `json:"donationTotalLamports"`
+
+	Creator Creator `json:"creator"`
+
+	// ReviewNote is only ever populated for the creator's own view of their
+	// submission and for an admin. It is empty on every public payload.
+	ReviewNote  string     `json:"reviewNote,omitempty"`
+	SubmittedAt *time.Time `json:"submittedAt,omitempty"`
+	PublishedAt *time.Time `json:"publishedAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
 }
 
-type Application struct {
-	ID           string    `json:"id"`
-	JobID        string    `json:"jobId"`
-	CoverNote    string    `json:"coverNote,omitempty"`
-	PortfolioIDs []string  `json:"portfolioVideoIds"`
-	RateUSD      *float64  `json:"rateUsd,omitempty"`
-	Status       string    `json:"status"`
-	Applicant    Creator   `json:"applicant"`
-	CreatedAt    time.Time `json:"createdAt"`
+// Donation is a supporter's contribution as the public sees it.
+type Donation struct {
+	ID      string `json:"id"`
+	Amount  int64  `json:"amountLamports"`
+	Message string `json:"message,omitempty"`
+	Status  string `json:"status"`
+	// Present once the transaction has been verified, so a viewer can check it
+	// on an explorer themselves.
+	Signature string `json:"signature,omitempty"`
+	// Nil for a donation sent by someone who was not signed in.
+	Donor       *Creator   `json:"donor,omitempty"`
+	TimelapseID string     `json:"timelapseId,omitempty"`
+	ConfirmedAt *time.Time `json:"confirmedAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
 }
 
-type Notification struct {
-	ID        string         `json:"id"`
-	Kind      string         `json:"kind"`
-	Payload   map[string]any `json:"payload"`
-	ReadAt    *time.Time     `json:"readAt,omitempty"`
-	CreatedAt time.Time      `json:"createdAt"`
+// DonationIntent is what the client needs to build and send the transaction.
+type DonationIntent struct {
+	ID        string `json:"id"`
+	Recipient string `json:"recipient"`
+	Amount    int64  `json:"amountLamports"`
+	Cluster   string `json:"cluster"`
 }
 
-// PublicStats is the anonymous homepage snapshot. Report counts stay off this
-// payload so the public site cannot be used to probe the moderation queue.
-type PublicStats struct {
-	Users            int   `json:"users"`
-	PublishedVideos  int   `json:"publishedVideos"`
-	OpenJobs         int   `json:"openJobs"`
-	ConfirmedSponsor int   `json:"confirmedSponsorships"`
-	SponsorLamports  int64 `json:"sponsorTotalLamports"`
+// Stats is the anonymous homepage snapshot. Queue depth stays off it, so the
+// public site cannot be used to measure how far behind review is.
+type Stats struct {
+	Creators       int   `json:"creators"`
+	Published      int   `json:"publishedTimelapses"`
+	SessionMinutes int64 `json:"sessionMinutesRecorded"`
+	DonationCount  int   `json:"confirmedDonations"`
+	DonationTotal  int64 `json:"donationTotalLamports"`
 }
 
-// AdminUser is the operator directory row. Email is included because this
-// surface is already gated to moderator and admin roles.
-type AdminUser struct {
-	ID          string    `json:"id"`
-	Handle      string    `json:"handle"`
-	DisplayName string    `json:"displayName"`
-	Email       string    `json:"email"`
-	Role        string    `json:"role"`
-	Status      string    `json:"status"`
-	VideoCount  int       `json:"videoCount"`
-	OpenToWork  bool      `json:"openToWork"`
-	CreatedAt   time.Time `json:"createdAt"`
-}
-
-// Page is the envelope for every list endpoint. Cursors are opaque to clients.
+// Page is the envelope every list endpoint returns. Cursors are opaque.
 type Page[T any] struct {
 	Items      []T    `json:"items"`
 	NextCursor string `json:"nextCursor,omitempty"`
-}
-
-// Report is a moderation report as the admin console sees it.
-type Report struct {
-	ID          string    `json:"id"`
-	SubjectType string    `json:"subjectType"`
-	SubjectID   string    `json:"subjectId"`
-	Reason      string    `json:"reason"`
-	Detail      string    `json:"detail,omitempty"`
-	Status      string    `json:"status"`
-	ReportCount int       `json:"reportCount"`
-	Reporter    *Creator  `json:"reporter,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
 }

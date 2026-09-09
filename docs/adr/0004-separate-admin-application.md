@@ -1,6 +1,6 @@
 # 4. Ship the admin console as a separate application
 
-**Status:** accepted
+**Status:** superseded by [0005](0005-fold-the-admin-console-into-the-web-app.md)
 
 ## Context
 

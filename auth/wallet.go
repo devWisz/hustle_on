@@ -47,12 +47,12 @@ func (s *Service) StartWalletLink(ctx context.Context, userID, address string) (
 	return fmt.Sprintf(WalletProofTemplate, address, nonce, now.UTC().Format(time.RFC3339)), nonce, nil
 }
 
-// CompleteWalletLink verifies the signature and attaches the wallet.
+// CompleteWalletLink verifies the signature and records the payout address.
 //
 // The message is rebuilt on the server from the stored nonce rather than taken
 // from the client, so a caller cannot get a signature over text of their
 // choosing accepted as a proof of ownership.
-func (s *Service) CompleteWalletLink(ctx context.Context, userID, address, nonce, signatureB58 string, issuedAt time.Time, makePrimary bool) error {
+func (s *Service) CompleteWalletLink(ctx context.Context, userID, address, nonce, signatureB58 string, issuedAt time.Time) error {
 	if err := ValidateSolanaAddress(address); err != nil {
 		return err
 	}
@@ -64,8 +64,8 @@ func (s *Service) CompleteWalletLink(ctx context.Context, userID, address, nonce
 	if err := VerifySolanaSignature(address, message, signatureB58); err != nil {
 		return err
 	}
-	if err := s.store.AttachWallet(ctx, userID, address, makePrimary); err != nil {
-		return fmt.Errorf("auth: attach wallet: %w", err)
+	if err := s.store.SetPayoutAddress(ctx, userID, address, now); err != nil {
+		return fmt.Errorf("auth: set payout address: %w", err)
 	}
 	return nil
 }
@@ -97,6 +97,19 @@ func ValidateSolanaAddress(address string) error {
 	raw, err := base58.Decode(address)
 	if err != nil || len(raw) != ed25519.PublicKeySize {
 		return errors.New("auth: wallet address is not valid")
+	}
+	return nil
+}
+
+// ValidateSignature checks that a string is a base58-encoded ed25519 signature.
+//
+// It exists so a malformed signature is refused at the edge with a message the
+// person can act on, rather than being handed to an RPC node that answers with
+// an opaque "invalid param" the API can only report as its own failure.
+func ValidateSignature(signature string) error {
+	raw, err := base58.Decode(strings.TrimSpace(signature))
+	if err != nil || len(raw) != ed25519.SignatureSize {
+		return errors.New("auth: transaction signature is not valid")
 	}
 	return nil
 }

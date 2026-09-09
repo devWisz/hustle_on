@@ -1,0 +1,192 @@
+# Authentication
+
+Sardhana has two kinds of proof, and they answer different questions.
+
+| Proof | Answers | Lives in |
+| --- | --- | --- |
+| **Email link** | Who is this account? | `auth/magiclink.go`, `auth/session.go` |
+| **Wallet signature** | Which key should be paid? | `auth/wallet.go` |
+
+They are deliberately separate. Signing in never touches a wallet, and proving
+a wallet never signs you in. Someone who compromises an inbox cannot move
+anybody's SOL, because the payout address is pinned to a key they do not hold.
+
+There is no password anywhere in the system. There is no column for one, so
+there is nothing to leak, reset, reuse across sites, or phish.
+
+---
+
+## Signing in
+
+```
+  POST /v1/auth/request-link          { email }
+       │
+       │  a 32-byte token is generated;
+       │  only its SHA-256 digest is stored
+       ▼
+  email ── https://…/auth/verify?token=<secret> ──▶ the browser
+       │
+       ▼
+  POST /v1/auth/verify                { token }
+       │  digest looked up, marked consumed, session created
+       ▼
+  Set-Cookie: sardhana_session       (HttpOnly, Secure, SameSite=Lax)
+  Set-Cookie: sardhana_session_csrf  (readable, by design)
+```
+
+### What each step guarantees
+
+**The reply never varies.** `request-link` answers with the same message for an
+unknown address, an existing account and a suspended one. Varying it would turn
+the endpoint into a way to ask "does this person have an account here?"
+
+**The token is stored as a digest.** The plaintext exists in exactly one place:
+the recipient's inbox. A dump of `magic_link_tokens` grants nobody a session.
+
+**The link works once.** `ConsumeMagicLink` marks the row used inside the same
+`UPDATE` that reads it, with `consumed_at IS NULL` in the predicate. Two
+concurrent requests race on the row lock and only the first gets a row back.
+
+**Fifteen minutes.** Long enough to walk to another device, short enough that a
+link sitting in a mail archive is worthless.
+
+**The account is created on verification, not on request.** Asking for a link
+for an address you do not control creates nothing, so an unverified address can
+never occupy a handle.
+
+**`next` must be a local path.** `SafeRedirectPath` rejects absolute URLs,
+protocol-relative `//host` forms and anything with a newline in it. Without
+that check, an emailed link is an open redirect that lands a freshly
+authenticated visitor on somebody else's page.
+
+---
+
+## Staying signed in
+
+The session cookie carries a random token. The database stores only its digest,
+alongside the account, an expiry, and the address and user agent it was issued
+to.
+
+The cookie's flags are the security model, not decoration:
+
+- **`HttpOnly`** — no script on the page can read it, so an XSS bug cannot
+  exfiltrate a session.
+- **`Secure`** — it never crosses a plaintext connection.
+- **`SameSite=Lax`** — a cross-site `POST` cannot carry it, while a top-level
+  navigation from the emailed link still works.
+- **Host-only** (`Path=/`, no `Domain`) — subdomains never receive it.
+
+`attachSession` resolves the cookie on every request and puts the account on the
+request context. It never rejects: routes decide what they require, so a public
+page and a private one run the same middleware.
+
+`last_used_at` is written at most hourly. Recording it on every request would
+turn every read into a write.
+
+---
+
+## CSRF
+
+Two independent checks have to pass on every state-changing request. Either one
+alone has known bypasses; together they do not.
+
+1. **Origin.** The `Origin` header (falling back to `Referer`) must be on the
+   configured allowlist. The browser sets this and a page cannot forge it.
+2. **Double-submit token.** `X-Sardhana-CSRF` must match an HMAC of this exact
+   session's digest, keyed by `SESSION_SECRET`.
+
+The CSRF cookie is intentionally *not* `HttpOnly` — the frontend has to read it
+to echo it back. That is safe because it is derived from the session under a
+server-side key: an attacker who can plant a cookie value still cannot produce
+the matching token.
+
+CORS is configured to reflect only allowlisted origins. Credentials are
+permitted, which is precisely why the `Origin` is never reflected blindly.
+
+---
+
+## Proving a payout wallet
+
+```
+  POST /v1/me/wallet/challenge  { address }
+       │  server stores a nonce, returns the exact text to sign
+       ▼
+  wallet.signMessage(...)       ← authorises no transfer
+       │
+       ▼
+  POST /v1/me/wallet/verify     { address, nonce, signature, issuedAt }
+       │  nonce consumed atomically, ed25519 signature checked
+       ▼
+  users.payout_address = address, payout_verified_at = now()
+```
+
+The message is rebuilt on the server from the stored nonce. It is never taken
+from the request, so a caller cannot get a signature over text of their own
+choosing accepted as proof of ownership.
+
+`users.payout_address` is `UNIQUE`, and the schema requires the address and its
+verification timestamp to be set together:
+
+```sql
+CHECK ((payout_address IS NULL) = (payout_verified_at IS NULL))
+```
+
+An address therefore belongs to exactly one account, and no code path can record
+one without the proof that established it. Claiming an address already held
+elsewhere is a conflict, not a transfer.
+
+**Sardhana never asks for a seed phrase or a private key** — not to sign in, not
+to receive payouts, not for support. Any page that does is not ours.
+
+---
+
+## Roles
+
+There are two: `member` and `admin`. That is the whole model.
+
+A member publishes and receives donations. An admin can additionally decide
+what reaches the public feed. Every admin-only endpoint goes through
+`requireAdmin`, and every decision one makes is written to `audit_log` with the
+actor, the subject and the reason.
+
+The frontend's `/admin` page returns **404**, not 403, to a signed-in member. A
+403 confirms that the page exists.
+
+Roles are granted in the database, deliberately. There is no endpoint that
+promotes an account, so a bug in one cannot create an admin:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+---
+
+## Rate limits
+
+| Surface | Default | Why |
+| --- | --- | --- |
+| Anonymous requests | 60/min per address | General abuse ceiling |
+| Sign-in attempts | 5/min per address | `RATE_LIMIT_AUTH_ATTEMPTS` |
+| Links per email | 5/hour | Stops mailbox flooding via our sender |
+
+Forwarded headers are trusted **only** when `TRUST_PROXY_HEADERS=true`. It
+defaults to false, because honouring `X-Forwarded-For` with nothing in front to
+overwrite it lets any client claim any address and walk past every per-address
+limit.
+
+---
+
+## Reading the code
+
+| Question | File |
+| --- | --- |
+| How is a link issued and consumed? | `auth/magiclink.go` |
+| How is a session created and revoked? | `auth/session.go` |
+| How are cookies flagged? | `auth/cookie.go` |
+| How is CSRF derived and checked? | `auth/csrf.go` |
+| How is a wallet signature verified? | `auth/wallet.go` |
+| Where does any of it touch Postgres? | `backend/internal/store/auth.go` |
+
+The `auth` module owns the rules and knows nothing about Postgres; the backend
+implements `auth.Store` over it. That split is what lets the rules be tested in
+memory, with no database at all.

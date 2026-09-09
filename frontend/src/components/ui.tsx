@@ -17,7 +17,8 @@ const buttonBase =
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary: "bg-accent text-accent-fg hover:bg-accent-hover",
-  secondary: "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised",
+  secondary:
+    "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised",
   ghost: "text-fg-muted hover:text-fg hover:bg-surface-raised",
   danger: "bg-danger-soft text-danger border border-transparent hover:border-danger",
 };
@@ -28,7 +29,11 @@ const buttonSizes: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-[15px]",
 };
 
-export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize = "md", extra?: string) {
+export function buttonClass(
+  variant: ButtonVariant = "primary",
+  size: ButtonSize = "md",
+  extra?: string,
+) {
   return cx(buttonBase, buttonVariants[variant], buttonSizes[size], extra);
 }
 
@@ -66,7 +71,12 @@ interface ButtonLinkProps extends React.ComponentProps<typeof Link> {
   size?: ButtonSize;
 }
 
-export function ButtonLink({ variant = "primary", size = "md", className, ...rest }: ButtonLinkProps) {
+export function ButtonLink({
+  variant = "primary",
+  size = "md",
+  className,
+  ...rest
+}: ButtonLinkProps) {
   return <Link className={buttonClass(variant, size, className)} {...rest} />;
 }
 
@@ -105,7 +115,10 @@ export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInpu
   );
 }
 
-export function Textarea({ className, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({
+  className,
+  ...rest
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       className={cx(
@@ -301,5 +314,17 @@ export function Container({
     default: "max-w-5xl",
     wide: "max-w-6xl",
   } as const;
-  return <div className={cx("mx-auto w-full px-5 sm:px-6", widths[width], className)}>{children}</div>;
+  return (
+    <div className={cx("mx-auto w-full px-5 sm:px-6", widths[width], className)}>{children}</div>
+  );
+}
+
+/** A centred pending state, used while a page is resolving something. */
+export function SpinnerCard({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-fg-muted">
+      <SpinnerIcon size={22} />
+      <p className="text-sm">{label}…</p>
+    </div>
+  );
 }

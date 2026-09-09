@@ -1,41 +1,35 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { apiServer } from "@/lib/api";
-import type { SelfUser, Wallet } from "@/lib/types";
-import { Container } from "@/components/ui";
-import {
-  AccountSettings,
-  ProfileSettings,
-  SocialSettings,
-  WalletSettings,
-} from "@/components/settings-forms";
+import type { SelfUser } from "@/lib/types";
+import { ProfileForm, SignOutButton, WalletForm } from "@/components/settings-forms";
+import { Card, Container } from "@/components/ui";
 
-export const metadata: Metadata = {
-  title: "Settings",
-  robots: { index: false, follow: false },
-};
-
-interface SessionResponse {
-  authenticated: boolean;
-  user?: SelfUser;
-}
+export const metadata: Metadata = { title: "Settings" };
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const session = await apiServer<SessionResponse>("/v1/auth/session", 0);
-  if (!session?.authenticated || !session.user) redirect("/login?next=/settings");
-
-  const wallets = await apiServer<{ wallets: Wallet[] }>("/v1/me/wallets", 0);
+  const me = await apiServer<SelfUser>("/v1/me", 0);
+  if (!me) redirect("/login?next=/settings");
 
   return (
-    <Container width="narrow" className="py-10 sm:py-14">
-      <header className="mb-8">
-        <h1 className="text-[26px] font-semibold tracking-tight">Settings</h1>
-      </header>
-      <div className="space-y-6">
-        <ProfileSettings user={session.user} />
-        <WalletSettings wallets={wallets?.wallets ?? []} />
-        <SocialSettings user={session.user} />
-        <AccountSettings user={session.user} />
+    <Container width="narrow" className="py-12">
+      <h1 className="text-[26px] font-semibold leading-tight">Settings</h1>
+
+      <div className="mt-8 space-y-6">
+        <ProfileForm user={me} />
+        <WalletForm user={me} />
+
+        <Card as="section" className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Account</h2>
+            <p className="mt-1 text-sm text-fg-muted">
+              Signed in as {me.email}. Sardhana has no password to change — every sign-in is a fresh
+              emailed link.
+            </p>
+          </div>
+          <SignOutButton />
+        </Card>
       </div>
     </Container>
   );

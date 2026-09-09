@@ -71,7 +71,7 @@ func run() error {
 		MagicLinkTTL:    cfg.MagicLinkTTL,
 		MaxLinksPerHour: cfg.RateLimitAuth,
 		CSRFKey:         cfg.SessionSecret,
-		ProductName:     "HustlerOn",
+		ProductName:     "Sardhana",
 	}, st, mailer)
 	if err != nil {
 		return err
@@ -99,9 +99,9 @@ func run() error {
 
 	server.SetTrustProxyHeaders(os.Getenv("TRUST_PROXY_HEADERS") == "true")
 
-	// The reconciler settles transactions whose confirmation never reached us,
-	// so a sponsor closing the tab mid-flow still gets credited.
-	go worker.ReconcilePayments(ctx, log, st, chain)
+	// Settles donations whose confirmation call never reached us, so a donor
+	// who closed the tab after signing is still credited.
+	go worker.SettleDonations(ctx, log, st, chain)
 
 	api := server.New(cfg, log, st, authSvc, chain, storage)
 	return api.ListenAndServe(ctx)

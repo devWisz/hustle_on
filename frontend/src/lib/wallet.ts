@@ -57,14 +57,13 @@ export async function connectWallet(): Promise<string> {
   return publicKey.toString();
 }
 
-export const RPC_URL =
-  process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 
 let connection: Connection | null = null;
 
 export function getConnection(): Connection {
   // One connection per tab; creating one per transaction would open a new
-  // websocket every time a sponsorship is sent.
+  // websocket every time a donation is sent.
   connection ??= new Connection(RPC_URL, "confirmed");
   return connection;
 }

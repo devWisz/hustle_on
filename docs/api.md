@@ -1,159 +1,113 @@
 # API reference
 
-Base URL: `${API_PUBLIC_URL}`, currently `http://localhost:8085` in development.
-All requests and responses are JSON. All state-changing requests need the
-session cookie plus the `X-Sardhana-CSRF` header.
+Base URL `http://localhost:8085` in development. Everything is JSON.
 
 ## Conventions
 
-**Errors** carry a stable code, a safe message and, for validation failures,
-per-field messages:
+Errors are always the same shape:
 
 ```json
 {
-  "error": {
-    "code": "validation_failed",
-    "message": "Some fields need attention.",
-    "fields": { "title": "Too short." }
-  },
-  "requestId": "9f1c2b7d4e5a6b3c"
+  "error": { "code": "validation_failed", "message": "…", "fields": { "title": "Too short." } },
+  "requestId": "3f9a1c2e8b0d4a71"
 }
 ```
 
-Codes: `bad_request`, `validation_failed`, `unauthorized`, `forbidden`,
-`not_found`, `conflict`, `rate_limited`, `payload_too_large`, `internal_error`.
+`requestId` is echoed in the `X-Request-Id` header and appears in the server log
+for that request, so a reported failure can be matched to the exact line.
 
-**Lists** return `{ "items": [...], "nextCursor": "..." }`. The feed uses
-keyset pagination — pass `nextCursor` back as `cursor`. Other lists take
-`limit` and `offset`.
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `validation_failed` | 422 | Per-field messages in `fields` |
+| `unauthorized` | 401 | Sign in |
+| `forbidden` | 403 | Signed in, not allowed — or a CSRF check failed |
+| `not_found` | 404 | Also returned instead of 403 where existence itself is private |
+| `conflict` | 409 | Uniqueness, or a state transition that no longer applies |
+| `rate_limited` | 429 | See `Retry-After` |
 
-**Amounts** are lamports (integers). 1 SOL = 1,000,000,000 lamports.
+**Every state-changing request needs both** an allowlisted `Origin` and the
+`X-Sardhana-CSRF` header, whose value is the `sardhana_session_csrf` cookie.
+Missing either is a 403. Send cookies with `credentials: "include"`.
 
-## Operational
+Request bodies reject unknown fields, and the error names the field that was not
+recognised — a typo or a stale client becomes a fixable message rather than a
+value silently ignored.
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| GET | `/health` | public | Process liveness and cluster info |
-| GET | `/healthz` | public | Alias for `/health` |
-| GET | `/health/ready` | public | Database connectivity check |
+List endpoints return `{ "items": [...] }`. The feed adds an opaque
+`nextCursor`; pass it back as `?cursor=`. Paging is keyset, so a donation
+landing between two page loads cannot shuffle a row from page two onto page one.
 
-## Development uploads
+---
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| PUT | `/v1/uploads/local/{key...}` | public (dev) | Local direct upload endpoint |
-| GET | `/v1/uploads/local/{key...}` | public (dev) | Serve local uploaded media |
+## Public
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness |
+| `GET` | `/health/ready` | Pings the database |
+| `GET` | `/v1/timelapses` | Feed. `?limit=` (1–50), `?cursor=` |
+| `GET` | `/v1/timelapses/{slug}` | Unpublished rows: creator and admin only, else 404 |
+| `GET` | `/v1/timelapses/{slug}/donations` | Confirmed supporters |
+| `POST` | `/v1/timelapses/{slug}/views` | Counted once per viewer per day |
+| `GET` | `/v1/creators/{handle}` | Public profile |
+| `GET` | `/v1/creators/{handle}/timelapses` | Their published work |
+| `GET` | `/v1/stats` | Homepage totals |
+
+`reviewNote` and `submittedAt` are stripped from every public payload.
 
 ## Authentication
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/auth/request-link` | public | `{email, next}`. Always 202, whatever the address |
-| POST | `/v1/auth/verify` | public | `{token}`. Sets the session and CSRF cookies |
-| POST | `/v1/auth/logout` | session | Revokes the session |
-| GET | `/v1/auth/session` | public | `{authenticated, user?}` — never 401 |
-| POST | `/v1/auth/wallet/challenge` | session | `{address}` → `{message, nonce, issuedAt}` |
-| POST | `/v1/auth/wallet/verify` | session | `{address, nonce, signature, issuedAt, primary}` |
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/v1/auth/request-link` | `{ email, next? }`. Always 202, whatever happened |
+| `POST` | `/v1/auth/verify` | `{ token }`. Sets the session and CSRF cookies |
+| `POST` | `/v1/auth/logout` | Revokes the session |
+| `GET` | `/v1/auth/session` | `{ authenticated, user? }`. Never fails |
 
-## The signed-in user
+## The signed-in account
 
 | Method | Path | Notes |
-| ------ | ---- | ----- |
-| GET | `/v1/me` | Full private profile |
-| PATCH | `/v1/me` | Partial update; omitted fields are unchanged |
-| PUT | `/v1/me/handle` | `{handle}`; 409 if taken |
-| PUT | `/v1/me/social/{platform}` | `{username, url}`; the URL must match the platform's domain |
-| DELETE | `/v1/me/social/{platform}` | |
-| GET | `/v1/me/wallets` | |
-| GET | `/v1/me/sponsorships` | Confirmed sponsorships received |
-| GET | `/v1/me/notifications` | |
-| POST | `/v1/me/notifications/read` | Marks all read |
-
-## Discovery
-
-| Method | Path | Access | Query | Notes |
-| ------ | ---- | ------ | ----- | ----- |
-| GET | `/v1/feed` | public | `limit`, `cursor`, `tag`, `q` | Keyset pagination via cursor |
-| GET | `/v1/videos/{slug}` | public | | Owners also see their own drafts |
-| GET | `/v1/creators/{handle}` | public | | Returns `{creator, isFollowing}` |
-| GET | `/v1/creators/{handle}/videos` | public | `limit`, `offset` | Published videos for creator |
-| GET | `/v1/talent` | public | `skills`, `q`, `limit`, `offset` | Searchable directory of builders |
-| GET | `/v1/jobs` | public | `skills`, `q`, `remote`, `limit`, `offset` | Open job postings |
-| GET | `/v1/jobs/{slug}` | public | | Single job details |
-| GET | `/v1/stats` | public | | Aggregated platform statistics |
+| --- | --- | --- |
+| `GET` | `/v1/me` | Private profile |
+| `PATCH` | `/v1/me` | `{ displayName?, handle?, bio? }`. Absent keys are left alone |
+| `GET` | `/v1/me/timelapses` | Every state, including drafts and rejections |
+| `GET` | `/v1/me/donations` | Received |
+| `POST` | `/v1/me/wallet/challenge` | `{ address }` → the message to sign |
+| `POST` | `/v1/me/wallet/verify` | `{ address, nonce, signature, issuedAt }` |
 
 ## Publishing
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/uploads` | session | `{contentType, sizeBytes}` → presigned PUT URL and key |
-| POST | `/v1/videos` | session | `{storageKey, title, description, sessionMinutes, visibility, tags}` |
-| POST | `/v1/videos/{id}/uploaded` | session | `{sizeBytes, checksumSha256?}` |
-| POST | `/v1/videos/{id}/publish` | session | Transitions video to published |
-| PATCH | `/v1/videos/{id}` | session | `{title?, description?, visibility?}` |
-| DELETE | `/v1/videos/{id}` | session | Soft delete; sponsorship history survives |
-| POST | `/v1/videos/{slug}/views` | public | Coarse deduplicated view recording |
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/v1/uploads` | `{ contentType, sizeBytes }` → presigned `PUT` URL |
+| `POST` | `/v1/timelapses` | Creates a draft against an uploaded object |
+| `POST` | `/v1/timelapses/{id}/uploaded` | `{ sizeBytes, durationSeconds }` |
+| `POST` | `/v1/timelapses/{id}/submit` | Into the review queue |
+| `PATCH` | `/v1/timelapses/{id}` | Draft, uploaded or rejected rows only |
+| `DELETE` | `/v1/timelapses/{id}` | Withdraw |
 
-The upload sequence is: request a URL, PUT the file to it, register the video
-against the returned key, mark it uploaded, publish.
+## Donations
 
-## Discussion
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/v1/donations` | Records the intent. Signing in is optional |
+| `POST` | `/v1/donations/{id}/confirm` | `{ signature }`. Verified against the chain |
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| GET | `/v1/videos/{slug}/comments` | public | Threaded comments list |
-| POST | `/v1/videos/{slug}/comments` | session | `{body, parentId?}` |
-| DELETE | `/v1/comments/{id}` | session | Soft delete |
-| POST | `/v1/comments/{id}/like` | session | Like comment |
-| DELETE | `/v1/comments/{id}/like` | session | Unlike comment |
+`confirm` answers `202 { status: "submitted" }` while the transaction is not yet
+finalized, or when the RPC cannot be reached. Retry; nothing is lost either way,
+because the settle worker finishes anything left open.
 
-Replies are one level deep; a reply to a reply attaches to the top-level parent.
+## Review — admin only
 
-## Following
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/v1/admin/queue` | Oldest submission first |
+| `POST` | `/v1/admin/timelapses/{id}/approve` | Publishes |
+| `POST` | `/v1/admin/timelapses/{id}/reject` | `{ note }`, 10–500 chars, required |
+| `DELETE` | `/v1/admin/timelapses/{id}` | Takedown after publication |
 
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/creators/{handle}/follow` | session | Follow creator |
-| DELETE | `/v1/creators/{handle}/follow` | session | Unfollow creator |
+## Development only
 
-## Sponsorship
-
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/sponsorships` | session | `{creatorHandle, videoId?, amount, message?, isAnonymous}` → `{payTo, intentId}` |
-| POST | `/v1/sponsorships/{id}/signature` | session | `{signature, payer}` |
-| POST | `/v1/sponsorships/{id}/confirm` | session | `{signature, payer, payee, amount}` |
-| GET | `/v1/videos/{slug}/sponsors` | public | Top and recent sponsors for video |
-
-The create call returns `payTo` — the address to send to. Confirm verifies
-against the cluster; a 202 with `status: "pending"` means the transaction has
-not finalized and the reconciler will settle it.
-
-## Hiring
-
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/jobs` | session | Post a new job |
-| POST | `/v1/jobs/{slug}/applications` | session | Apply for a job |
-| GET | `/v1/jobs/{slug}/applications` | session | The client who posted the job |
-| POST | `/v1/applications/{id}/status` | session | Update application status (`reviewing`, `accepted`, `rejected`) |
-
-## Trust and safety
-
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| POST | `/v1/reports` | session | Report content or user; always 202, duplicates silent |
-
-## Admin console
-
-All admin endpoints require `admin` or `moderator` role. Actions modifying account status require `admin`.
-
-| Method | Path | Access | Notes |
-| ------ | ---- | ------ | ----- |
-| GET | `/v1/admin/stats` | moderator/admin | Platform dashboard metrics |
-| GET | `/v1/admin/health` | moderator/admin | System health and connection status |
-| GET | `/v1/admin/users` | moderator/admin | `limit`, `offset` — list accounts with roles |
-| GET | `/v1/admin/videos` | moderator/admin | `limit`, `offset` — list videos with moderation status |
-| GET | `/v1/admin/jobs` | moderator/admin | `limit`, `offset` — list job postings |
-| GET | `/v1/admin/reports` | moderator/admin | Moderation queue, oldest first |
-| POST | `/v1/admin/reports/{id}/resolve` | moderator/admin | `{action, note?}` — hide, remove, warn, or suspend |
+`PUT` and `GET /v1/uploads/local/{key...}` stand in for a bucket. They are
+registered only when no storage credentials are configured, so a production
+deployment does not carry them at all.

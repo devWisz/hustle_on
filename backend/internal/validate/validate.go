@@ -13,9 +13,14 @@ import (
 
 var (
 	handleRE = regexp.MustCompile(`^[a-z0-9_]{3,30}$`)
-	slugRE   = regexp.MustCompile(`^[a-z0-9-]{6,80}$`)
+	slugRE   = regexp.MustCompile(`^[a-z0-9-]{6,90}$`)
 	uuidRE   = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	tagRE    = regexp.MustCompile(`^[a-z0-9+#.-]{2,30}$`)
+
+	// The two link fields are pinned to the hosts the product actually shows.
+	// A free-form URL here would be rendered as a link on a public page, which
+	// is how a submission form becomes somebody else's traffic funnel.
+	githubRE = regexp.MustCompile(`^https://github\.com/[A-Za-z0-9._/-]{1,180}$`)
+	xRE      = regexp.MustCompile(`^https://(x|twitter)\.com/[A-Za-z0-9._/-]{1,180}$`)
 )
 
 // Errors accumulates field messages so a form can be corrected in one pass
@@ -84,12 +89,28 @@ func (e *Errors) UUID(field, value string) *Errors {
 	return e
 }
 
-func (e *Errors) URL(field, value string) *Errors {
-	if value == "" {
-		return e
+// GitHubURL accepts an empty value or a github.com address. Both link fields
+// are optional: a creator with nothing public to point at should still be able
+// to publish.
+func (e *Errors) GitHubURL(field, value string) *Errors {
+	if value != "" && !githubRE.MatchString(value) {
+		e.Add(field, "Enter a full https://github.com/… address.")
 	}
-	if !strings.HasPrefix(value, "https://") || len(value) > 500 || strings.ContainsAny(value, " \r\n") {
-		e.Add(field, "Enter a full https:// address.")
+	return e
+}
+
+// XURL accepts an empty value or an x.com (or legacy twitter.com) address.
+func (e *Errors) XURL(field, value string) *Errors {
+	if value != "" && !xRE.MatchString(value) {
+		e.Add(field, "Enter a full https://x.com/… address.")
+	}
+	return e
+}
+
+// Range checks a bounded integer, such as the length of a work session.
+func (e *Errors) Range(field string, value, min, max int) *Errors {
+	if value < min || value > max {
+		e.Add(field, "Value is out of range.")
 	}
 	return e
 }
@@ -109,9 +130,6 @@ func IsUUID(s string) bool { return uuidRE.MatchString(s) }
 
 // IsSlug reports whether s is a well-formed URL slug.
 func IsSlug(s string) bool { return slugRE.MatchString(s) }
-
-// IsTag reports whether s is an acceptable tag name.
-func IsTag(s string) bool { return tagRE.MatchString(s) }
 
 // Slugify turns a title into a URL-safe slug. Callers append a short random
 // suffix to guarantee uniqueness.
@@ -153,8 +171,8 @@ func CleanText(s string) string {
 var reservedHandles = map[string]bool{
 	"admin": true, "api": true, "auth": true, "login": true, "logout": true,
 	"signup": true, "settings": true, "support": true, "help": true,
-	"about": true, "terms": true, "privacy": true, "security": true,
-	"sardhana": true, "discover": true, "upload": true, "hire": true,
-	"jobs": true, "video": true, "creator": true, "dashboard": true,
+	"about": true, "terms": true, "privacy": true,
+	"sardhana": true, "upload": true, "watch": true, "timelapse": true,
+	"creator": true, "dashboard": true, "review": true,
 	"static": true, "assets": true, "media": true, "www": true, "root": true,
 }

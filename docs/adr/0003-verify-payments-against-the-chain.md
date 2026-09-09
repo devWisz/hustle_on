@@ -4,7 +4,7 @@
 
 ## Context
 
-Sponsorships settle wallet-to-wallet, so the API is not in the payment path. It
+Donations settle wallet-to-wallet, so the API is not in the payment path. It
 learns that a payment happened from the client that made it. A client is not a
 trustworthy narrator: a modified page can claim any signature, any amount, or a
 transaction that failed.
@@ -20,7 +20,7 @@ Balance deltas rather than instruction decoding, because the delta is what
 actually happened — a transaction can emit convincing logs and transfer
 nothing.
 
-A background reconciler polls transactions that were submitted but never
+A background settle loop polls transactions that were submitted but never
 confirmed, so a closed tab does not cost a creator their money. Both paths are
 idempotent.
 

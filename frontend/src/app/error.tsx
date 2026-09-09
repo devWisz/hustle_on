@@ -8,7 +8,13 @@ import { Button, Container } from "@/components/ui";
  * about what went wrong internally — an error message from the server is for
  * the logs, not for the page.
  */
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   useEffect(() => {
     console.error("[sardhana] route error", error.digest ?? error.message);
   }, [error]);

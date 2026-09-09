@@ -32,7 +32,7 @@ func (stubStore) CreateWalletChallenge(context.Context, WalletChallenge) error {
 func (stubStore) ConsumeWalletChallenge(context.Context, string, string, string, time.Time) error {
 	return nil
 }
-func (stubStore) AttachWallet(context.Context, string, string, bool) error { return nil }
+func (stubStore) SetPayoutAddress(context.Context, string, string, time.Time) error { return nil }
 
 // discard swallows development email output in tests.
 type discard struct{}

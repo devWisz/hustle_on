@@ -1,6 +1,0 @@
-DROP TABLE IF EXISTS video_views;
-DROP TABLE IF EXISTS video_tags;
-DROP TABLE IF EXISTS tags;
-DROP TABLE IF EXISTS videos;
-DROP TYPE IF EXISTS video_visibility;
-DROP TYPE IF EXISTS video_status;

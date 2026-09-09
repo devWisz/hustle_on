@@ -49,48 +49,29 @@ jobs:
   web:
     name: Next.js
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [frontend, admin]
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-        working-directory: ${{ matrix.app }}
+
+      - name: Lint
+        run: npm run lint
 
       - name: Typecheck
         run: npx tsc --noEmit
-        working-directory: ${{ matrix.app }}
 
       - name: Build
         run: npm run build
-        working-directory: ${{ matrix.app }}
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-
-  contracts:
-    name: Anchor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Check formatting
-        run: cd contracts && cargo fmt --all --check
-
-      # Clippy without the Solana toolchain checks the program logic; the full
-      # BPF build and integration tests run in the release workflow, where the
-      # validator setup is worth the minutes.
-      - name: Clippy
-        run: cd contracts && cargo clippy --all-targets -- -D warnings
 
   migrations:
     name: Migrations
@@ -116,6 +97,7 @@ jobs:
         run: |
           bash scripts/migrate.sh up
           bash scripts/migrate.sh status
+          bash scripts/migrate.sh seed
           for _ in $(ls database/migrations/*.up.sql); do
             bash scripts/migrate.sh down
           done

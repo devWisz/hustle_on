@@ -1,65 +1,103 @@
--- Development fixtures. Safe to run repeatedly; never run against production.
+-- Development seed data. Never loaded against production: scripts/migrate.sh
+-- refuses to run this when APP_ENV=production.
+--
+-- It creates one admin, two creators, and enough timelapses to exercise every
+-- state the review queue can be in — published, waiting, and rejected — so the
+-- queue and the feed both have something real to render on a fresh database.
+
 BEGIN;
 
-INSERT INTO users (id, email, email_verified_at, handle, display_name, role)
+TRUNCATE donations, timelapse_views, timelapses, audit_log,
+         wallet_challenges, sessions, magic_link_tokens, users RESTART IDENTITY CASCADE;
+
+INSERT INTO users (id, email, email_verified_at, handle, display_name, role, bio,
+                   payout_address, payout_verified_at)
 VALUES
-    ('11111111-1111-4111-8111-111111111111', 'maya@example.com',  now(), 'maya',   'Maya Rao',      'member'),
-    ('22222222-2222-4222-8222-222222222222', 'dev@example.com',   now(), 'kaito',  'Kaito Mori',    'member'),
-    ('33333333-3333-4333-8333-333333333333', 'admin@example.com', now(), 'admin',  'Platform Admin','admin')
-ON CONFLICT (id) DO NOTHING;
+  ('00000000-0000-0000-0000-000000000001', 'admin@sardhana.test', now(),
+   'admin', 'Sardhana Review', 'admin',
+   'Reviews every submission before it reaches the feed.', NULL, NULL),
 
-INSERT INTO profiles (user_id, headline, bio, location, skills, open_to_work, hourly_rate_usd)
+  ('00000000-0000-0000-0000-000000000002', 'mira@sardhana.test', now(),
+   'mira', 'Mira Okafor', 'member',
+   'Compiler work, mostly. I record the sessions because the interesting part is never in the commit.',
+   '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', now()),
+
+  ('00000000-0000-0000-0000-000000000003', 'dan@sardhana.test', now(),
+   'dan', 'Dan Whitfield', 'member',
+   'Building a synth in Rust in public.',
+   '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', now());
+
+INSERT INTO timelapses (id, user_id, slug, title, summary, github_url, x_url,
+                        storage_key, playback_url, thumbnail_url,
+                        duration_seconds, session_minutes, status,
+                        submitted_at, published_at, view_count)
 VALUES
-    ('11111111-1111-4111-8111-111111111111',
-     'Systems engineer building a storage engine in public',
-     'Five hours a day on a log-structured store written in Rust. Everything recorded.',
-     'Bengaluru', ARRAY['rust','databases','systems'], true, 95.00),
-    ('22222222-2222-4222-8222-222222222222',
-     'Product designer shipping one interface a week',
-     'Design sessions in full, from blank artboard to handoff.',
-     'Osaka', ARRAY['product-design','figma','prototyping'], true, 80.00),
-    ('33333333-3333-4333-8333-333333333333', 'Operations', NULL, NULL, '{}', false, NULL)
-ON CONFLICT (user_id) DO NOTHING;
+  ('00000000-0000-0000-0000-0000000000a1',
+   '00000000-0000-0000-0000-000000000002',
+   'rewriting-the-borrow-checker-pass',
+   'Rewriting the borrow-checker pass',
+   'Six hours on the region inference pass. The old implementation walked the CFG twice and still got nested loops wrong, so I rewrote it as a single fixpoint over the dominator tree. Most of the session is me being wrong about where the back edge belongs; the last forty minutes are the fix and the test that proves it.',
+   'https://github.com/mira/compiler', 'https://x.com/mira',
+   'uploads/00000000-0000-0000-0000-000000000002/2026/09/seed01.mp4',
+   'https://media.sardhana.test/seed01.mp4', NULL,
+   48, 372, 'published', now() - interval '3 days', now() - interval '2 days', 214),
 
-INSERT INTO social_links (user_id, platform, username, url, verified_at)
+  ('00000000-0000-0000-0000-0000000000a2',
+   '00000000-0000-0000-0000-000000000003',
+   'oscillator-bank-from-scratch',
+   'An oscillator bank from scratch',
+   'Started with nothing but a sample buffer and finished with eight voices of polyphony. The whole middle stretch is chasing an aliasing artefact that turned out to be an off-by-one in the wavetable index. Audio is muted here; the repo has the recordings.',
+   'https://github.com/dan/synth', NULL,
+   'uploads/00000000-0000-0000-0000-000000000003/2026/09/seed02.mp4',
+   'https://media.sardhana.test/seed02.mp4', NULL,
+   61, 245, 'published', now() - interval '2 days', now() - interval '1 day', 88),
+
+  ('00000000-0000-0000-0000-0000000000a3',
+   '00000000-0000-0000-0000-000000000002',
+   'incremental-parsing-second-attempt',
+   'Incremental parsing, second attempt',
+   'Reworking the parser so an edit re-parses the changed subtree instead of the whole file. This session is the tree-diff groundwork: node identity, stable spans, and a test harness that replays real editing sessions against it.',
+   'https://github.com/mira/compiler', NULL,
+   'uploads/00000000-0000-0000-0000-000000000002/2026/09/seed03.mp4',
+   NULL, NULL,
+   55, 190, 'in_review', now() - interval '4 hours', NULL, 0);
+
+INSERT INTO timelapses (user_id, slug, title, summary, storage_key,
+                        duration_seconds, session_minutes, status,
+                        submitted_at, review_note, reviewed_by, reviewed_at)
 VALUES
-    ('11111111-1111-4111-8111-111111111111', 'x',      'mayabuilds', 'https://x.com/mayabuilds', now()),
-    ('11111111-1111-4111-8111-111111111111', 'github', 'mayarao',    'https://github.com/mayarao', now()),
-    ('22222222-2222-4222-8222-222222222222', 'github', 'kaitomori',  'https://github.com/kaitomori', now())
-ON CONFLICT (user_id, platform) DO NOTHING;
+  ('00000000-0000-0000-0000-000000000003',
+   'a-rejected-submission',
+   'A rejected submission',
+   'This one exists so the dashboard has a rejection to render. The write-up does not describe any actual work, which is the reason it was declined.',
+   'uploads/00000000-0000-0000-0000-000000000003/2026/09/seed04.mp4',
+   30, 60, 'rejected', now() - interval '5 days',
+   'The write-up does not say what was built. Add a description of the work and resubmit.',
+   '00000000-0000-0000-0000-000000000001', now() - interval '4 days');
 
-INSERT INTO videos (id, user_id, slug, title, description, status, visibility,
-                    duration_seconds, session_minutes, published_at)
+-- One confirmed donation, so the totals on the feed are not all zero.
+INSERT INTO donations (timelapse_id, creator_id, donor_id, donor_address, payout_address,
+                       amount_lamports, message, signature, cluster, slot,
+                       status, confirmed_at)
 VALUES
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '11111111-1111-4111-8111-111111111111',
-     'write-ahead-log-day-14', 'Write-ahead log, day 14',
-     'Crash recovery path, start to finish. Six hours compressed to four minutes.',
-     'published', 'public', 240, 360, now() - interval '2 days'),
-    ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2', '22222222-2222-4222-8222-222222222222',
-     'checkout-flow-rebuild', 'Checkout flow rebuild',
-     'Blank file to shipped prototype in one sitting.',
-     'published', 'public', 180, 300, now() - interval '1 day')
-ON CONFLICT (id) DO NOTHING;
+  ('00000000-0000-0000-0000-0000000000a1',
+   '00000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000003',
+   '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+   '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+   250000000, 'The fixpoint rewrite was worth watching.',
+   'seedseedseedseedseedseedseedseedseedseedseedseedseedseedseedseed1234',
+   'devnet', 301994112, 'confirmed', now() - interval '1 day');
 
-INSERT INTO tags (name) VALUES ('rust'), ('databases'), ('design'), ('frontend')
-ON CONFLICT (name) DO NOTHING;
+-- Bring the denormalised counters in line with the rows above.
+UPDATE timelapses SET donation_count = 1, donation_total_lamports = 250000000
+ WHERE id = '00000000-0000-0000-0000-0000000000a1';
 
-INSERT INTO comments (video_id, user_id, body)
-VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
-        '22222222-2222-4222-8222-222222222222',
-        'The recovery replay at 2:10 is the clearest explanation of fsync ordering I have seen.')
-ON CONFLICT DO NOTHING;
+UPDATE users u SET timelapse_count = (
+    SELECT count(*) FROM timelapses t
+     WHERE t.user_id = u.id AND t.status = 'published');
 
-INSERT INTO jobs (client_id, slug, title, description, skills, engagement,
-                  budget_min_usd, budget_max_usd, status, published_at)
-VALUES ('22222222-2222-4222-8222-222222222222', 'rust-storage-consultant',
-        'Rust storage engine consultant',
-        'Two week engagement reviewing and hardening a log-structured storage layer. Deliverables are recorded work sessions plus a written report.',
-        ARRAY['rust','databases'], 'milestone', 4000, 8000, 'open', now())
-ON CONFLICT (slug) DO NOTHING;
-
-UPDATE profiles p SET video_count = (
-    SELECT count(*) FROM videos v WHERE v.user_id = p.user_id AND v.status = 'published'
-);
+UPDATE users SET donation_count = 1, donation_total_lamports = 250000000
+ WHERE id = '00000000-0000-0000-0000-000000000002';
 
 COMMIT;

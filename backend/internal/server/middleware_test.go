@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/sardhana/backend/internal/config"
 	"github.com/sardhana/backend/internal/ratelimit"
@@ -83,19 +82,5 @@ func TestRateLimitRejectsAFlood(t *testing.T) {
 	}
 	if rec.Header().Get("Retry-After") == "" {
 		t.Error("no Retry-After on a throttled response")
-	}
-}
-
-func TestCursorRoundTrip(t *testing.T) {
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	got, err := decodeCursor(encodeCursor(now))
-	if err != nil {
-		t.Fatalf("decodeCursor: %v", err)
-	}
-	if !got.Equal(now) {
-		t.Fatalf("cursor round trip gave %v, want %v", got, now)
-	}
-	if _, err := decodeCursor("not-a-cursor"); err == nil {
-		t.Error("a malformed cursor was accepted")
 	}
 }

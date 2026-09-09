@@ -1,107 +1,98 @@
 # Design system
 
-The interface is typography-led and monochrome with one accent. There are no
-emoji anywhere in the product — an emoji renders differently on every platform,
-carries no accessible name, and reads as decoration next to work people are
-asking to be paid for. Icons are inline SVG from `components/icons.tsx`.
+The interface is typography-led and monochrome with a single accent. It has no
+emoji anywhere — an emoji renders differently on every platform, carries no
+accessible name, and reads as decoration next to the work people are publishing
+here. Icons are inline SVG in `components/icons.tsx`.
+
+Do not introduce a new colour, radius or shadow without adding it here first.
 
 ## Tokens
 
-Everything is a CSS custom property in `app/globals.css`. Components reference
-tokens; no component contains a hex value. Dark mode swaps the variables, so
-there is no second set of classes to keep in sync.
+Every colour in the product is declared in `app/globals.css`. Components
+reference the token, never a raw value, so dark mode is a variable swap and
+nothing downstream needs a second set of classes.
 
-| Token | Light | Dark | Use |
-| ----- | ----- | ---- | --- |
-| `--bg` | `#fbfbfa` | `#0c0c0b` | page ground |
-| `--surface` | `#ffffff` | `#141413` | cards, header |
-| `--surface-raised` | `#ffffff` | `#1b1b19` | hover, wells, skeletons |
-| `--border` | `#e7e5e1` | `#272623` | default hairline |
-| `--border-strong` | `#d6d3cd` | `#383733` | hover state of a control |
-| `--fg` | `#191815` | `#f4f3f0` | primary text |
-| `--fg-muted` | `#5f5b55` | `#a5a097` | body copy, secondary |
-| `--fg-subtle` | `#8d887f` | `#77726a` | metadata, captions |
-| `--accent` | `#10715a` | `#3fb28c` | primary action, money |
-| `--danger` | `#a72f2f` | `#e08585` | destructive, errors |
+| Token | Role |
+| --- | --- |
+| `--bg` | Page ground |
+| `--surface` | Cards, inputs |
+| `--surface-raised` | Hover, skeletons, insets |
+| `--border` / `--border-strong` | Default and hover borders |
+| `--fg` / `--fg-muted` / `--fg-subtle` | Primary, secondary, tertiary text |
+| `--accent` / `--accent-hover` / `--accent-fg` / `--accent-soft` | The one accent |
+| `--danger` / `--danger-soft` | Rejections, destructive actions |
 
-The accent means one thing: value moving to a person. Sponsorship figures,
-primary actions and verified marks use it. It is never decorative.
+Three radii (`control` 8px, `card` 12px, `panel` 16px) and two shadows. That is
+the whole vocabulary.
 
-Dark mode follows the system preference unless the visitor has chosen
-explicitly, in which case `data-theme` on `:root` wins in both directions.
+**Theme.** Light is defined on bare `:root`. Dark is redefined under
+`@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`,
+and again under `:root[data-theme="dark"]` so an explicit choice wins in both
+directions. A small script in `layout.tsx` applies the stored preference before
+first paint, so the page does not flash the wrong theme and then swap.
 
 ## Type
 
-Inter, loaded through `next/font` so there is no layout shift and no request to
-a third-party font host at runtime.
+Inter, with `font-feature-settings` for the alternate glyphs. Headings tighten
+tracking to `-0.021em` and use `text-wrap: balance`; body copy stays at natural
+spacing with `text-wrap: pretty`, because long write-ups are meant to be read.
 
-| Role | Size | Weight | Tracking |
-| ---- | ---- | ------ | -------- |
-| Display | 40–56px | 600 | −0.021em |
-| Page title | 26–28px | 600 | −0.021em |
-| Section | 17–19px | 600 | −0.021em |
-| Body | 15px | 400 | normal |
-| UI | 13–14px | 400–500 | normal |
-| Meta | 12px | 400 | normal |
+Sizes are set explicitly (`text-[15px]`, `text-[13px]`) rather than by scale
+name — the steps this interface needs are narrower than Tailwind's defaults.
 
-Headings tighten tracking and use `text-wrap: balance`; body copy stays at
-natural spacing with `text-wrap: pretty`. Numbers that sit in columns or update
-in place use `tabular-nums`.
+All numbers use `tabular-nums`. A donation total that shifts width as it
+animates is worse than no animation.
 
-## Space and shape
+Prose caps at `68ch`. The "what I did" section on a watch page is the longest
+text in the product and gets the leading to match (`leading-[1.7]`).
 
-Spacing is Tailwind's 4px scale. Section rhythm is 40px on mobile, 56–80px on
-desktop. Three radii only: 8px controls, 12px cards, 16px panels. Two shadows,
-both nearly invisible — separation comes from borders, not elevation.
+## Primitives
 
-## Layout
+Everything visual is assembled from `components/ui.tsx`, so a change to a radius
+or a focus ring happens once: `Button`, `ButtonLink`, `Card`, `Input`,
+`Textarea`, `Field`, `Badge`, `Avatar`, `Stat`, `SectionHeading`, `EmptyState`,
+`Container`, `SpinnerCard`.
 
-`Container` provides the only three widths: `narrow` (2xl) for reading and
-forms, `default` (5xl) for lists, `wide` (6xl) for the feed and profiles.
+`Field` is the one to reach for in forms. It binds a real `<label>` by id, wires
+the hint through `aria-describedby`, and announces errors with `role="alert"`.
+Forms are where accessibility lapses cost people the most, so the correct wiring
+is the path of least effort.
 
-Content-plus-sidebar pages use `grid-cols-[minmax(0,1fr)_320px]` and stack
-below `lg`. The sidebar is `sticky top-20` on wide screens, so the sponsorship
-panel stays reachable while reading a long description.
+`Container` has three widths — `narrow` (2xl), `default` (5xl), `wide` (6xl).
+Every route uses one; no page sets its own max-width.
 
-Placement follows what a visitor needs next. On a session page the video comes
-first, the person second, the sponsor panel is at the top of the sidebar where
-the eye lands after the title, and comments sit below the description. On a
-profile, the numbers that establish credibility are in the sidebar and the work
-itself takes the main column.
+## Rules
 
-## Components
+**One accent.** It marks the primary action and the published state. If two
+things on a screen are accented, one of them is wrong.
 
-`components/ui.tsx` holds the primitives: `Button`, `ButtonLink`, `Card`,
-`Input`, `Textarea`, `Field`, `Badge`, `Avatar`, `Stat`, `SectionHeading`,
-`EmptyState`, `Container`. Anything visual is assembled from these.
+**Status is a word, not a colour.** `StatusBadge` says "Waiting for review", not
+a coloured dot. Colour reinforces; it never carries the meaning alone.
 
-Buttons have four variants — primary, secondary, ghost, danger — and three
-sizes. One primary action per view.
+**Empty states say what to do.** `EmptyState` takes an action for a reason. "No
+submissions yet" with an upload button beats an empty grid.
 
-`Field` wires the label, hint and error correctly by construction: a real
-`<label>` bound by id, the hint referenced by `aria-describedby`, and errors
-announced with `role="alert"`. Forms are where accessibility lapses cost people
-the most, so the correct wiring is the path of least effort.
+**Never fabricate content.** No placeholder avatars of invented people, no
+sample metrics, no simulated player. An empty state is honest; fake data is not.
 
-`EmptyState` exists because every list can legitimately be empty, and an empty
-list should explain what fills it and offer the action that does.
+**Focus is always visible.** One treatment, defined once in `globals.css`.
+Keyboard users must never have to guess where they are.
 
-## Interaction rules
+**Motion is optional.** `prefers-reduced-motion` collapses every animation to
+0.01ms in `globals.css`. Nothing should depend on movement to be understood.
 
-- One visible focus treatment, everywhere: a 2px accent outline with 2px
-  offset. Never removed.
-- Loading buttons set `aria-busy` and keep their label, so the button does not
-  change width mid-action.
-- Every state-changing control has an idle, pending, success and failure state.
-  Failure says what happened and what was not changed.
-- `prefers-reduced-motion` disables animation globally.
-- Filters are plain GET forms with shareable URLs, and work without JavaScript.
-- Wide content scrolls inside its own container; the page body never scrolls
-  horizontally.
+**Wide content scrolls itself.** Tables, code and diagrams go in an
+`overflow-x: auto` container. The page body never scrolls horizontally.
 
-## Accessibility
+## Voice
 
-Every page starts with a skip link. Images are `alt=""` when decorative and
-described when not. Icons carry a `title` only when they convey meaning alone.
-Colour never carries information by itself — a verified link has a check mark
-and says "verified" in its accessible name.
+Plain sentences. Say what happened and what to do next.
+
+- "Waiting for review" — not "PENDING_REVIEW".
+- "You cancelled the transaction." — not "Error: user rejected request".
+- "This creator has not set up a wallet to receive donations yet." — not
+  "payout_address is null".
+
+Error messages are for the person reading them. The internal cause goes to the
+log, with a request id that ties the two together.

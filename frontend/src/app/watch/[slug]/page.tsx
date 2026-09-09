@@ -2,205 +2,157 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiServer } from "@/lib/api";
-import type { Comment, Page, SelfUser, Sponsorship, Video } from "@/lib/types";
-import { Avatar, Badge, Card, Container } from "@/components/ui";
-import { SponsorPanel } from "@/components/sponsor-panel";
-import { CommentThread } from "@/components/comment-thread";
-import { FollowButton } from "@/components/follow-button";
-import { ReportButton } from "@/components/report-button";
-import { ShareButton } from "@/components/share-button";
+import type { Donation, Timelapse } from "@/lib/types";
+import { formatCount, formatDate, formatSession, formatSol } from "@/lib/format";
 import { TimelapsePlayer } from "@/components/timelapse-player";
-import { ClockIcon } from "@/components/icons";
-import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
+import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/donate-panel";
+import { Avatar, Card, Container } from "@/components/ui";
+import { ClockIcon, EyeIcon, GitHubIcon, XIcon } from "@/components/icons";
 
-interface SessionResponse {
-  authenticated: boolean;
-  user?: SelfUser;
+export const revalidate = 30;
+
+interface Props {
+  params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const video = await apiServer<Video>(`/v1/videos/${slug}`);
-  if (!video) return { title: "Session not found" };
-
+  const t = await apiServer<Timelapse>(`/v1/timelapses/${slug}`);
+  if (!t) return { title: "Timelapse" };
   return {
-    title: video.title,
-    description:
-      video.description?.slice(0, 160) ?? `A work session by ${video.creator.displayName}.`,
-    openGraph: {
-      title: video.title,
-      description: video.description?.slice(0, 160),
-      images: video.thumbnailUrl ? [video.thumbnailUrl] : undefined,
-      type: "video.other",
-    },
+    title: t.title,
+    description: t.summary.slice(0, 160),
+    openGraph: { title: t.title, description: t.summary.slice(0, 160), type: "video.other" },
   };
 }
 
-export default async function WatchPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function WatchPage({ params }: Props) {
   const { slug } = await params;
+  const timelapse = await apiServer<Timelapse>(`/v1/timelapses/${slug}`);
+  if (!timelapse) notFound();
 
-  const [video, comments, sponsors, session] = await Promise.all([
-    apiServer<Video>(`/v1/videos/${slug}`, 15),
-    apiServer<Page<Comment>>(`/v1/videos/${slug}/comments?limit=25`, 0),
-    apiServer<Page<Sponsorship>>(`/v1/videos/${slug}/sponsors?limit=8`, 15),
-    apiServer<SessionResponse>("/v1/auth/session", 0),
+  const [creator, donations] = await Promise.all([
+    apiServer<{ payoutAddress?: string }>(`/v1/creators/${timelapse.creator.handle}`, 120),
+    apiServer<{ items: Donation[] }>(`/v1/timelapses/${slug}/donations`),
   ]);
 
-  if (!video) notFound();
-  const viewer = session?.authenticated ? session.user : undefined;
-
   return (
-    <Container width="wide" className="py-8 sm:py-10">
+    <Container width="wide" className="py-10">
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
-          <TimelapsePlayer video={video} />
+          <TimelapsePlayer timelapse={timelapse} />
 
-          <h1 className="mt-6 text-[24px] font-semibold leading-snug tracking-tight">
-            {video.title}
-          </h1>
+          <h1 className="mt-6 text-[26px] font-semibold leading-tight">{timelapse.title}</h1>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-muted">
-            <span>{formatCount(video.viewCount)} views</span>
-            {video.publishedAt ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{timeAgo(video.publishedAt)}</span>
-              </>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-muted">
+            {timelapse.sessionMinutes > 0 ? (
+              <span className="flex items-center gap-1.5">
+                <ClockIcon size={14} />
+                {formatSession(timelapse.sessionMinutes)}
+              </span>
             ) : null}
-            {video.sessionMinutes ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1">
-                  <ClockIcon size={14} />
-                  {formatSession(video.sessionMinutes)}
-                </span>
-              </>
+            <span className="flex items-center gap-1.5 tabular-nums">
+              <EyeIcon size={14} />
+              {formatCount(timelapse.viewCount)} views
+            </span>
+            {timelapse.publishedAt ? (
+              <time dateTime={timelapse.publishedAt}>{formatDate(timelapse.publishedAt)}</time>
             ) : null}
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-border py-4">
-            <div className="flex items-center gap-3">
-              <Link href={`/creator/${video.creator.handle}`}>
-                <Avatar name={video.creator.displayName} src={video.creator.avatarUrl} size={40} />
-              </Link>
-              <div>
-                <Link
-                  href={`/creator/${video.creator.handle}`}
-                  className="text-sm font-medium hover:text-accent"
-                >
-                  {video.creator.displayName}
-                </Link>
-                <p className="text-[13px] text-fg-subtle">@{video.creator.handle}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <FollowButton
-                handle={video.creator.handle}
-                signedIn={Boolean(viewer)}
-                isSelf={viewer?.id === video.creator.id}
-              />
-              <ShareButton
-                title={video.title}
-                text={`A work session by ${video.creator.displayName}.`}
-                path={`/watch/${video.slug}`}
-              />
-              <ReportButton subjectType="video" subjectId={video.id} signedIn={Boolean(viewer)} />
-            </div>
-          </div>
+          <CreatorLine timelapse={timelapse} />
 
-          {video.description ? (
-            <div className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-fg-muted">
-              {video.description}
+          {/* The write-up is the substance of a submission, so it gets the
+              width and the leading of something meant to be read. */}
+          <section className="mt-8">
+            <h2 className="text-[15px] font-semibold">What I did</h2>
+            <div className="mt-3 max-w-[68ch] whitespace-pre-wrap text-[15px] leading-[1.7] text-fg">
+              {timelapse.summary}
             </div>
-          ) : null}
+          </section>
 
-          {video.tags.length > 0 ? (
-            <ul className="mt-5 flex flex-wrap gap-1.5">
-              {video.tags.map((tag) => (
-                <li key={tag}>
-                  <Link href={`/discover?tag=${tag}`}>
-                    <Badge>{tag}</Badge>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <CommentThread
-            slug={slug}
-            initialComments={comments?.items ?? []}
-            signedIn={Boolean(viewer)}
-            currentUserId={viewer?.id}
-          />
+          <WorkLinks timelapse={timelapse} />
         </div>
 
-        <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-          <SponsorPanel
-            creatorHandle={video.creator.handle}
-            creatorName={video.creator.displayName}
-            videoId={video.id}
-            hasWallet={Boolean(video.creator.wallet)}
-          />
-          <SponsorList sponsors={sponsors?.items ?? []} total={video.sponsorTotalLamports} />
+        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+          {creator?.payoutAddress ? (
+            <DonatePanel timelapse={timelapse} />
+          ) : (
+            <DonationsUnavailable handle={timelapse.creator.displayName} />
+          )}
+
+          <Card className="p-5">
+            <h2 className="text-[15px] font-semibold">
+              Supporters
+              {timelapse.donationTotalLamports > 0 ? (
+                <span className="ml-2 font-normal tabular-nums text-fg-muted">
+                  {formatSol(timelapse.donationTotalLamports)}
+                </span>
+              ) : null}
+            </h2>
+            <div className="mt-2">
+              <SupporterList donations={donations?.items ?? []} />
+            </div>
+          </Card>
         </aside>
       </div>
     </Container>
   );
 }
 
-function SponsorList({ sponsors, total }: { sponsors: Sponsorship[]; total: number }) {
+function CreatorLine({ timelapse }: { timelapse: Timelapse }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold">Sponsors</h2>
-        <span className="text-sm font-medium tabular-nums text-accent">{formatSol(total)}</span>
-      </div>
+    <Link
+      href={`/creator/${timelapse.creator.handle}`}
+      className="mt-5 flex items-center gap-3 border-y border-border py-4 transition-colors hover:text-accent"
+    >
+      <Avatar name={timelapse.creator.displayName} src={timelapse.creator.avatarUrl} size={36} />
+      <span>
+        <span className="block text-sm font-medium">{timelapse.creator.displayName}</span>
+        <span className="block text-[13px] text-fg-muted">@{timelapse.creator.handle}</span>
+      </span>
+    </Link>
+  );
+}
 
-      {sponsors.length === 0 ? (
-        <p className="mt-3 text-[13px] leading-relaxed text-fg-muted">
-          No sponsorships yet. The first one shows up here immediately after it settles.
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-4">
-          {sponsors.map((sponsor) => (
-            <li key={sponsor.id} className="flex gap-3">
-              <Avatar
-                name={sponsor.sponsor?.displayName ?? "Anonymous"}
-                src={sponsor.sponsor?.avatarUrl}
-                size={28}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-baseline justify-between gap-2 text-[13px]">
-                  <span className="truncate font-medium">
-                    {sponsor.sponsor ? (
-                      <Link
-                        href={`/creator/${sponsor.sponsor.handle}`}
-                        className="hover:text-accent"
-                      >
-                        {sponsor.sponsor.displayName}
-                      </Link>
-                    ) : (
-                      "Anonymous"
-                    )}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-fg-muted">
-                    {formatSol(sponsor.amount)}
-                  </span>
-                </p>
-                {sponsor.message ? (
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">
-                    {sponsor.message}
-                  </p>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+/**
+ * Where the work can be checked.
+ *
+ * Both links are optional, so the section disappears entirely rather than
+ * leaving two disabled buttons behind.
+ */
+function WorkLinks({ timelapse }: { timelapse: Timelapse }) {
+  if (!timelapse.githubUrl && !timelapse.xUrl) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="text-[15px] font-semibold">Where this work lives</h2>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {timelapse.githubUrl ? (
+          <WorkLink href={timelapse.githubUrl} icon={<GitHubIcon size={15} />} label="GitHub" />
+        ) : null}
+        {timelapse.xUrl ? (
+          <WorkLink href={timelapse.xUrl} icon={<XIcon size={14} />} label="X" />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function WorkLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      // noopener is what stops the opened page from reaching back into this
+      // one through window.opener; noreferrer keeps our URL out of its logs.
+      rel="noopener noreferrer nofollow"
+      className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border px-3 text-[13px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+    >
+      {icon}
+      {label}
+      <span className="max-w-[22ch] truncate text-fg-subtle">
+        {href.replace(/^https:\/\/(www\.)?/, "")}
+      </span>
+    </a>
   );
 }

@@ -1,71 +1,108 @@
 # Deployment
 
-## Environments
+Three things to run: the Go API, the Next.js app, and a Postgres database.
+Object storage and a transactional email provider are external.
 
-| Environment | Database | Cluster | Notes |
-| ----------- | -------- | ------- | ----- |
-| development | Neon branch per developer | devnet | Login links printed to the log |
-| preview | Neon branch per pull request | devnet | Created and destroyed by CI |
-| staging | `staging` branch | devnet | Mirrors production configuration |
-| production | `main` branch | mainnet-beta | |
+## Before the first deploy
 
-## What production refuses to start without
+Generate a session secret per environment and store it in that environment's
+secret manager, never in a tracked file:
 
-`config.Load` fails fast rather than degrading, so a missing variable cannot
-quietly weaken a deployment. In production it requires `RESEND_API_KEY`, an
-https `WEB_PUBLIC_URL`, object storage credentials, and
-`SOLANA_CLUSTER=mainnet-beta`. `SESSION_SECRET` must be at least 32 bytes in
-every environment.
+```bash
+bash scripts/gen-secrets.sh
+```
 
-## Secrets
+Production refuses to start without a Resend key, without storage credentials,
+or on any cluster other than `mainnet-beta`. That is deliberate: the development
+conveniences are refused outright rather than degraded, so a variable somebody
+forgot cannot silently weaken the deployment.
 
-Generate with `scripts/gen-secrets.sh` and store them in the platform's secret
-manager. Never in the repository, never in a build argument, never in an image
-layer. Rotating `SESSION_SECRET` invalidates every session and every CSRF
-token, which signs everyone out — acceptable in an incident, disruptive
-otherwise.
+## Environment
 
-## Release order
+Everything in `.env.example` applies. What changes in production:
 
-Deploy in the order that keeps old and new code both working:
+```bash
+APP_ENV=production
+LOG_LEVEL=info
+WEB_PUBLIC_URL=https://sardhana.com          # https is enforced
+CORS_ALLOWED_ORIGINS=https://sardhana.com
+TRUST_PROXY_HEADERS=true                     # only behind a proxy that sets XFF
 
-1. **Migrations** — additive only, against the direct (unpooled) endpoint.
-2. **Backend** — the new binary, which writes both old and new shapes.
-3. **Frontends** — they can only call what the API already serves.
-4. **Cleanup migration** — dropping the old column, in a later release.
+DATABASE_URL=…pooler…                        # the API uses the pooled endpoint
+DATABASE_URL_DIRECT=…                        # migrations use the direct one
 
-The program is separate. Deploying it changes the id in `Anchor.toml`,
-`declare_id!`, `SOLANA_PROGRAM_ID` and `NEXT_PUBLIC_PROGRAM_ID`; all four must
-agree, and clients must be redeployed with the new id.
+RESEND_API_KEY=…
+SOLANA_CLUSTER=mainnet-beta
+SOLANA_RPC_URL=…                             # a paid endpoint; the public one rate limits
+STORAGE_ACCESS_KEY_ID=…
+STORAGE_SECRET_ACCESS_KEY=…
+STORAGE_PUBLIC_BASE_URL=https://media.sardhana.com
+```
 
-## Backend
+`TRUST_PROXY_HEADERS` must stay false unless something in front of the API
+overwrites `X-Forwarded-For`. Honouring it otherwise lets any client claim any
+address and bypass every per-address limit.
 
-`backend/Dockerfile` builds a static binary into a distroless non-root image
-listening on port `8085`. It copies both module roots because the auth module
-is referenced by a `replace` directive.
+## Build
 
-Point the platform's liveness check at `/health` (or `/healthz`) and the readiness
-check at `/health/ready`, which verifies the database connection.
+```bash
+make build     # backend/bin/api and frontend/.next
+```
 
-## Frontends
+`backend/Dockerfile` builds a static binary on a distroless base.
 
-Both are standard Next.js applications (frontend on port `3000`, admin on port `3002`).
-Set `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL` and the Solana variables at build time
-— they are inlined into the bundle, so only non-secret values belong there. Frontend
-deployments can use Vercel, Node server environments, or Docker containers.
+## Migrations
 
-Put the admin console behind whatever access control the organisation already
-has: a VPN, an identity-aware proxy or an IP allow list. The API's role check
-is the authorisation boundary; network restriction is depth on top of it.
+Run them as a release step, before the new API starts:
 
-## Behind a proxy
+```bash
+DATABASE_URL_DIRECT=… bash scripts/migrate.sh up
+```
 
-Set `TRUST_PROXY_HEADERS=true` **only** when a proxy you control sets
-`X-Forwarded-For`. Trusting it on a directly-reachable service lets any client
-spoof their address and evade every per-address limit.
+Each migration and its bookkeeping row commit together, so a failure leaves
+neither a half-applied schema nor a false record of success. An advisory lock
+means two instances starting at once cannot both apply the same migration.
 
-## Rollback
+Write migrations so the previous version of the API still works against the new
+schema — add columns before writing to them, drop them a release later. That way
+a rollback of the application does not require a rollback of the database.
 
-Backend and frontends roll back by redeploying the previous image. Migrations
-do not roll back automatically — apply the `.down.sql` deliberately, and only
-after confirming no running version still writes the columns it drops.
+## Health checks
+
+| Endpoint | Use |
+| --- | --- |
+| `GET /health` | Liveness. Answers as long as the process is up |
+| `GET /health/ready` | Readiness. Pings the database; 503 when it is unreachable |
+
+Point the load balancer at `/health/ready` so an instance that cannot reach
+Postgres is taken out of rotation rather than serving errors.
+
+## Shutdown
+
+`SIGTERM` starts a graceful drain with a 20-second timeout. Give the platform at
+least 30 seconds before it sends `SIGKILL`.
+
+## After deploying
+
+- Request a sign-in link and open it end to end.
+- Upload something, approve it, confirm it appears on the feed.
+- Check `/health/ready` returns 200.
+- Confirm the footer says `mainnet-beta`.
+
+## Operational notes
+
+**Logs** are structured JSON with a request id on every line, echoed to the
+client as `X-Request-Id`. A user reporting a failure can be matched to the exact
+request.
+
+**Query strings are never logged** — the sign-in callback carries a token in
+one.
+
+**The settle worker** runs inside the API process, sweeping unconfirmed
+donations every two minutes. Running several API instances means several
+sweepers; that is safe, because `ConfirmDonation` is idempotent on
+`status = 'submitted'`.
+
+**Backups** are Neon's point-in-time restore. Object storage is separate —
+losing it loses the video for every published timelapse, so it needs its own
+backup or replication policy.

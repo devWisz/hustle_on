@@ -1,137 +1,134 @@
 # Security
 
-The platform holds three things worth attacking: people's accounts, their
-money, and their published work. This document states what protects each, in
-enough detail to be checked.
+Read this before touching authentication, uploads, review, or payment
+verification.
+
+## The shape of the trust
+
+| Asset | Protected by | Compromise means |
+| --- | --- | --- |
+| Sessions | Digest-only storage, HttpOnly cookie, CSRF | Impersonation |
+| Payout addresses | ed25519 proof, `UNIQUE`, paired `CHECK` | Donations redirected |
+| The public feed | `requireAdmin` + `audit_log` | Unreviewed content published |
+| Donations | On-chain re-verification, `UNIQUE` signature | Fabricated totals |
+| Uploaded video | Presigned keys scoped to the owner | Cross-account writes |
+
+Note what is **not** on that list: nobody's SOL. The platform holds no private
+key. An attacker with full control of this API can lie about what the site
+displays; they cannot take the money, because it never passes through here.
 
 ## Authentication
 
-**No passwords exist.** Sign-in sends a single-use link. There is no password
-hash to crack, no credential to reuse elsewhere, and no reset flow to abuse.
+No password exists anywhere in the schema, so there is nothing to leak, reset or
+reuse. Sign-in links and session tokens are stored as SHA-256 digests; the
+plaintext lives only in a recipient's inbox or a browser cookie.
 
-**Tokens are stored as digests.** Both magic-link and session tokens are 256
-bits of entropy; only their SHA-256 digest is persisted. A database disclosure
-yields nothing usable. SHA-256 rather than a password hash is deliberate: the
-input is already high-entropy, so stretching would cost every request time and
-buy nothing.
+Full detail in [auth.md](auth.md). The properties that matter:
 
-**Links are genuinely single-use.** Consumption is one statement —
-`UPDATE ... WHERE consumed_at IS NULL AND expires_at > now() RETURNING ...` —
-so two concurrent requests race on the row lock and only one wins.
+- `request-link` answers identically for every address, so it cannot be used to
+  enumerate accounts.
+- Links are single-use, enforced by `consumed_at IS NULL` inside the same
+  `UPDATE` that reads the row — two concurrent requests race on the row lock.
+- Accounts are created on verification, not on request, so an unverified address
+  can never hold a handle.
+- `next` must be a local path; absolute and protocol-relative values are
+  rejected, or the emailed link becomes an open redirect.
 
-**Enumeration is closed.** Requesting a link returns the same response and
-takes the same path whether the address is unknown, active or suspended.
+## CSRF
 
-**Sessions are opaque and revocable.** The cookie is `HttpOnly` (an XSS bug
-cannot exfiltrate it), `Secure`, `SameSite=Lax`, host-only and path-scoped.
-Suspending an account revokes every live session in the same transaction as the
-suspension.
+Two independent checks, both required on every state-changing request:
 
-## Cross-site request forgery
+1. `Origin` (or `Referer`) on the allowlist — set by the browser, unforgeable
+   by a page.
+2. `X-Sardhana-CSRF` matching an HMAC of this session's digest under
+   `SESSION_SECRET`.
 
-Two independent checks guard every state-changing request:
+The CSRF cookie is readable by script on purpose — the frontend must echo it.
+That is safe because it is derived server-side: planting a cookie value does not
+produce the matching token.
 
-1. The `Origin` (or `Referer`) must be on the allowlist. This stops the request
-   at the browser boundary.
-2. The `X-Sardhana-CSRF` header must match an HMAC of the session digest, keyed
-   by a server secret. A token lifted from another session does not verify.
+CORS reflects only allowlisted origins. Credentials are allowed, which is
+exactly why the origin is never reflected blindly.
 
-Anonymous requests — asking for a login link, verifying one — have no session
-to bind a token to, so the origin check stands alone there. That is covered by
-tests in `auth/csrf_test.go`.
+## SQL
 
-## Authorisation
-
-Ownership is expressed in the SQL wherever it can be. Changing an application's
-status joins through `jobs.client_id`; a guessed id belonging to someone else's
-posting matches no row. This survives refactoring in a way that a separate
-`if` statement does not.
-
-Roles are three: member, moderator, admin. Moderators act on content; only
-admins suspend or ban accounts, enforced in the API independently of what the
-console offers.
-
-## Payments
-
-**Client claims are never trusted.** A reported signature only tells the API
-where to look. Before any total moves, `internal/solana` fetches the
-**finalized** transaction and checks the balance deltas: the recipient must
-have gained at least the expected lamports, and the payer's balance must have
-fallen. Reading the deltas rather than decoding instructions means a
-transaction that emits convincing logs while transferring nothing does not pass.
-
-**The destination comes from the server.** A sponsorship intent returns the
-creator's payout address from our database. If the client chose it, a tampered
-page could redirect money while still showing the creator's name.
-
-**Confirmation is idempotent.** `ConfirmSponsorship` only matches rows not
-already confirmed, so the request path and the background reconciler can both
-run without double-crediting.
-
-**On-chain limits are on chain.** `MAX_FEE_BPS` caps the platform fee at 10% in
-the program. The treasury is pinned to the config account, so a caller cannot
-pass their own account and collect the fee. No instruction lets the authority
-move user funds; pausing blocks new deposits and never touches escrowed money.
-
-## Wallets
-
-Attaching a wallet requires signing a server-issued nonce. The message is
-rebuilt on the server from the stored nonce before verification, so a signature
-captured elsewhere cannot be replayed. A wallet address belongs to exactly one
-account. The site never asks for a seed phrase or a private key, and says so on
-the pages where someone might be phished.
+All SQL lives in `backend/internal/store`. Handlers call methods; they never
+build queries. Every statement uses bound parameters, and string interpolation
+into SQL is not permitted in the package. This is a structural property, not a
+review checklist.
 
 ## Uploads
 
-Presigned PUT URLs are scoped to one object key under `uploads/<user id>/`,
-expire in fifteen minutes, and sign the content type. The type allowlist is
-video-only: an HTML or SVG file accepted here and served from a bucket origin
-would be stored cross-site scripting. `OwnsKey` re-checks the prefix before a
-database row is attached to an object.
+The browser uploads directly to object storage. The API never sees the bytes;
+what it controls is the URL.
 
-## Input handling
+- The object key embeds the owner's account id, and the signature covers it.
+  Editing the URL into another prefix invalidates it.
+- `media.OwnsKey` re-checks the prefix before a key is attached to any row.
+- Content types are a strict allowlist and are part of the signature. This is a
+  security control, not metadata: an HTML file accepted here and served from a
+  bucket origin is stored cross-site scripting.
+- Size is capped by `UPLOAD_MAX_BYTES` at both ends.
+- The local development upload routes are registered **only** when no bucket is
+  configured, so production never carries an unauthenticated write endpoint.
 
-Every request body is size-capped at 1 MiB, decoded with unknown fields
-rejected, and validated before it reaches the database. Text is stripped of
-control characters and measured in runes, not bytes. All SQL uses bound
-parameters — string interpolation into SQL appears nowhere in `internal/store`,
-which is what makes injection a structural impossibility rather than a review
-finding.
+## Authorisation
+
+`requireAdmin` gates every endpoint that can change what the public sees. Every
+decision writes an `audit_log` row naming the actor, the subject and the reason.
+
+Where existence is itself private, the answer is **404**, not 403:
+
+- An unpublished timelapse, to anyone but its creator and an admin.
+- The `/admin` page, to a signed-in member.
+
+A 403 confirms that the thing exists.
+
+Edge middleware redirects signed-out visitors away from private pages, but it
+authorises nothing — the cookie's presence is only a hint. The real check runs
+in the API on every request, against the session record. Middleware that decided
+access on a cookie's existence would be bypassed by setting one.
+
+## What is exposed
+
+`internal/domain` is the wire contract. A column is invisible to clients until
+someone adds a field for it deliberately. On top of that, `redactForPublic`
+strips `reviewNote` and `submittedAt` from every public payload.
+
+Public stats deliberately omit queue depth, so the site cannot be used to
+measure how far behind review is.
+
+## Privacy of viewers
+
+Signed-out views are deduplicated by an HMAC of the caller's address, salted
+with the date, under `SESSION_SECRET`. The address itself is never stored.
+Tomorrow the same visitor hashes to something unrelated, so the table cannot
+become a record of who watched what over time.
+
+## Response headers
+
+The API returns JSON only, so its policy is as tight as it goes:
+`default-src 'none'; frame-ancestors 'none'; base-uri 'none'`, plus `nosniff`,
+`DENY`, `no-referrer` and HSTS in production. The frontend sets its own CSP in
+`middleware.ts`.
 
 ## Rate limiting
 
-A per-address token bucket protects the whole API; a tighter budget applies to
-sign-in attempts and comment posting. `X-Forwarded-For` is only honoured when
-`TRUST_PROXY_HEADERS=true`, because a spoofable header would let anyone
-sidestep every per-address limit.
+60 requests per minute per address by default; 5 sign-in attempts; 5 links per
+email per hour.
 
-## Output and transport
+`X-Forwarded-For` is honoured **only** when `TRUST_PROXY_HEADERS=true`, which
+defaults to false. Trusting it with nothing in front to overwrite it lets any
+client claim any address and walk past every per-address limit.
 
-The API returns JSON only, under a CSP of `default-src 'none'`. The web apps
-ship an explicit CSP, `frame-ancestors 'none'`, `nosniff`, a referrer policy
-and HSTS. React escapes all user text; nothing in the codebase renders
-user-supplied HTML.
+## Production refuses to degrade
 
-## Privacy
+`config.Load` will not start in production without a Resend key, without storage
+credentials, or on any cluster other than `mainnet-beta`. A missing variable
+fails loudly rather than silently weakening the deployment.
 
-View deduplication uses a salted one-way digest of address, user agent, video
-and date — enough to stop a refresh loop, not enough to identify a person.
-Anonymous sponsorships are stripped in the store layer, so no handler can leak
-the identity by forgetting to check. Query strings are excluded from request
-logs because the login callback carries a token.
+## Reporting a vulnerability
 
-## What is deliberately not claimed
-
-- The Anchor program has not been externally audited. That is a prerequisite
-  for mainnet, listed in `contracts/README.md`.
-- The rate limiter is per-process. A multi-instance deployment needs a limit at
-  the edge as well; this is the last line, not the first.
-- Social links are pinned to their platform's domain but verification of
-  account *control* (proving the GitHub account is yours) is not implemented
-  yet. Unverified links render without a check mark, and the accessible name
-  says so.
-
-## Reporting
-
-security@sardhana.com. Acknowledgement within one business day. Please do not
-test against other people's accounts or funds.
+Email `security@sardhana.com`. Include what you did and what you observed.
+Please do not open a public issue, and please do not test against other people's
+accounts or content.

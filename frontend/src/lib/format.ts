@@ -1,9 +1,14 @@
-/** Presentation helpers. Formatting lives here so numbers read the same way
- *  on every surface. */
+/**
+ * Presentation helpers.
+ *
+ * Formatting lives here so a number reads the same way on every surface: a SOL
+ * total in the feed, on the watch page and in the dashboard should never be
+ * rounded three different ways.
+ */
 
-const LAMPORTS_PER_SOL = 1_000_000_000;
+export const LAMPORTS_PER_SOL = 1_000_000_000;
 
-/** Renders lamports as SOL with a sensible number of decimals. */
+/** Renders lamports as SOL, with the precision the size of the figure warrants. */
 export function formatSol(lamports: number): string {
   const sol = lamports / LAMPORTS_PER_SOL;
   if (sol === 0) return "0 SOL";
@@ -23,7 +28,7 @@ export function formatCount(n: number): string {
   return `${(n / 1_000_000).toFixed(1)}M`;
 }
 
-/** Video runtime, as m:ss or h:mm:ss. */
+/** Runtime of the clip itself, as m:ss or h:mm:ss. */
 export function formatDuration(seconds: number): string {
   if (!seconds) return "0:00";
   const h = Math.floor(seconds / 3600);
@@ -34,7 +39,12 @@ export function formatDuration(seconds: number): string {
     : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** The real work time behind a timelapse, in hours and minutes. */
+/**
+ * The real work time behind a timelapse.
+ *
+ * This is the number that matters on this site — a forty-second clip can stand
+ * for a nine-hour session — so it is spelled out rather than abbreviated.
+ */
 export function formatSession(minutes: number): string {
   if (!minutes) return "";
   const h = Math.floor(minutes / 60);
@@ -67,17 +77,16 @@ export function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(iso));
 }
 
-export function formatUsd(amount: number): string {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
+/** Shortens a wallet address without losing recognisability. */
+export function shortAddress(address: string): string {
+  return address.length <= 12 ? address : `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
-/** Shortens a wallet address for display without losing recognisability. */
-export function shortAddress(address: string): string {
-  return address.length <= 12 ? address : `${address.slice(0, 4)}...${address.slice(-4)}`;
+/** Links a signature to an explorer, on whichever cluster we are pointed at. */
+export function explorerUrl(signature: string): string {
+  const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
+  const suffix = cluster === "mainnet-beta" ? "" : `?cluster=${cluster}`;
+  return `https://explorer.solana.com/tx/${signature}${suffix}`;
 }
 
 /** Joins class names, dropping falsy values. */

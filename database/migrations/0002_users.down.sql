@@ -1,8 +1,0 @@
-DROP TABLE IF EXISTS follows;
-DROP TABLE IF EXISTS wallets;
-DROP TABLE IF EXISTS social_links;
-DROP TABLE IF EXISTS profiles;
-DROP TABLE IF EXISTS users;
-DROP TYPE IF EXISTS social_platform;
-DROP TYPE IF EXISTS user_status;
-DROP TYPE IF EXISTS user_role;

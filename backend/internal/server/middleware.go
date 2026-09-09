@@ -25,6 +25,13 @@ const (
 	sessionKey
 )
 
+// The two roles the platform has. A member publishes and receives donations;
+// an admin additionally decides what reaches the feed.
+const (
+	roleMember = "member"
+	roleAdmin  = "admin"
+)
+
 // requestID assigns an id to every request and echoes it back, so a user
 // reporting a failure can be matched to the exact log line.
 func (s *Server) requestID(next http.Handler) http.Handler {
@@ -199,18 +206,25 @@ func requireUser(r *http.Request) (auth.User, error) {
 	return u, nil
 }
 
-// requireRole enforces the moderator and admin boundaries.
-func requireRole(r *http.Request, roles ...string) (auth.User, error) {
+// requireAdmin enforces the review boundary. Every endpoint that can change
+// what the public sees goes through here.
+func requireAdmin(r *http.Request) (auth.User, error) {
 	u, err := requireUser(r)
 	if err != nil {
 		return auth.User{}, err
 	}
-	for _, role := range roles {
-		if u.Role == role {
-			return u, nil
-		}
+	if u.Role != roleAdmin {
+		return auth.User{}, apierr.Forbidden("")
 	}
-	return auth.User{}, apierr.Forbidden("")
+	return u, nil
+}
+
+// randomSuffix returns a short token used to widen a slug that is already
+// taken. It is not a secret, only a tiebreaker.
+func randomSuffix() string {
+	buf := make([]byte, 3)
+	_, _ = rand.Read(buf)
+	return hex.EncodeToString(buf)
 }
 
 // checkCSRF guards every state-changing request from a browser.

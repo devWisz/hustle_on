@@ -1,157 +1,130 @@
 package server
 
 import (
-	"context"
+	"errors"
 	"net/http"
 	"time"
 
-	"github.com/sardhana/backend/internal/domain"
+	"github.com/sardhana/backend/internal/store"
 	"github.com/sardhana/backend/internal/validate"
 	"github.com/sardhana/backend/pkg/apierr"
 )
 
-// The admin surface covers live stats, a database health ping, directory
-// lists for accounts/sessions/roles, the report queue, and one action to
-// resolve a report. Every call requires an elevated role and every decision
-// is written to audit_log.
+// Every handler in this file is gated on the admin role, and every decision one
+// of them makes is written to the audit log. Between them they are the entire
+// difference between an upload and something the public can see.
 
-func (s *Server) handlePublicStats(w http.ResponseWriter, r *http.Request) error {
-	stats, err := s.store.PublicStats(r.Context())
-	if err != nil {
-		return storeErr(err, "Stats")
-	}
-	return writeJSON(w, http.StatusOK, stats)
-}
-
-func (s *Server) handleAdminStats(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
+// handleReviewQueue lists submissions awaiting a decision, oldest first.
+func (s *Server) handleReviewQueue(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
 		return err
 	}
-	stats, err := s.store.Stats(r.Context())
+	items, err := s.store.ReviewQueue(r.Context(), queryInt(r, "limit", 50, 1, 100))
 	if err != nil {
-		return storeErr(err, "Stats")
+		return storeErr(err, "Queue")
 	}
-	return writeJSON(w, http.StatusOK, stats)
+	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
-func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
-		return err
-	}
-	start := time.Now()
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-	err := s.store.Pool().Ping(ctx)
-	latency := time.Since(start).Milliseconds()
-	if err != nil {
-		return writeJSON(w, http.StatusOK, map[string]any{
-			"database":  "unreachable",
-			"latencyMs": latency,
-			"env":       s.cfg.Env,
-			"cluster":   s.chain.Cluster(),
-		})
-	}
-	return writeJSON(w, http.StatusOK, map[string]any{
-		"database":  "connected",
-		"latencyMs": latency,
-		"env":       s.cfg.Env,
-		"cluster":   s.chain.Cluster(),
-	})
-}
-
-func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
-		return err
-	}
-	users, err := s.store.AdminUsers(r.Context(),
-		queryString(r, "q", 80),
-		queryInt(r, "limit", 50, 1, 200),
-		queryInt(r, "offset", 0, 0, 5000))
-	if err != nil {
-		return storeErr(err, "Users")
-	}
-	return writeJSON(w, http.StatusOK, domain.Page[domain.AdminUser]{Items: users})
-}
-
-func (s *Server) handleAdminVideos(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
-		return err
-	}
-	videos, err := s.store.AdminVideos(r.Context(),
-		queryString(r, "q", 80),
-		queryInt(r, "limit", 50, 1, 200),
-		queryInt(r, "offset", 0, 0, 5000))
-	if err != nil {
-		return storeErr(err, "Videos")
-	}
-	return writeJSON(w, http.StatusOK, domain.Page[domain.Video]{Items: videos})
-}
-
-func (s *Server) handleAdminJobs(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
-		return err
-	}
-	jobs, err := s.store.AdminJobs(r.Context(),
-		queryString(r, "q", 80),
-		queryInt(r, "limit", 50, 1, 200),
-		queryInt(r, "offset", 0, 0, 5000))
-	if err != nil {
-		return storeErr(err, "Jobs")
-	}
-	return writeJSON(w, http.StatusOK, domain.Page[domain.Job]{Items: jobs})
-}
-
-func (s *Server) handleAdminReports(w http.ResponseWriter, r *http.Request) error {
-	if _, err := requireRole(r, "admin", "moderator"); err != nil {
-		return err
-	}
-	reports, err := s.store.ModerationQueue(r.Context(),
-		queryInt(r, "limit", 50, 1, 200), queryInt(r, "offset", 0, 0, 5000))
-	if err != nil {
-		return storeErr(err, "Reports")
-	}
-	return writeJSON(w, http.StatusOK, domain.Page[domain.Report]{Items: reports})
-}
-
-type resolveReportBody struct {
-	Action string `json:"action"`
-	Note   string `json:"note"`
-}
-
-var validModerationActions = map[string]bool{
-	"none": true, "content_hidden": true, "content_removed": true,
-	"user_warned": true, "user_suspended": true, "user_banned": true,
-}
-
-func (s *Server) handleResolveReport(w http.ResponseWriter, r *http.Request) error {
-	moderator, err := requireRole(r, "admin", "moderator")
+// handleApprove publishes a submission.
+func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) error {
+	reviewer, id, err := s.reviewTarget(r)
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
+	if err := s.store.Approve(r.Context(), id, reviewer.ID, time.Now().UTC()); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return apierr.Conflict("That submission is no longer awaiting review.")
+		}
+		return storeErr(err, "Timelapse")
+	}
+	s.audit(r, reviewer.ID, "timelapse.approve", id, nil)
+
+	updated, err := s.store.ByID(r.Context(), id)
+	if err != nil {
+		return storeErr(err, "Timelapse")
+	}
+	return writeJSON(w, http.StatusOK, updated)
+}
+
+type rejectBody struct {
+	Note string `json:"note"`
+}
+
+// handleReject declines a submission.
+//
+// The note is required rather than optional: a rejection the creator cannot act
+// on is worse than no answer, and the schema will not store one without it.
+func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) error {
+	reviewer, id, err := s.reviewTarget(r)
+	if err != nil {
 		return err
 	}
-	id := r.PathValue("id")
-	if !validate.IsUUID(id) {
-		return apierr.NotFound("Report")
-	}
-	var body resolveReportBody
+	var body rejectBody
 	if err := decode(r, &body); err != nil {
 		return err
 	}
-	if !validModerationActions[body.Action] {
-		return apierr.Validation("Choose a valid action.").WithField("action", "Not a valid action.")
-	}
-	// Suspending or banning an account is an admin decision; moderators can
-	// act on content but not on people.
-	if moderator.Role != "admin" &&
-		(body.Action == "user_suspended" || body.Action == "user_banned") {
-		return apierr.Forbidden("Only an admin can suspend or ban an account.")
+	note := validate.CleanText(body.Note)
+	if v := validate.New().Length("note", note, 10, 500); v.Any() {
+		return v.Err()
 	}
 
-	note := validate.CleanText(body.Note)
-	if err := s.store.ResolveReport(r.Context(), id, moderator.ID, body.Action, note); err != nil {
-		return storeErr(err, "Report")
+	if err := s.store.Reject(r.Context(), id, reviewer.ID, note, time.Now().UTC()); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return apierr.Conflict("That submission is no longer awaiting review.")
+		}
+		return storeErr(err, "Timelapse")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"status": "resolved", "action": body.Action})
+	s.audit(r, reviewer.ID, "timelapse.reject", id, map[string]any{"note": note})
+
+	updated, err := s.store.ByID(r.Context(), id)
+	if err != nil {
+		return storeErr(err, "Timelapse")
+	}
+	return writeJSON(w, http.StatusOK, updated)
+}
+
+// handleTakeDown removes an already published timelapse.
+func (s *Server) handleTakeDown(w http.ResponseWriter, r *http.Request) error {
+	reviewer, id, err := s.reviewTarget(r)
+	if err != nil {
+		return err
+	}
+	// An empty owner id lets the store match the row regardless of who created
+	// it, which is exactly the power this endpoint exists to grant.
+	if err := s.store.Remove(r.Context(), id, ""); err != nil {
+		return storeErr(err, "Timelapse")
+	}
+	s.audit(r, reviewer.ID, "timelapse.takedown", id, nil)
+	return noContent(w)
+}
+
+// reviewTarget resolves the admin caller and the {id} they are acting on.
+func (s *Server) reviewTarget(r *http.Request) (user adminUser, id string, err error) {
+	u, err := requireAdmin(r)
+	if err != nil {
+		return user, "", err
+	}
+	if err := s.checkCSRF(r); err != nil {
+		return user, "", err
+	}
+	id = r.PathValue("id")
+	if !validate.IsUUID(id) {
+		return user, "", apierr.NotFound("Timelapse")
+	}
+	return adminUser{ID: u.ID}, id, nil
+}
+
+// adminUser is the sliver of the reviewer this file needs: who to attribute the
+// decision to.
+type adminUser struct{ ID string }
+
+// audit records a decision. A failure to write the trail is logged but never
+// fails the request: the decision has already been applied, and reporting an
+// error the caller cannot act on would only invite them to apply it twice.
+func (s *Server) audit(r *http.Request, actorID, action, subjectID string, meta map[string]any) {
+	if err := s.store.RecordAudit(r.Context(), actorID, action, "timelapse", subjectID, meta); err != nil {
+		s.log.ErrorContext(r.Context(), "write audit log",
+			"action", action, "subject", subjectID, "error", err)
+	}
 }

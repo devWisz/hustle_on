@@ -44,13 +44,33 @@ func TestLengthCountsRunesNotBytes(t *testing.T) {
 	}
 }
 
-func TestURLRequiresHTTPS(t *testing.T) {
-	if New().URL("url", "https://github.com/maya").Any() {
-		t.Error("a valid https URL was rejected")
+func TestLinkFieldsArePinnedToTheirHosts(t *testing.T) {
+	if New().GitHubURL("githubUrl", "https://github.com/maya/compiler").Any() {
+		t.Error("a valid GitHub URL was rejected")
 	}
-	for _, bad := range []string{"http://example.com", "javascript:alert(1)", "//example.com"} {
-		if !New().URL("url", bad).Any() {
-			t.Errorf("URL %q was accepted", bad)
+	if New().XURL("xUrl", "https://x.com/maya").Any() {
+		t.Error("a valid X URL was rejected")
+	}
+	// Both fields are optional, so an empty value must pass.
+	if New().GitHubURL("githubUrl", "").Any() || New().XURL("xUrl", "").Any() {
+		t.Error("an empty link was rejected")
+	}
+	// A link field is rendered on a public page, so anything that is not the
+	// expected host — including a lookalike domain — has to be refused.
+	for _, bad := range []string{
+		"http://github.com/maya",
+		"https://github.com.evil.test/maya",
+		"https://evil.test/maya",
+		"javascript:alert(1)",
+		"//github.com/maya",
+	} {
+		if !New().GitHubURL("githubUrl", bad).Any() {
+			t.Errorf("GitHub URL %q was accepted", bad)
+		}
+	}
+	for _, bad := range []string{"https://x.com.evil.test/maya", "https://facebook.com/maya"} {
+		if !New().XURL("xUrl", bad).Any() {
+			t.Errorf("X URL %q was accepted", bad)
 		}
 	}
 }

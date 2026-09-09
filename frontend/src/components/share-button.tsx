@@ -32,9 +32,7 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url = path
-      ? new URL(path, window.location.origin).toString()
-      : window.location.href;
+    const url = path ? new URL(path, window.location.origin).toString() : window.location.href;
 
     // `navigator.share` rejects with AbortError when someone dismisses the
     // sheet. That is not a failure and must not surface as one.
@@ -43,8 +41,7 @@ export function ShareButton({
         await navigator.share({ title, text, url });
         return;
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
         // Any other failure falls through to the clipboard path below.
       }
     }
@@ -55,19 +52,12 @@ export function ShareButton({
       setTimeout(() => setCopied(false), 2000);
       toast("Link copied to your clipboard.");
     } catch {
-      toast(
-        "Could not copy the link. Copy it from the address bar instead.",
-        "error",
-      );
+      toast("Could not copy the link. Copy it from the address bar instead.", "error");
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={share}
-      className={buttonClass("secondary", "sm", className)}
-    >
+    <button type="button" onClick={share} className={buttonClass("secondary", "sm", className)}>
       {copied ? <CheckIcon size={15} /> : <LinkIcon size={15} />}
       {copied ? "Copied" : label}
     </button>

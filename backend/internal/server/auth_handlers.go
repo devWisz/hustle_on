@@ -8,7 +8,6 @@ import (
 
 	"github.com/sardhana/auth"
 	"github.com/sardhana/backend/internal/domain"
-	"github.com/sardhana/backend/internal/validate"
 	"github.com/sardhana/backend/pkg/apierr"
 )
 
@@ -17,7 +16,7 @@ type requestLinkBody struct {
 	Next  string `json:"next"`
 }
 
-// handleRequestLink emails a login link.
+// handleRequestLink emails a sign-in link.
 //
 // The reply is always the same, whatever happened: unknown address, existing
 // account, suspended account. Anything else would turn this endpoint into an
@@ -31,9 +30,8 @@ func (s *Server) handleRequestLink(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	// Login attempts get their own, much tighter budget than ordinary traffic.
-	key := "auth:" + clientIP(r).String()
-	if !s.authLim.Allow(key) {
+	// Sign-in attempts get their own, much tighter budget than ordinary traffic.
+	if !s.authLim.Allow("auth:" + clientIP(r).String()) {
 		return apierr.TooManyRequests("Too many sign-in attempts. Try again shortly.")
 	}
 
@@ -48,10 +46,11 @@ func (s *Server) handleRequestLink(w http.ResponseWriter, r *http.Request) error
 	case errors.Is(err, auth.ErrRateLimited):
 		return apierr.TooManyRequests("A link was already sent to that address. Check your inbox.")
 	case strings.Contains(err.Error(), "email"):
-		return apierr.Validation("Enter a valid email address.").WithField("email", "Enter a valid email address.")
+		return apierr.Validation("Enter a valid email address.").
+			WithField("email", "Enter a valid email address.")
 	default:
-		// A mail-delivery failure is logged, but the response stays identical
-		// so the caller learns nothing about the address.
+		// A mail-delivery failure is logged, but the response stays identical so
+		// the caller still learns nothing about the address.
 		s.log.ErrorContext(r.Context(), "start login", "error", err)
 	}
 
@@ -64,7 +63,7 @@ type verifyBody struct {
 	Token string `json:"token"`
 }
 
-// handleVerifyLink consumes a login token and starts a session.
+// handleVerifyLink consumes a sign-in token and starts a session.
 func (s *Server) handleVerifyLink(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkCSRF(r); err != nil {
 		return err
@@ -89,9 +88,12 @@ func (s *Server) handleVerifyLink(w http.ResponseWriter, r *http.Request) error 
 	http.SetCookie(w, cookie)
 	http.SetCookie(w, s.auth.CSRFCookie(s.auth.CSRFToken(cookie.Value), s.cfg.SessionTTL))
 
-	self, err := s.selfUser(r, user)
+	// The profile is read by id rather than through selfUser: the session was
+	// issued a line ago and exists only in the Set-Cookie header, so this
+	// request's context still has no user attached to it.
+	self, err := s.store.SelfProfile(r.Context(), user.ID)
 	if err != nil {
-		return err
+		return storeErr(err, "Profile")
 	}
 	return writeJSON(w, http.StatusOK, self)
 }
@@ -113,14 +115,13 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) error {
 	return noContent(w)
 }
 
-// handleSession reports who the caller is, without failing when nobody is
-// signed in — the frontend uses it to decide what to render.
+// handleSession reports who the caller is without failing when nobody is signed
+// in — the frontend uses it to decide what to render.
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) error {
-	user, ok := currentUser(r)
-	if !ok {
+	if _, ok := currentUser(r); !ok {
 		return writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 	}
-	self, err := s.selfUser(r, user)
+	self, err := s.selfUser(r)
 	if err != nil {
 		return err
 	}
@@ -128,29 +129,27 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) error {
-	user, err := requireUser(r)
-	if err != nil {
+	if _, err := requireUser(r); err != nil {
 		return err
 	}
-	self, err := s.selfUser(r, user)
+	self, err := s.selfUser(r)
 	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, self)
 }
 
-// selfUser assembles the private view of an account.
-func (s *Server) selfUser(r *http.Request, user auth.User) (domain.SelfUser, error) {
-	profile, err := s.store.ProfileByID(r.Context(), user.ID)
+// selfUser reads the private view of the account on this request's session.
+func (s *Server) selfUser(r *http.Request) (domain.SelfUser, error) {
+	user, err := requireUser(r)
+	if err != nil {
+		return domain.SelfUser{}, err
+	}
+	self, err := s.store.SelfProfile(r.Context(), user.ID)
 	if err != nil {
 		return domain.SelfUser{}, storeErr(err, "Profile")
 	}
-	return domain.SelfUser{
-		PublicUser:    profile,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		Role:          user.Role,
-	}, nil
+	return self, nil
 }
 
 type walletChallengeBody struct {
@@ -191,10 +190,13 @@ type walletVerifyBody struct {
 	Nonce     string `json:"nonce"`
 	Signature string `json:"signature"`
 	IssuedAt  string `json:"issuedAt"`
-	Primary   bool   `json:"primary"`
 }
 
-// handleWalletVerify checks the signature and attaches the wallet.
+// handleWalletVerify checks the signature and records the payout address.
+//
+// This is the only way an address gets onto an account. Nothing about donations
+// works until it has run, which is deliberate: money should only ever be routed
+// to a key the account has demonstrated it holds.
 func (s *Server) handleWalletVerify(w http.ResponseWriter, r *http.Request) error {
 	user, err := requireUser(r)
 	if err != nil {
@@ -213,7 +215,7 @@ func (s *Server) handleWalletVerify(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	err = s.auth.CompleteWalletLink(r.Context(), user.ID, body.Address, body.Nonce,
-		body.Signature, issuedAt, body.Primary)
+		body.Signature, issuedAt)
 	switch {
 	case err == nil:
 	case errors.Is(err, auth.ErrBadSignature):
@@ -224,50 +226,14 @@ func (s *Server) handleWalletVerify(w http.ResponseWriter, r *http.Request) erro
 		return apierr.Conflict("That wallet is already linked to another account.")
 	}
 
-	_ = s.store.Audit(r.Context(), user.ID, "wallet.link", "user", user.ID,
-		map[string]any{"address": body.Address})
-
-	wallets, err := s.store.Wallets(r.Context(), user.ID)
-	if err != nil {
-		return storeErr(err, "Wallets")
+	if err := s.store.RecordAudit(r.Context(), user.ID, "wallet.verify", "user", user.ID,
+		map[string]any{"address": body.Address}); err != nil {
+		s.log.WarnContext(r.Context(), "audit wallet verify", "error", err)
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"wallets": wallets})
-}
 
-func (s *Server) handleMyWallets(w http.ResponseWriter, r *http.Request) error {
-	user, err := requireUser(r)
+	self, err := s.selfUser(r)
 	if err != nil {
 		return err
 	}
-	wallets, err := s.store.Wallets(r.Context(), user.ID)
-	if err != nil {
-		return storeErr(err, "Wallets")
-	}
-	return writeJSON(w, http.StatusOK, map[string]any{"wallets": wallets})
-}
-
-type handleBody struct {
-	Handle string `json:"handle"`
-}
-
-func (s *Server) handleSetHandle(w http.ResponseWriter, r *http.Request) error {
-	user, err := requireUser(r)
-	if err != nil {
-		return err
-	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
-	var body handleBody
-	if err := decode(r, &body); err != nil {
-		return err
-	}
-	wanted := strings.ToLower(strings.TrimSpace(body.Handle))
-	if v := validate.New().Handle("handle", wanted); v.Any() {
-		return v.Err()
-	}
-	if err := s.store.SetHandle(r.Context(), user.ID, wanted); err != nil {
-		return storeErr(err, "Handle")
-	}
-	return writeJSON(w, http.StatusOK, map[string]any{"handle": wanted})
+	return writeJSON(w, http.StatusOK, self)
 }

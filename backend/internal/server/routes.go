@@ -5,92 +5,63 @@ import "net/http"
 // routes registers every endpoint.
 //
 // The list is the API's access-control map, so it is written to be read that
-// way: public routes first, then routes that require a session, then routes
-// that require a role. Anything not listed here does not exist.
+// way: public routes first, then routes that need a session, then the two that
+// need the admin role. Anything not listed here does not exist.
 func (s *Server) routes() {
 	m := s.mux
 
-	// --- operational ---------------------------------------------------
+	// --- operational -----------------------------------------------------
 	m.HandleFunc("GET /health", s.wrap(s.handleHealth))
-	m.HandleFunc("GET /healthz", s.wrap(s.handleHealth))
 	m.HandleFunc("GET /health/ready", s.wrap(s.handleReady))
 
-	// --- local upload & streaming (dev) --------------------------------
-	m.HandleFunc("PUT /v1/uploads/local/{key...}", s.wrap(s.handleLocalUpload))
-	m.HandleFunc("GET /v1/uploads/local/{key...}", s.wrap(s.handleServeLocalUpload))
-
-	// --- public reads --------------------------------------------------
-	m.HandleFunc("GET /v1/feed", s.wrap(s.handleFeed))
-	m.HandleFunc("GET /v1/videos/{slug}", s.wrap(s.handleVideo))
-	m.HandleFunc("GET /v1/videos/{slug}/comments", s.wrap(s.handleListComments))
-	m.HandleFunc("GET /v1/videos/{slug}/sponsors", s.wrap(s.handleVideoSponsors))
+	// --- public reads ----------------------------------------------------
+	m.HandleFunc("GET /v1/timelapses", s.wrap(s.handleFeed))
+	m.HandleFunc("GET /v1/timelapses/{slug}", s.wrap(s.handleTimelapse))
+	m.HandleFunc("GET /v1/timelapses/{slug}/donations", s.wrap(s.handleTimelapseDonations))
+	m.HandleFunc("POST /v1/timelapses/{slug}/views", s.wrap(s.handleRecordView))
 	m.HandleFunc("GET /v1/creators/{handle}", s.wrap(s.handleCreator))
-	m.HandleFunc("GET /v1/creators/{handle}/videos", s.wrap(s.handleCreatorVideos))
-	m.HandleFunc("GET /v1/talent", s.wrap(s.handleTalent))
-	m.HandleFunc("GET /v1/jobs", s.wrap(s.handleListJobs))
-	m.HandleFunc("GET /v1/jobs/{slug}", s.wrap(s.handleJob))
-	m.HandleFunc("GET /v1/stats", s.wrap(s.handlePublicStats))
-	m.HandleFunc("POST /v1/videos/{slug}/views", s.wrap(s.handleRecordView))
+	m.HandleFunc("GET /v1/creators/{handle}/timelapses", s.wrap(s.handleCreatorTimelapses))
+	m.HandleFunc("GET /v1/stats", s.wrap(s.handleStats))
 
-	// --- authentication ------------------------------------------------
+	// --- authentication --------------------------------------------------
 	m.HandleFunc("POST /v1/auth/request-link", s.wrap(s.handleRequestLink))
 	m.HandleFunc("POST /v1/auth/verify", s.wrap(s.handleVerifyLink))
 	m.HandleFunc("POST /v1/auth/logout", s.wrap(s.handleLogout))
 	m.HandleFunc("GET /v1/auth/session", s.wrap(s.handleSession))
-	m.HandleFunc("POST /v1/auth/wallet/challenge", s.wrap(s.handleWalletChallenge))
-	m.HandleFunc("POST /v1/auth/wallet/verify", s.wrap(s.handleWalletVerify))
 
-	// --- the signed-in user --------------------------------------------
+	// --- the signed-in account -------------------------------------------
 	m.HandleFunc("GET /v1/me", s.wrap(s.handleMe))
 	m.HandleFunc("PATCH /v1/me", s.wrap(s.handleUpdateMe))
-	m.HandleFunc("PUT /v1/me/handle", s.wrap(s.handleSetHandle))
-	m.HandleFunc("PUT /v1/me/social/{platform}", s.wrap(s.handleSetSocialLink))
-	m.HandleFunc("DELETE /v1/me/social/{platform}", s.wrap(s.handleDeleteSocialLink))
-	m.HandleFunc("GET /v1/me/wallets", s.wrap(s.handleMyWallets))
-	m.HandleFunc("GET /v1/me/sponsorships", s.wrap(s.handleMySponsorships))
-	m.HandleFunc("GET /v1/me/notifications", s.wrap(s.handleNotifications))
-	m.HandleFunc("POST /v1/me/notifications/read", s.wrap(s.handleReadNotifications))
+	m.HandleFunc("GET /v1/me/timelapses", s.wrap(s.handleMyTimelapses))
+	m.HandleFunc("GET /v1/me/donations", s.wrap(s.handleMyDonations))
+	m.HandleFunc("POST /v1/me/wallet/challenge", s.wrap(s.handleWalletChallenge))
+	m.HandleFunc("POST /v1/me/wallet/verify", s.wrap(s.handleWalletVerify))
 
 	// --- publishing ------------------------------------------------------
 	m.HandleFunc("POST /v1/uploads", s.wrap(s.handleCreateUpload))
-	m.HandleFunc("POST /v1/videos", s.wrap(s.handleCreateVideo))
-	m.HandleFunc("POST /v1/videos/{id}/uploaded", s.wrap(s.handleMarkUploaded))
-	m.HandleFunc("POST /v1/videos/{id}/publish", s.wrap(s.handlePublishVideo))
-	m.HandleFunc("PATCH /v1/videos/{id}", s.wrap(s.handleUpdateVideo))
-	m.HandleFunc("DELETE /v1/videos/{id}", s.wrap(s.handleDeleteVideo))
+	m.HandleFunc("POST /v1/timelapses", s.wrap(s.handleCreateTimelapse))
+	m.HandleFunc("POST /v1/timelapses/{id}/uploaded", s.wrap(s.handleMarkUploaded))
+	m.HandleFunc("POST /v1/timelapses/{id}/submit", s.wrap(s.handleSubmitTimelapse))
+	m.HandleFunc("PATCH /v1/timelapses/{id}", s.wrap(s.handleUpdateTimelapse))
+	m.HandleFunc("DELETE /v1/timelapses/{id}", s.wrap(s.handleDeleteTimelapse))
 
-	// --- discussion ------------------------------------------------------
-	m.HandleFunc("POST /v1/videos/{slug}/comments", s.wrap(s.handleAddComment))
-	m.HandleFunc("DELETE /v1/comments/{id}", s.wrap(s.handleDeleteComment))
-	m.HandleFunc("POST /v1/comments/{id}/like", s.wrap(s.handleLikeComment))
-	m.HandleFunc("DELETE /v1/comments/{id}/like", s.wrap(s.handleUnlikeComment))
+	// --- donations -------------------------------------------------------
+	m.HandleFunc("POST /v1/donations", s.wrap(s.handleCreateDonation))
+	m.HandleFunc("POST /v1/donations/{id}/confirm", s.wrap(s.handleConfirmDonation))
 
-	// --- sponsorship -----------------------------------------------------
-	m.HandleFunc("POST /v1/sponsorships", s.wrap(s.handleCreateSponsorship))
-	m.HandleFunc("POST /v1/sponsorships/{id}/signature", s.wrap(s.handleAttachSignature))
-	m.HandleFunc("POST /v1/sponsorships/{id}/confirm", s.wrap(s.handleConfirmSponsorship))
+	// --- review (admin only) ---------------------------------------------
+	m.HandleFunc("GET /v1/admin/queue", s.wrap(s.handleReviewQueue))
+	m.HandleFunc("POST /v1/admin/timelapses/{id}/approve", s.wrap(s.handleApprove))
+	m.HandleFunc("POST /v1/admin/timelapses/{id}/reject", s.wrap(s.handleReject))
+	m.HandleFunc("DELETE /v1/admin/timelapses/{id}", s.wrap(s.handleTakeDown))
 
-	// --- following -------------------------------------------------------
-	m.HandleFunc("POST /v1/creators/{handle}/follow", s.wrap(s.handleFollow))
-	m.HandleFunc("DELETE /v1/creators/{handle}/follow", s.wrap(s.handleUnfollow))
-
-	// --- hiring ----------------------------------------------------------
-	m.HandleFunc("POST /v1/jobs", s.wrap(s.handleCreateJob))
-	m.HandleFunc("POST /v1/jobs/{slug}/applications", s.wrap(s.handleApply))
-	m.HandleFunc("GET /v1/jobs/{slug}/applications", s.wrap(s.handleListApplications))
-	m.HandleFunc("POST /v1/applications/{id}/status", s.wrap(s.handleSetApplicationStatus))
-
-	// --- trust and safety ------------------------------------------------
-	m.HandleFunc("POST /v1/reports", s.wrap(s.handleReport))
-
-	// --- admin console (moderator or admin only) -------------------------
-	m.HandleFunc("GET /v1/admin/stats", s.wrap(s.handleAdminStats))
-	m.HandleFunc("GET /v1/admin/health", s.wrap(s.handleAdminHealth))
-	m.HandleFunc("GET /v1/admin/users", s.wrap(s.handleAdminUsers))
-	m.HandleFunc("GET /v1/admin/videos", s.wrap(s.handleAdminVideos))
-	m.HandleFunc("GET /v1/admin/jobs", s.wrap(s.handleAdminJobs))
-	m.HandleFunc("GET /v1/admin/reports", s.wrap(s.handleAdminReports))
-	m.HandleFunc("POST /v1/admin/reports/{id}/resolve", s.wrap(s.handleResolveReport))
+	// --- local object storage (development only) -------------------------
+	// Registered only when no real bucket is configured, so a production
+	// deployment does not carry an unauthenticated write endpoint at all.
+	if s.media.IsLocal() {
+		m.HandleFunc("PUT /v1/uploads/local/{key...}", s.wrap(s.handleLocalUpload))
+		m.HandleFunc("GET /v1/uploads/local/{key...}", s.wrap(s.handleServeLocalUpload))
+	}
 
 	// Anything unmatched gets a JSON 404 rather than the default text page.
 	m.HandleFunc("/", s.wrap(s.handleNotFound))
