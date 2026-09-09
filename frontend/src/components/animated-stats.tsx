@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { PublicStats } from "@/lib/types";
 import { BriefcaseIcon, ShieldIcon, UploadIcon, WalletIcon } from "./icons";
 
@@ -10,13 +10,7 @@ interface AnimatedStatsProps {
 
 export function AnimatedStats({ stats }: AnimatedStatsProps) {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-surface/80 backdrop-blur-md">
-      {/* Subtle ambient light bar */}
-      <div
-        className="pointer-events-none absolute -top-24 left-1/2 h-32 w-full max-w-5xl -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
-        aria-hidden
-      />
-
+    <section className="relative overflow-hidden border-b border-border bg-surface">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
         {/* Network status ticker */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4 text-[11px] text-fg-subtle">
@@ -113,9 +107,6 @@ function StatCard({
 }: StatCardProps) {
   const [count, setCount] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0, active: false });
-
   // Number count-up animation
   useEffect(() => {
     setMounted(true);
@@ -146,47 +137,18 @@ function StatCard({
     };
   }, [numericValue, delay]);
 
-  // Spotlight mouse tracker
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      active: true,
-    });
-  };
-
-  const handleMouseLeave = () => {
-    setMousePos((prev) => ({ ...prev, active: false }));
-  };
-
   return (
     <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       className="group relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface p-5
                  shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1 hover:border-accent/40
-                 hover:shadow-[var(--shadow-raised)]"
+                  hover:shadow-[var(--shadow-raised)]"
     >
-      {/* Interactive cursor-following spotlight glow */}
-      {mousePos.active && (
-        <div
-          className="pointer-events-none absolute -inset-px rounded-[var(--radius-card)] opacity-100 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(220px circle at ${mousePos.x}px ${mousePos.y}px, var(--color-accent-soft), transparent 80%)`,
-          }}
-          aria-hidden
-        />
-      )}
-
       {/* Top row: Icon & Tag */}
       <div className="relative z-10 flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent transition-transform duration-300 group-hover:scale-110">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent transition-transform duration-300 group-hover:scale-105">
           {icon}
         </div>
-        <span className="rounded-full border border-border/80 bg-bg px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-fg-subtle group-hover:border-accent/30 group-hover:text-accent">
+        <span className="rounded-full border border-border bg-surface-raised px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-fg-subtle group-hover:text-fg">
           {badge}
         </span>
       </div>
@@ -214,13 +176,6 @@ function StatCard({
           {subtext}
         </p>
       </div>
-
-      {/* Bottom glowing accent line on hover */}
-      <div
-        className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-accent to-emerald-400
-                   transition-all duration-300 group-hover:w-full"
-        aria-hidden
-      />
     </div>
   );
 }

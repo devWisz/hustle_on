@@ -13,7 +13,6 @@ import {
   SearchIcon,
   ShieldIcon,
   UploadIcon,
-  WalletIcon,
 } from "@/components/icons";
 import { formatSol, formatUsd, timeAgo } from "@/lib/format";
 
@@ -43,35 +42,22 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface/60 via-surface/30 to-bg cyber-grid-pattern">
-      {/* Ambient floating glowing auras */}
-      <div
-        className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-accent/15 blur-3xl animate-aura"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl animate-aura"
-        style={{ animationDelay: "3s" }}
-        aria-hidden
-      />
-
+    <section className="relative overflow-hidden border-b border-border bg-surface subtle-grid-pattern">
       <Container width="wide" className="relative z-10 py-16 sm:py-24">
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/90 px-3.5 py-1 text-[12px] font-medium text-fg-muted shadow-sm backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-              </span>
-              <span>Proof of work, for builders & creators</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-raised px-3.5 py-1 text-[12px] font-medium text-fg-muted shadow-sm">
+              <span className="flex h-2 w-2 rounded-full bg-accent" />
+              <span>Proof-of-Work Platform for Builders, Artists & Developers</span>
             </div>
-            <h1 className="mt-5 text-[38px] font-bold leading-[1.08] tracking-tight sm:text-[54px] gradient-text-accent">
-              Your hustle should be paid off.
+            <h1 className="mt-5 text-[38px] font-bold leading-[1.08] tracking-tight sm:text-[54px] text-fg">
+              Record the timelapse. <br />
+              Prove the work. <span className="text-accent">Get paid.</span>
             </h1>
             <p className="mt-6 max-w-xl text-[16px] sm:text-[17px] leading-relaxed text-fg-muted">
-              Record the session. Publish the timelapse. The people who want your work to continue
-              sponsor it directly on Solana, and clients who need your talent hire you from a track
-              record they can actually watch.
+              Create a timelapse of your deep work session and upload it. Once manually verified by
+              moderators for authenticity, your session is listed publicly—unlocking automated bounties,
+              audience sponsorships on Solana, and high-ticket client hiring based on verifiable execution.
             </p>
             <form action="/discover" className="relative mt-8 max-w-lg">
               <SearchIcon
@@ -81,11 +67,11 @@ function Hero() {
               <input
                 type="search"
                 name="q"
-                placeholder="Search sessions, skills, or people"
+                placeholder="Search verified sessions, skills, or creators"
                 aria-label="Search the catalog"
                 className="h-12 w-full rounded-[var(--radius-control)] border border-border bg-surface pl-10 pr-28
                            text-sm placeholder:text-fg-subtle shadow-[var(--shadow-card)]
-                           transition-all duration-200 hover:border-border-strong focus:border-accent focus:shadow-[0_0_12px_rgba(63,178,140,0.2)]"
+                           transition-colors duration-150 hover:border-border-strong focus:border-accent"
               />
               <button
                 type="submit"
@@ -98,25 +84,28 @@ function Hero() {
 
             {/* Quick search tags */}
             <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-fg-subtle">
-              <span>Trending:</span>
-              {["#solana", "#rust", "#nextjs", "#smartcontracts", "#ai"].map((tag) => (
+              <span className="font-medium text-fg-muted">Popular stacks:</span>
+              {["Rust", "Solana", "Next.js", "AI Pipelines", "3D & Blender", "Smart Contracts"].map((tag) => (
                 <Link
                   key={tag}
-                  href={`/discover?q=${encodeURIComponent(tag.replace("#", ""))}`}
-                  className="rounded border border-border bg-surface/80 px-2 py-0.5 font-mono text-[11px] transition-colors hover:border-accent/40 hover:text-accent"
+                  href={`/discover?q=${encodeURIComponent(tag)}`}
+                  className="rounded border border-border bg-surface px-2 py-0.5 font-mono text-[11px] text-fg-muted transition-colors hover:border-accent hover:text-accent"
                 >
                   {tag}
                 </Link>
               ))}
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <ButtonLink href="/login?intent=start" size="lg" className="shadow-sm hover:shadow-md">
-                Start publishing
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <ButtonLink href="/upload" size="lg">
+                Upload timelapse & get paid
                 <ArrowRightIcon size={17} />
               </ButtonLink>
-              <ButtonLink href="/discover" variant="secondary" size="lg">
-                Watch what people are building
+              <ButtonLink href="/hire" variant="secondary" size="lg">
+                Hire verified talent
+              </ButtonLink>
+              <ButtonLink href="/admin/verification" variant="secondary" size="lg" className="border-dashed">
+                Admin review queue
               </ButtonLink>
             </div>
             <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[13px] text-fg-muted">
@@ -167,75 +156,121 @@ function StatsStripSkeleton() {
   );
 }
 
-const steps = [
-  {
-    icon: UploadIcon,
-    title: "Publish the session",
-    body: "Six hours at the desk becomes a four minute timelapse. Say what you worked on and how long it really took.",
-  },
-  {
-    icon: WalletIcon,
-    title: "Get sponsored",
-    body: "Viewers send SOL straight to your wallet through the escrow program. Nothing sits with us in between.",
-  },
-  {
-    icon: BriefcaseIcon,
-    title: "Get hired",
-    body: "Clients open milestone engagements against your record. Funds are escrowed up front and released on delivery.",
-  },
-] as const;
-
 function HowItWorks() {
   return (
-    <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-bg to-surface/40 py-16 sm:py-24">
+    <section className="relative overflow-hidden border-b border-border bg-bg py-16 sm:py-24">
       <Container width="wide">
         <div className="mb-12 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-wider text-accent">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            The Core Architecture
+            The Three-Sided Ecosystem
           </span>
-          <h2 className="mt-3 text-[26px] font-bold tracking-tight sm:text-[34px]">
-            From recorded session to on-chain payout
+          <h2 className="mt-3 text-[26px] font-bold tracking-tight sm:text-[34px] text-fg">
+            Built for creators, moderators, and hiring teams
           </h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-fg-muted">
-            Three interconnected steps converting builder hustle into indisputable public proof.
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-fg-muted">
+            A verified proof-of-work pipeline connecting builders who record their work, manual moderation that keeps the catalog pristine, and companies hiring based on actual execution.
           </p>
         </div>
 
+        {/* 3 Core Perspectives Cards */}
         <div className="grid gap-6 sm:grid-cols-3 sm:gap-8">
-          {steps.map((step, index) => (
-            <div
-              key={step.title}
-              className="group relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[var(--shadow-card)]
-                         transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-[var(--shadow-raised)]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent transition-transform duration-300 group-hover:scale-110">
-                  <step.icon size={20} />
-                </span>
-                <span className="font-mono text-[14px] font-bold text-fg-subtle transition-colors group-hover:text-accent">
-                  0{index + 1}
-                </span>
-              </div>
-              <h3 className="mt-5 text-[17px] font-semibold tracking-tight">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-fg-muted">{step.body}</p>
-
-              {/* Glowing bottom accent line */}
-              <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-accent to-emerald-400 transition-all duration-300 group-hover:w-full" />
+          {/* Perspective 1: Creator */}
+          <div className="group rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-raised)]">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent">
+                <UploadIcon size={20} />
+              </span>
+              <span className="rounded bg-surface-raised px-2 py-0.5 font-mono text-[11px] font-medium text-fg-muted">
+                POV 01
+              </span>
             </div>
-          ))}
+            <div className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold text-accent">
+              <span>Creator / Uploader</span>
+            </div>
+            <h3 className="mt-1 text-[17px] font-semibold tracking-tight text-fg">
+              Create a timelapse & get paid
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+              Compress your 6-hour coding or design sprint into a 4-minute timelapse. Attach your Git repository or design proof, set your wallet, and unlock submission bounties and continuous sponsorships.
+            </p>
+            <div className="mt-5 border-t border-border pt-4">
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline"
+              >
+                Upload session & view payouts <ArrowRightIcon size={14} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Perspective 2: Admin / Moderation */}
+          <div className="group rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-raised)]">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-surface-raised text-fg">
+                <ShieldIcon size={20} />
+              </span>
+              <span className="rounded bg-surface-raised px-2 py-0.5 font-mono text-[11px] font-medium text-fg-muted">
+                POV 02
+              </span>
+            </div>
+            <div className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold text-fg">
+              <span>Admin / Moderator</span>
+            </div>
+            <h3 className="mt-1 text-[17px] font-semibold tracking-tight text-fg">
+              Manual verification queue
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+              Every video enters a strict verification queue. Moderators inspect continuous screen activity, verify git commits match recordings, audit for credential leaks, and approve for public listing.
+            </p>
+            <div className="mt-5 border-t border-border pt-4">
+              <Link
+                href="/admin/verification"
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-fg hover:underline"
+              >
+                Open verification queue <ArrowRightIcon size={14} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Perspective 3: Talent Acquisition / Hiring */}
+          <div className="group rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-raised)]">
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-accent-soft text-accent">
+                <BriefcaseIcon size={20} />
+              </span>
+              <span className="rounded bg-surface-raised px-2 py-0.5 font-mono text-[11px] font-medium text-fg-muted">
+                POV 03
+              </span>
+            </div>
+            <div className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold text-accent">
+              <span>Talent Acquisition</span>
+            </div>
+            <h3 className="mt-1 text-[17px] font-semibold tracking-tight text-fg">
+              Hire by verified proof
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+              Stop guessing based on static resumes. Watch how engineers debug, how architects design, and hire directly through non-custodial milestone escrows that release funds on proof delivery.
+            </p>
+            <div className="mt-5 border-t border-border pt-4">
+              <Link
+                href="/hire"
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline"
+              >
+                Browse verified creators <ArrowRightIcon size={14} />
+              </Link>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-surface/80 p-6 backdrop-blur-sm sm:flex-row sm:items-center sm:gap-6">
+        {/* Technical Guarantee strip */}
+        <div className="mt-10 flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:flex-row sm:items-center sm:gap-6">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <ShieldIcon size={20} />
           </span>
           <p className="text-sm leading-relaxed text-fg-muted">
-            Sponsorships and escrow settle through an audited Solana program with the platform fee
-            capped on chain. We verify every transaction against the cluster before a single total
-            moves, and we never hold custody of your funds.{" "}
+            All sponsorships, verified creator bounties, and milestone payments settle non-custodially via audited Anchor programs on Solana. Platform records are tamper-proof and verifiable directly against the cluster.{" "}
             <Link href="/security" className="font-medium text-fg underline underline-offset-4 hover:text-accent">
-              How this works
+              Audit and protocol specification
             </Link>
           </p>
         </div>

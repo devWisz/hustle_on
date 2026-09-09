@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 const nav = [
   { href: "/", label: "Overview" },
+  { href: "/verification", label: "Verification Queue" },
   { href: "/users", label: "Accounts" },
   { href: "/videos", label: "Sessions" },
   { href: "/jobs", label: "Roles" },

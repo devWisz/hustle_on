@@ -14,9 +14,11 @@ interface SessionResponse {
 }
 
 export const navigation = [
-  { href: "/discover", label: "Discover" },
-  { href: "/hire", label: "Hire" },
-  { href: "/jobs", label: "Roles" },
+  { href: "/discover", label: "Explore" },
+  { href: "/upload", label: "Upload & Earn" },
+  { href: "/hire", label: "Hire Talent" },
+  { href: "/jobs", label: "Client Gigs" },
+  { href: "/admin/verification", label: "Admin Queue" },
 ] as const;
 
 function HeaderChrome({ children }: { children: React.ReactNode }) {

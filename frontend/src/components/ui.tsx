@@ -170,13 +170,14 @@ export function Badge({
   className,
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "accent" | "outline";
+  tone?: "neutral" | "accent" | "outline" | "danger";
   className?: string;
 }) {
   const tones = {
     neutral: "bg-surface-raised text-fg-muted border-border",
     accent: "bg-accent-soft text-accent border-transparent",
     outline: "bg-transparent text-fg-muted border-border",
+    danger: "bg-danger-soft text-danger border-transparent",
   } as const;
   return (
     <span

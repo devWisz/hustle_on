@@ -63,15 +63,9 @@ export function HeroShowcase() {
         transform: `perspective(1000px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
         transition: "transform 0.15s ease-out",
       }}
-      className="relative mx-auto w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-surface/90 p-5
-                 shadow-[var(--shadow-raised)] backdrop-blur-sm transition-all duration-300 hover:border-accent/50"
+      className="relative mx-auto w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-surface p-5
+                 shadow-[var(--shadow-raised)] transition-all duration-300 hover:border-border-strong"
     >
-      {/* Decorative gradient corner aura */}
-      <div
-        className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-accent/20 blur-2xl"
-        aria-hidden
-      />
-
       {/* Creator Info Header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-3">
@@ -82,8 +76,8 @@ export function HeroShowcase() {
           <div>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold">Alex Vance</p>
-              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                PRO
+              <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                VERIFIED
               </span>
             </div>
             <p className="text-[12px] text-fg-subtle">@alex_vance · Rust & Solana</p>
@@ -91,22 +85,22 @@ export function HeroShowcase() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg px-2.5 py-1 text-[11px] font-medium text-accent">
-            <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
-            <span className="font-mono text-[10px]">RECORDING</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-2.5 py-1 text-[11px] font-medium text-fg-muted">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="font-mono text-[10px]">RECORDED</span>
           </span>
         </div>
       </div>
 
-      {/* Interactive Cyber Timelapse Preview */}
-      <div className="relative mt-4 overflow-hidden rounded-[var(--radius-card)] border border-border bg-neutral-950 p-4 text-white shadow-inner">
+      {/* Interactive Clean Timelapse Preview */}
+      <div className="relative mt-4 overflow-hidden rounded-[var(--radius-card)] border border-border bg-neutral-950 p-4 text-white">
         {/* Top Header of code IDE */}
         <div className="flex items-center justify-between border-b border-white/10 pb-2 text-[11px] text-neutral-400">
           <div className="flex items-center gap-2">
             <span className="flex gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-rose-500/80" />
-              <span className="h-2 w-2 rounded-full bg-amber-500/80" />
-              <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
+              <span className="h-2 w-2 rounded-full bg-neutral-700" />
+              <span className="h-2 w-2 rounded-full bg-neutral-700" />
+              <span className="h-2 w-2 rounded-full bg-neutral-700" />
             </span>
             <span className="font-mono text-[11px] text-neutral-300">hustler_escrow.rs</span>
           </div>
@@ -117,8 +111,8 @@ export function HeroShowcase() {
               className="flex items-center gap-1 rounded bg-white/10 px-2 py-0.5 text-[10px] font-mono text-neutral-300 transition-colors hover:bg-white/20"
               aria-label={isPlaying ? "Pause timelapse preview" : "Play timelapse preview"}
             >
-              <PlayIcon size={10} className={isPlaying ? "text-accent animate-spin" : ""} />
-              {isPlaying ? "30x REC" : "PAUSED"}
+              <PlayIcon size={10} className={isPlaying ? "text-accent" : ""} />
+              {isPlaying ? "30x SPEED" : "PAUSED"}
             </button>
           </div>
         </div>
@@ -134,7 +128,7 @@ export function HeroShowcase() {
           <p className="pl-4 text-neutral-500">{"emit!(MilestoneReleased { ... });"}</p>
           <p className="flex items-center">
             <span>{"}"}</span>
-            <span className="ml-1 inline-block h-4 w-1.5 bg-accent animate-pulse" />
+            <span className="ml-1 inline-block h-4 w-1.5 bg-accent" />
           </p>
         </div>
 
@@ -142,16 +136,16 @@ export function HeroShowcase() {
         <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2.5">
           <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
             <span>{formatTime(secondsElapsed)}</span>
-            <span className="text-accent">4h 25m total</span>
+            <span className="text-neutral-300">4h 25m real work</span>
           </div>
           <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-150"
+              className="h-full rounded-full bg-accent transition-all duration-150"
               style={{ width: `${progress}%` }}
             />
-            {/* Glowing scrubber head */}
+            {/* Clean scrubber head */}
             <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_8px_#3fb28c]"
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-2.5 w-2.5 rounded-full border border-neutral-900 bg-white"
               style={{ left: `${progress}%` }}
             />
           </div>
