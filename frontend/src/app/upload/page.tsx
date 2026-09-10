@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { apiServer } from "@/lib/api";
 import type { SelfUser } from "@/lib/types";
@@ -25,9 +26,9 @@ export default async function UploadPage() {
           <p className="text-[13px] text-fg-muted">
             You have no payout wallet yet. You can still submit — but nobody will be able to donate
             until you verify one in{" "}
-            <a href="/settings" className="text-accent underline underline-offset-2">
+            <Link href="/settings" className="text-accent underline underline-offset-2">
               settings
-            </a>
+            </Link>
             .
           </p>
         </Card>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { apiServer } from "@/lib/api";
 import type { SessionResponse } from "@/lib/types";
 import { SiteHeaderClient } from "./site-header-client";
@@ -24,9 +25,9 @@ export function HeaderFallback() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-5 sm:px-6">
-        <a href="/" className="text-[15px] font-semibold tracking-tight">
+        <Link href="/" className="text-[15px] font-semibold tracking-tight">
           Sardhana
-        </a>
+        </Link>
       </div>
     </header>
   );
