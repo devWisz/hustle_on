@@ -4,6 +4,7 @@ import { formatCount, formatSol } from "@/lib/format";
 import { TimelapseGrid } from "@/components/timelapse-card";
 import { ButtonLink, Container, EmptyState, GlassStat } from "@/components/ui";
 import { ClockIcon, EyeIcon, TrendingIcon, UsersIcon } from "@/components/icons";
+import { HeroVisual } from "@/components/hero-visual";
 
 export const revalidate = 30;
 
@@ -18,26 +19,37 @@ export default async function HomePage() {
     <>
       {/* Hero section with gradient background glow */}
       <div className="hero-glow">
-        <Container className="py-20 sm:py-28">
-          <section className="max-w-2xl animate-fade-in-up">
-            <h1 className="text-[38px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[52px]">
-              Timelapses of{" "}
-              <span className="gradient-text">real work</span>
-              , funded by the people who want to see more of it.
-            </h1>
-            <p className="mt-6 text-[17px] leading-relaxed text-fg-muted sm:text-[18px]">
-              Record a session. Write down what you actually did. Every upload is read by a person
-              before it goes up, and anyone who thinks the work was worth it can send you SOL directly.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ButtonLink href="/upload" size="lg">
-                Upload a timelapse
-              </ButtonLink>
-              <ButtonLink href="/about" variant="secondary" size="lg">
-                How it works
-              </ButtonLink>
-            </div>
-          </section>
+        <Container className="py-16 sm:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left side copy */}
+            <section className="lg:col-span-7 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent mb-6">
+                <span>⚡ Proof of Work meets Solana Payouts</span>
+              </div>
+              <h1 className="text-[38px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[52px]">
+                Timelapses of{" "}
+                <span className="gradient-text">real work</span>
+                , funded by the people who want to see more of it.
+              </h1>
+              <p className="mt-6 text-[17px] leading-relaxed text-fg-muted sm:text-[18px]">
+                Record a session. Write down what you actually did. Every upload is read by a person
+                before it goes up, and anyone who thinks the work was worth it can send you SOL directly.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <ButtonLink href="/upload" size="lg">
+                  Upload a timelapse
+                </ButtonLink>
+                <ButtonLink href="/about" variant="secondary" size="lg">
+                  How it works
+                </ButtonLink>
+              </div>
+            </section>
+
+            {/* Right side hero visual */}
+            <section className="lg:col-span-5 animate-fade-in">
+              <HeroVisual />
+            </section>
+          </div>
         </Container>
       </div>
 

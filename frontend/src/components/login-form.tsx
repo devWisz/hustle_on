@@ -6,10 +6,6 @@ import { Button, Field, Input } from "./ui";
 
 /**
  * Requests an email login link.
- *
- * The success message is identical whether or not the address has an account,
- * matching the API. Saying "no account with that email" here would undo the
- * work the server does to avoid confirming who is registered.
  */
 export function LoginForm({ next, className }: { next?: string; className?: string }) {
   const [email, setEmail] = useState("");
@@ -18,34 +14,53 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const trimmed = email.trim();
+
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setState("sending");
     setError(null);
+
     try {
-      await api("/v1/auth/request-link", { body: { email, next: next ?? "" } });
+      await api("/v1/auth/request-link", { body: { email: trimmed, next: next ?? "" } });
       setState("sent");
-    } catch (err) {
+    } catch (err: unknown) {
       setState("idle");
-      setError(
-        err instanceof ApiError
-          ? (err.fields.email ?? err.message)
-          : "We could not send that link. Try again in a moment.",
-      );
+      if (err instanceof ApiError) {
+        if (err.status === 403 || err.message.toLowerCase().includes("csrf")) {
+          setError("Security token expired. Reloading page...");
+          setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+        setError(err.fields.email ?? err.message ?? "Could not send sign-in link.");
+      } else if (err instanceof TypeError && err.message.toLowerCase().includes("fetch")) {
+        setError("Could not reach authentication server. Ensure the API backend is online.");
+      } else {
+        setError("We could not send that link. Please check your email and try again.");
+      }
     }
   }
 
   if (state === "sent") {
     return (
       <div className={className}>
-        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
-          <h2 className="text-[15px] font-semibold">Check your inbox</h2>
+        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5 animate-fade-in">
+          <div className="flex items-center gap-2 text-emerald-400 mb-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-wider">Link Dispatched</span>
+          </div>
+          <h2 className="text-[16px] font-semibold">Check your inbox</h2>
           <p className="mt-2 text-sm leading-relaxed text-fg-muted">
             If <span className="font-medium text-fg">{email}</span> has an account, a sign-in link
-            is on its way. It works once and expires in fifteen minutes.
+            is on its way. It works once and expires in 15 minutes.
           </p>
           <button
             type="button"
             onClick={() => setState("idle")}
-            className="mt-4 text-[13px] text-fg-muted underline underline-offset-4 hover:text-fg"
+            className="mt-4 text-[13px] text-fg-muted underline underline-offset-4 hover:text-fg transition"
           >
             Use a different address
           </button>
@@ -56,7 +71,7 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
 
   return (
     <form onSubmit={submit} className={className} noValidate>
-      <Field label="Email" htmlFor="email" error={error ?? undefined}>
+      <Field label="Email address" htmlFor="email" error={error ?? undefined}>
         <Input
           id="email"
           name="email"
@@ -66,7 +81,10 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
           autoFocus
           placeholder="you@example.com"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (error) setError(null);
+          }}
         />
       </Field>
       <Button type="submit" size="lg" className="mt-4 w-full" loading={state === "sending"}>
