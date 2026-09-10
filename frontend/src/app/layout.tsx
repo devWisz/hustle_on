@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { HeaderFallback, SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { ToastProvider } from "@/components/toast";
+import { ScrollToTop } from "@/components/scroll-to-top";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import "./globals.css";
 
 const inter = Inter({
@@ -81,6 +83,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           <SiteFooter />
+          <ScrollToTop />
+          <KeyboardShortcuts />
         </ToastProvider>
       </body>
     </html>

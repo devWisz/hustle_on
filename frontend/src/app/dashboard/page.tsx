@@ -3,9 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { apiServer } from "@/lib/api";
 import type { Donation, SelfUser, Timelapse } from "@/lib/types";
-import { formatSession, formatSol, timeAgo } from "@/lib/format";
+import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
-import { ButtonLink, Card, Container, EmptyState, SectionHeading } from "@/components/ui";
+import { ButtonLink, Card, Container, EmptyState, GlassStat, SectionHeading } from "@/components/ui";
+import { ClockIcon, EyeIcon, TrendingIcon, UploadIcon, WalletIcon, ZapIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -23,23 +24,76 @@ export default async function DashboardPage() {
 
   return (
     <Container className="py-12">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* Dashboard header */}
+      <div className="flex flex-wrap items-end justify-between gap-4 animate-fade-in-up">
         <div>
-          <h1 className="text-[26px] font-semibold leading-tight">Your work</h1>
-          <p className="mt-1 text-sm text-fg-muted">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
+            Your <span className="gradient-text">work</span>
+          </h1>
+          <p className="mt-1.5 text-sm text-fg-muted">
             {formatSol(me.donationTotalLamports)} received across {me.timelapseCount} published
             timelapse{me.timelapseCount === 1 ? "" : "s"}.
           </p>
         </div>
-        <ButtonLink href="/upload">Upload a timelapse</ButtonLink>
+        <ButtonLink href="/upload">
+          <UploadIcon size={16} />
+          Upload a timelapse
+        </ButtonLink>
+      </div>
+
+      {/* Quick stats */}
+      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 stagger-children">
+        <GlassStat
+          label="Published"
+          value={formatCount(me.timelapseCount)}
+          icon={<EyeIcon size={18} />}
+        />
+        <GlassStat
+          label="Donations"
+          value={formatCount(me.donationCount)}
+          icon={<TrendingIcon size={18} />}
+        />
+        <GlassStat
+          label="Total received"
+          value={formatSol(me.donationTotalLamports)}
+          icon={<WalletIcon size={18} />}
+        />
+        <GlassStat
+          label="Submissions"
+          value={String(items.length)}
+          icon={<ClockIcon size={18} />}
+        />
       </div>
 
       {!me.payoutVerified ? <WalletPrompt /> : null}
 
+      {/* Quick actions */}
+      <section className="mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <ZapIcon size={16} className="text-accent" />
+          <h2 className="text-[15px] font-semibold">Quick actions</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/upload" variant="secondary" size="sm">
+            <UploadIcon size={14} />
+            New upload
+          </ButtonLink>
+          <ButtonLink href="/settings" variant="secondary" size="sm">
+            <WalletIcon size={14} />
+            Wallet settings
+          </ButtonLink>
+          <ButtonLink href={`/creator/${me.handle}`} variant="secondary" size="sm">
+            <EyeIcon size={14} />
+            View profile
+          </ButtonLink>
+        </div>
+      </section>
+
+      {/* Submissions */}
       <section className="mt-10">
         <SectionHeading title="Submissions" />
         {items.length > 0 ? (
-          <ul className="space-y-3">
+          <ul className="space-y-3 stagger-children">
             {items.map((t) => (
               <SubmissionRow key={t.id} timelapse={t} />
             ))}
@@ -53,13 +107,14 @@ export default async function DashboardPage() {
         )}
       </section>
 
+      {/* Donations received */}
       {donations.length > 0 ? (
         <section className="mt-12">
           <SectionHeading title="Donations received" />
           <Card className="px-5">
             <ul className="divide-y divide-border">
               {donations.map((d) => (
-                <li key={d.id} className="flex items-start justify-between gap-4 py-3.5">
+                <li key={d.id} className="flex items-start justify-between gap-4 py-3.5 transition-colors hover:bg-surface-raised/50">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
                     {d.message ? (
@@ -67,7 +122,7 @@ export default async function DashboardPage() {
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm tabular-nums">{formatSol(d.amountLamports)}</p>
+                    <p className="text-sm tabular-nums font-medium text-accent">{formatSol(d.amountLamports)}</p>
                     {d.confirmedAt ? (
                       <p className="text-[12px] text-fg-subtle">{timeAgo(d.confirmedAt)}</p>
                     ) : null}
@@ -94,7 +149,7 @@ function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
   const linkable = t.status === "published";
   return (
     <li>
-      <Card className="p-4">
+      <Card className="p-4 card-hover">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-[15px] font-medium">
@@ -129,7 +184,7 @@ function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
 
 function WalletPrompt() {
   return (
-    <Card className="mt-8 flex flex-wrap items-center justify-between gap-4 p-5">
+    <Card className="mt-8 flex flex-wrap items-center justify-between gap-4 p-5 glow-on-hover" variant="glass">
       <div>
         <h2 className="text-[15px] font-semibold">No wallet on file</h2>
         <p className="mt-1 text-sm text-fg-muted">

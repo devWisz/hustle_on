@@ -12,13 +12,13 @@ type ButtonSize = "sm" | "md" | "lg";
 
 const buttonBase =
   "inline-flex items-center justify-center gap-2 font-medium rounded-[var(--radius-control)] " +
-  "transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none " +
+  "transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none " +
   "whitespace-nowrap select-none";
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-accent-fg hover:bg-accent-hover",
+  primary: "gradient-accent-bg text-accent-fg hover:shadow-[var(--shadow-glow)] hover:brightness-110",
   secondary:
-    "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised",
+    "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised hover:shadow-sm",
   ghost: "text-fg-muted hover:text-fg hover:bg-surface-raised",
   danger: "bg-danger-soft text-danger border border-transparent hover:border-danger",
 };
@@ -80,22 +80,27 @@ export function ButtonLink({
   return <Link className={buttonClass(variant, size, className)} {...rest} />;
 }
 
+type CardVariant = "default" | "glass";
+
 export function Card({
   className,
   children,
   as: Tag = "div",
+  variant = "default",
 }: {
   className?: string;
   children: React.ReactNode;
   as?: "div" | "article" | "section" | "li";
+  variant?: CardVariant;
 }) {
+  const variants = {
+    default:
+      "bg-surface border border-border rounded-[var(--radius-card)] shadow-[var(--shadow-card)]",
+    glass:
+      "glass rounded-[var(--radius-card)] shadow-[var(--shadow-card)]",
+  };
   return (
-    <Tag
-      className={cx(
-        "bg-surface border border-border rounded-[var(--radius-card)] shadow-[var(--shadow-card)]",
-        className,
-      )}
-    >
+    <Tag className={cx(variants[variant], className)}>
       {children}
     </Tag>
   );
@@ -107,7 +112,7 @@ export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInpu
       className={cx(
         "w-full h-10 px-3 bg-surface border border-border rounded-[var(--radius-control)]",
         "text-sm text-fg placeholder:text-fg-subtle",
-        "transition-colors hover:border-border-strong focus:border-accent",
+        "transition-all hover:border-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10",
         className,
       )}
       {...rest}
@@ -124,7 +129,7 @@ export function Textarea({
       className={cx(
         "w-full px-3 py-2.5 bg-surface border border-border rounded-[var(--radius-control)]",
         "text-sm leading-relaxed text-fg placeholder:text-fg-subtle resize-y min-h-24",
-        "transition-colors hover:border-border-strong focus:border-accent",
+        "transition-all hover:border-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10",
         className,
       )}
       {...rest}
@@ -231,7 +236,8 @@ export function Avatar({
     <span
       className={cx(
         "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full",
-        "bg-surface-raised border border-border text-fg-muted font-medium",
+        "bg-accent-soft border border-border text-accent font-medium",
+        "transition-transform duration-200 hover:scale-105",
         className,
       )}
       style={{ width: size, height: size, fontSize: Math.max(11, size * 0.36) }}
@@ -325,6 +331,27 @@ export function SpinnerCard({ label }: { label: string }) {
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-fg-muted">
       <SpinnerIcon size={22} />
       <p className="text-sm">{label}…</p>
+    </div>
+  );
+}
+
+/** A glassmorphism stat card for dashboards and hero sections. */
+export function GlassStat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="glass rounded-[var(--radius-card)] p-4 transition-all duration-200 hover:shadow-[var(--shadow-glow)]">
+      <div className="flex items-center gap-2">
+        {icon ? <span className="text-accent">{icon}</span> : null}
+        <dd className="text-[22px] font-semibold tabular-nums leading-tight">{value}</dd>
+      </div>
+      <dt className="mt-1 text-[13px] text-fg-muted">{label}</dt>
     </div>
   );
 }

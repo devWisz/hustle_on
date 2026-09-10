@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ButtonLink, Container } from "@/components/ui";
+import { ShieldIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "How it works",
@@ -9,14 +10,18 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <Container width="narrow" className="py-16">
-      <h1 className="text-[30px] font-semibold leading-tight tracking-tight">How it works</h1>
-      <p className="mt-4 text-[17px] leading-relaxed text-fg-muted">
-        Sardhana is a record of work that actually happened. You record a session, describe what you
-        did, and point at where the result lives. Someone reads it. If it holds up, it goes on the
-        feed — and anyone who thinks it was worth doing can send you SOL directly.
-      </p>
+      <div className="animate-fade-in-up">
+        <h1 className="text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]">
+          How it <span className="gradient-text">works</span>
+        </h1>
+        <p className="mt-4 text-[17px] leading-relaxed text-fg-muted">
+          Sardhana is a record of work that actually happened. You record a session, describe what you
+          did, and point at where the result lives. Someone reads it. If it holds up, it goes on the
+          feed — and anyone who thinks it was worth doing can send you SOL directly.
+        </p>
+      </div>
 
-      <ol className="mt-12 space-y-9">
+      <ol className="mt-14 space-y-0">
         <Step
           n={1}
           title="Record the session"
@@ -36,15 +41,28 @@ export default function AboutPage() {
           n={4}
           title="People fund what they want more of"
           body="Donations are plain SOL transfers from a viewer's wallet to yours. Sardhana never holds the money and takes no cut. Every donation shown on the site was read back off the chain and checked before it was counted."
+          isLast
         />
       </ol>
 
       <section className="mt-14 border-t border-border pt-8">
-        <h2 className="text-[19px] font-semibold">What Sardhana will never do</h2>
-        <ul className="mt-4 space-y-2.5 text-[15px] leading-relaxed text-fg-muted">
-          <li>Ask for a seed phrase or a private key. Not for signing in, not for payouts.</li>
-          <li>Take custody of a donation. The transfer is wallet to wallet.</li>
-          <li>Store a password. Signing in is an emailed link that works once.</li>
+        <div className="flex items-center gap-2">
+          <ShieldIcon size={20} className="text-accent" />
+          <h2 className="text-[19px] font-semibold">What Sardhana will never do</h2>
+        </div>
+        <ul className="mt-4 space-y-3 text-[15px] leading-relaxed text-fg-muted">
+          <li className="flex gap-3">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+            Ask for a seed phrase or a private key. Not for signing in, not for payouts.
+          </li>
+          <li className="flex gap-3">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+            Take custody of a donation. The transfer is wallet to wallet.
+          </li>
+          <li className="flex gap-3">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+            Store a password. Signing in is an emailed link that works once.
+          </li>
         </ul>
       </section>
 
@@ -57,12 +75,25 @@ export default function AboutPage() {
   );
 }
 
-function Step({ n, title, body }: { n: number; title: string; body: string }) {
+function Step({
+  n,
+  title,
+  body,
+  isLast = false,
+}: {
+  n: number;
+  title: string;
+  body: string;
+  isLast?: boolean;
+}) {
   return (
-    <li className="flex gap-5">
+    <li className={`flex gap-5 ${isLast ? "" : "step-connector"} pb-10`} style={{ listStyle: "none" }}>
       <span
         aria-hidden
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-[13px] font-medium tabular-nums text-fg-muted"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full
+                   bg-accent-soft border border-accent/20 text-[13px] font-semibold
+                   tabular-nums text-accent transition-all duration-300
+                   hover:bg-accent hover:text-accent-fg hover:shadow-[var(--shadow-glow)]"
       >
         {n}
       </span>

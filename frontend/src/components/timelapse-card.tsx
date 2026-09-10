@@ -17,23 +17,34 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
     <article className="group">
       <Link
         href={`/watch/${t.slug}`}
-        className="block overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-raised"
+        className="block overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-raised
+                   card-hover"
       >
-        <div className="relative aspect-video w-full">
+        <div className="relative aspect-video w-full overflow-hidden">
           {t.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={t.thumbnailUrl}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-fg-subtle">
+            <div className="flex h-full w-full items-center justify-center bg-surface-raised text-fg-subtle">
               <PlayIcon size={28} />
             </div>
           )}
+
+          {/* Play overlay on hover */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-300 group-hover:bg-black/30">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-fg
+                            opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100
+                            shadow-lg">
+              <PlayIcon size={20} />
+            </span>
+          </div>
+
           {t.durationSeconds > 0 ? (
-            <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-white">
+            <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-0.5 font-mono text-[11px] tabular-nums text-white backdrop-blur-sm">
               {formatDuration(t.durationSeconds)}
             </span>
           ) : null}
@@ -78,7 +89,7 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
             {formatCount(t.viewCount)}
           </span>
           {t.donationTotalLamports > 0 ? (
-            <span className="tabular-nums">{formatSol(t.donationTotalLamports)} received</span>
+            <span className="tabular-nums text-accent">{formatSol(t.donationTotalLamports)} received</span>
           ) : null}
         </div>
       </div>
@@ -89,7 +100,7 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
 /** The grid every list of timelapses uses, so column counts stay consistent. */
 export function TimelapseGrid({ items }: { items: Timelapse[] }) {
   return (
-    <div className="grid gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
       {items.map((t) => (
         <TimelapseCard key={t.id} timelapse={t} />
       ))}

@@ -6,6 +6,7 @@ import type { Donation, Timelapse } from "@/lib/types";
 import { formatCount, formatDate, formatSession, formatSol } from "@/lib/format";
 import { TimelapsePlayer } from "@/components/timelapse-player";
 import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/donate-panel";
+import { ShareButton } from "@/components/share-button";
 import { Avatar, Card, Container } from "@/components/ui";
 import { ClockIcon, EyeIcon, GitHubIcon, XIcon } from "@/components/icons";
 
@@ -38,11 +39,13 @@ export default async function WatchPage({ params }: Props) {
 
   return (
     <Container width="wide" className="py-10">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 animate-fade-in-up">
           <TimelapsePlayer timelapse={timelapse} />
 
-          <h1 className="mt-6 text-[26px] font-semibold leading-tight">{timelapse.title}</h1>
+          <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
+            {timelapse.title}
+          </h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-muted">
             {timelapse.sessionMinutes > 0 ? (
@@ -58,6 +61,12 @@ export default async function WatchPage({ params }: Props) {
             {timelapse.publishedAt ? (
               <time dateTime={timelapse.publishedAt}>{formatDate(timelapse.publishedAt)}</time>
             ) : null}
+            {/* Share button */}
+            <ShareButton
+              title={timelapse.title}
+              text={timelapse.summary.slice(0, 120)}
+              path={`/watch/${timelapse.slug}`}
+            />
           </div>
 
           <CreatorLine timelapse={timelapse} />
@@ -74,7 +83,7 @@ export default async function WatchPage({ params }: Props) {
           <WorkLinks timelapse={timelapse} />
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start animate-slide-in-right" style={{ animationDelay: "200ms" }}>
           {creator?.payoutAddress ? (
             <DonatePanel timelapse={timelapse} />
           ) : (
@@ -85,7 +94,7 @@ export default async function WatchPage({ params }: Props) {
             <h2 className="text-[15px] font-semibold">
               Supporters
               {timelapse.donationTotalLamports > 0 ? (
-                <span className="ml-2 font-normal tabular-nums text-fg-muted">
+                <span className="ml-2 font-normal tabular-nums text-accent">
                   {formatSol(timelapse.donationTotalLamports)}
                 </span>
               ) : null}
@@ -104,7 +113,8 @@ function CreatorLine({ timelapse }: { timelapse: Timelapse }) {
   return (
     <Link
       href={`/creator/${timelapse.creator.handle}`}
-      className="mt-5 flex items-center gap-3 border-y border-border py-4 transition-colors hover:text-accent"
+      className="mt-5 flex items-center gap-3 border-y border-border py-4
+                 transition-all duration-200 hover:text-accent hover:bg-surface-raised/50 -mx-3 px-3 rounded-[var(--radius-control)]"
     >
       <Avatar name={timelapse.creator.displayName} src={timelapse.creator.avatarUrl} size={36} />
       <span>
@@ -146,7 +156,9 @@ function WorkLink({ href, icon, label }: { href: string; icon: React.ReactNode; 
       // noopener is what stops the opened page from reaching back into this
       // one through window.opener; noreferrer keeps our URL out of its logs.
       rel="noopener noreferrer nofollow"
-      className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border px-3 text-[13px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+      className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border
+                 px-3 text-[13px] text-fg-muted transition-all duration-200
+                 hover:border-border-strong hover:text-fg hover:shadow-sm"
     >
       {icon}
       {label}

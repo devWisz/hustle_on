@@ -122,6 +122,14 @@ export function ArrowRightIcon(props: IconProps) {
   );
 }
 
+export function ArrowUpIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 20V4m0 0-5.5 5.5M12 4l5.5 5.5" />
+    </Svg>
+  );
+}
+
 export function ExternalIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -137,6 +145,40 @@ export function LinkIcon(props: IconProps) {
     <Svg {...props}>
       <path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.54 3.54 0 0 0-5-5l-1.2 1.2" />
       <path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.54 3.54 0 0 0 5 5l1.2-1.2" />
+    </Svg>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 4.5 4.5" />
+    </Svg>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </Svg>
+  );
+}
+
+export function TrendingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m22 7-8.5 8.5-5-5L2 17" />
+      <path d="M16 7h6v6" />
+    </Svg>
+  );
+}
+
+export function ZapIcon(props: IconProps) {
+  return (
+    <Svg {...props} filled>
+      <path d="M13 2 3 14h9l-1 8 10-12h-9z" />
     </Svg>
   );
 }
