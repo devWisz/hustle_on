@@ -23,8 +23,13 @@ nothing downstream needs a second set of classes.
 | `--accent` / `--accent-hover` / `--accent-fg` / `--accent-soft` | The one accent |
 | `--danger` / `--danger-soft` | Rejections, destructive actions |
 
-Three radii (`control` 8px, `card` 12px, `panel` 16px) and two shadows. That is
-the whole vocabulary.
+Three radii (`control` 8px, `card` 12px, `panel` 16px) and three shadows
+(`card`, `raised`, `lifted`). That is the whole vocabulary.
+
+There is no glow token, and adding one back would be a regression. Depth is
+carried by a neutral shadow, a border and movement. A coloured halo behind an
+element implies a light source the page does not have; it reads as noise at
+small sizes and it is the first thing to look cheap on a poor display.
 
 **Theme.** Light is defined on bare `:root`. Dark is redefined under
 `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`,
@@ -82,8 +87,40 @@ Keyboard users must never have to guess where they are.
 **Motion is optional.** `prefers-reduced-motion` collapses every animation to
 0.01ms in `globals.css`. Nothing should depend on movement to be understood.
 
+**Content is never hidden by an animation that might not run.** Scroll-reveal
+starts elements at `opacity: 0`, which is only safe because the hidden state is
+scoped to `.js` — a class the boot script in `layout.tsx` sets before first
+paint. No script, no class, no hiding. The same script lifts the class again if
+`data-hydrated` has not appeared four seconds after load, so a bundle that fails
+to load degrades to a still page rather than a blank one.
+
+## Motion
+
+One easing curve, `--ease-out-quint`, for everything. Durations vary between
+120ms (a press) and 600ms (a reveal); the curve does not, so the whole product
+has a single sense of weight.
+
+| Utility | Where it belongs |
+|---|---|
+| `animate-fade-in-up` + `delay-1…6` | A hero or header sequence, above the fold |
+| `stagger-children` | A grid or list whose items arrive together |
+| `Reveal` (`[data-reveal]`) | Anything below the fold; one shared observer for the page |
+| `CountUp` | A figure that is worth noticing — never a figure that is still loading |
+| `card-hover` | Cards that link somewhere |
+| `press` | Every button; already in `buttonClass` |
+| `nudge-icon` | An arrow inside a `group` that leads onward |
+
+Hover effects are wrapped in `@media (hover: hover)`. A phone has no hover, and
+a lift that fires on touch fights the scroll.
+
 **Wide content scrolls itself.** Tables, code and diagrams go in an
 `overflow-x: auto` container. The page body never scrolls horizontally.
+
+**Every layout is built up from 320px.** Type is fluid (`text-display`,
+`text-title`, `text-lede` clamp between a phone and a desktop), rows stack
+before they crush, and a row of chips scrolls rather than wraps. Text inputs are
+16px below the `sm` breakpoint: anything smaller makes iOS Safari zoom the whole
+page the moment the field takes focus.
 
 ## Voice
 

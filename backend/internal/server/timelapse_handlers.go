@@ -18,10 +18,18 @@ import (
 
 // --- public reads ---------------------------------------------------------
 
-// handleFeed returns published timelapses, newest first.
+// handleFeed returns published timelapses.
+//
+// `q` filters, `sort` ranks, `cursor` pages. Only the default order pages —
+// see store.FeedQuery — so a ranked request comes back without a cursor and
+// the client stops asking for more.
 func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) error {
-	page, err := s.store.Feed(r.Context(),
-		queryString(r, "cursor", 200), queryInt(r, "limit", 12, 1, 50))
+	page, err := s.store.Feed(r.Context(), store.FeedQuery{
+		Cursor: queryString(r, "cursor", 200),
+		Limit:  queryInt(r, "limit", 12, 1, 50),
+		Search: queryString(r, "q", 80),
+		Sort:   store.ParseFeedSort(queryString(r, "sort", 16)),
+	})
 	if err != nil {
 		if errors.Is(err, store.ErrBadCursor) {
 			return apierr.BadRequest("That page cursor is not valid.")

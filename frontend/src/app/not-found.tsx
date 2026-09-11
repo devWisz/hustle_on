@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="animate-fade-in-up">
         {/* Large animated 404 */}
         <div className="relative mx-auto mb-6 w-fit">
-          <span className="text-[100px] font-bold tracking-tighter gradient-text sm:text-[140px] leading-none">
+          <span className="text-[clamp(4.5rem,18vw,8.75rem)] font-bold leading-none tracking-tighter text-accent">
             404
           </span>
           <div className="absolute inset-0 blur-3xl opacity-20 gradient-accent-bg rounded-full" />

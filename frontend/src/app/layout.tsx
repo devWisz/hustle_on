@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { ToastProvider } from "@/components/toast";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { HydrationMark } from "@/components/hydration-mark";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,10 +16,17 @@ const inter = Inter({
 });
 
 /**
- * Apply a stored theme before first paint so the page does not flash the
- * system default and then swap.
+ * Runs before first paint, and does two things that must not wait for React.
+ *
+ * It applies a stored theme, so the page does not flash the system default and
+ * then swap. And it marks the document as scripted, which is what allows the
+ * scroll-reveal animations to start hidden — an unscripted or broken page
+ * leaves the class off and shows everything, so a failed bundle can never
+ * render a blank article. The timer is the second half of that promise: if
+ * React has not marked itself hydrated shortly after load, the gate comes back
+ * off and the content appears without animation.
  */
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+const BOOT_SCRIPT = `(function(){var d=document.documentElement;try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){d.setAttribute("data-theme",t);}}catch(e){}d.classList.add("js");setTimeout(function(){if(!d.hasAttribute("data-hydrated")){d.classList.remove("js");}},4000);})();`;
 
 /**
  * A deploy platform can hand an unset variable through as an empty string,
@@ -64,9 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
       <body className="min-h-dvh flex flex-col antialiased">
+        <HydrationMark />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50

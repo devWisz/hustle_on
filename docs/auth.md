@@ -176,6 +176,45 @@ limit.
 
 ---
 
+## Email delivery
+
+Sign-in links leave the process through one of two mailers, chosen once at
+startup by `buildMailer` in `backend/cmd/api/main.go`. Which one is in use is
+logged on the first line of the API's output, because it is the single most
+common thing to be wrong about when a link never arrives:
+
+| Startup log line | What is happening |
+| --- | --- |
+| `RESEND_API_KEY is not set` | `LogMailer`. The link is printed to the API's own stdout and no email is sent. This is the default for local development and is not a fault. |
+| `does not look like a Resend key` | A value is set but has no `re_` prefix — almost always another provider's key in the wrong variable. Every send will fail. |
+| `sending through Resend` | `ResendMailer`, sending as the `from` address on that same line. |
+
+Outside production the real send runs **alongside** the log, so a
+misconfiguration is visible while developing rather than the first time someone
+deploys. A failure there never fails the request — the link is already in the
+log — but it is logged as
+`Resend rejected the message; the link above was not delivered`, with the
+provider's status and body. It is not swallowed.
+
+### When a key is set and mail still does not arrive
+
+1. **Read the error.** Resend returns the reason in the body and the API logs it
+   verbatim.
+2. **`403` almost always means the sender domain is not verified.** The domain in
+   `EMAIL_FROM` has to be added and verified in the Resend dashboard, DNS records
+   and all. A valid key with an unverified sender fails exactly like a bad key.
+3. **`401` means the key itself.** Revoked, mistyped, or from a different Resend
+   account than the domain.
+4. **`422` means the payload.** Usually an `EMAIL_FROM` that is not a valid
+   address or `Name <address>` pair.
+5. **Nothing in the log at all** means the request never reached `StartLogin` —
+   check the rate limits above before suspecting the mailer.
+
+`config.Load` refuses to start a production process without `RESEND_API_KEY`, so
+a deployment can never silently fall back to printing links.
+
+---
+
 ## Reading the code
 
 | Question | File |

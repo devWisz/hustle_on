@@ -17,9 +17,15 @@ import { NextResponse, type NextRequest } from "next/server";
 const SECURITY_HEADERS: Record<string, string> = {
   // 'unsafe-inline' covers Next's hydration script and Tailwind's injected
   // styles; connect-src is widened in development for the local API and HMR.
+  //
+  // 'unsafe-eval' is development-only and not optional there: Next's Fast
+  // Refresh runtime evaluates module code as a string, and without it *no*
+  // client component hydrates — the dev server renders a page that looks
+  // right and does nothing. It is never sent in production, which is the
+  // build this policy exists to protect.
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline'" + (isDev() ? " 'unsafe-eval'" : ""),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:" + (isDev() ? " http://localhost:*" : ""),

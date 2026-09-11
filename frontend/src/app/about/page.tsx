@@ -12,7 +12,7 @@ export default function AboutPage() {
     <Container width="narrow" className="py-16">
       <div className="animate-fade-in-up">
         <h1 className="text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]">
-          How it <span className="gradient-text">works</span>
+          How it <span className="text-accent">works</span>
         </h1>
         <p className="mt-4 text-[17px] leading-relaxed text-fg-muted">
           Sardhana is a record of work that actually happened. You record a session, describe what you
@@ -93,7 +93,7 @@ function Step({
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full
                    bg-accent-soft border border-accent/20 text-[13px] font-semibold
                    tabular-nums text-accent transition-all duration-300
-                   hover:bg-accent hover:text-accent-fg hover:shadow-[var(--shadow-glow)]"
+                   hover:bg-accent hover:text-accent-fg"
       >
         {n}
       </span>

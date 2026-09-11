@@ -28,7 +28,7 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 animate-fade-in-up">
         <div>
           <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
-            Your <span className="gradient-text">work</span>
+            Your <span className="text-accent">work</span>
           </h1>
           <p className="mt-1.5 text-sm text-fg-muted">
             {formatSol(me.donationTotalLamports)} received across {me.timelapseCount} published
@@ -184,7 +184,7 @@ function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
 
 function WalletPrompt() {
   return (
-    <Card className="mt-8 flex flex-wrap items-center justify-between gap-4 p-5 glow-on-hover" variant="glass">
+    <Card className="card-hover mt-8 flex flex-wrap items-center justify-between gap-4 p-5" variant="glass">
       <div>
         <h2 className="text-[15px] font-semibold">No wallet on file</h2>
         <p className="mt-1 text-sm text-fg-muted">

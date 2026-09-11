@@ -48,23 +48,100 @@ func collectTimelapses(rows pgx.Rows) ([]domain.Timelapse, error) {
 	return out, normalize(rows.Err())
 }
 
-// Feed returns published timelapses, newest first.
+// FeedSort names the orders the public feed can be read in. The zero value is
+// the default, so a caller that does not care gets newest-first.
+type FeedSort string
+
+const (
+	// FeedRecent is newest first. The only order with a stable sort key, and
+	// therefore the only one that pages.
+	FeedRecent FeedSort = ""
+	// FeedFunded ranks by SOL received.
+	FeedFunded FeedSort = "funded"
+	// FeedWatched ranks by view count.
+	FeedWatched FeedSort = "watched"
+	// FeedLongest ranks by the length of the session that was recorded.
+	FeedLongest FeedSort = "longest"
+)
+
+// ParseFeedSort maps a query-string value onto a sort. An unrecognised value
+// falls back to the default rather than erroring: a stale bookmark should still
+// render a feed.
+func ParseFeedSort(v string) FeedSort {
+	switch FeedSort(strings.ToLower(strings.TrimSpace(v))) {
+	case FeedFunded:
+		return FeedFunded
+	case FeedWatched:
+		return FeedWatched
+	case FeedLongest:
+		return FeedLongest
+	default:
+		return FeedRecent
+	}
+}
+
+// FeedQuery is the set of things a visitor can ask the feed for.
+type FeedQuery struct {
+	Cursor string
+	Limit  int
+	// Search matches the title, the summary and the creator's name. Empty
+	// means no filtering.
+	Search string
+	Sort   FeedSort
+}
+
+// orderBy is the ORDER BY for this sort. The strings are constants chosen by
+// the switch, never assembled from input, so no caller can reach the SQL.
+func (q FeedQuery) orderBy() string {
+	switch q.Sort {
+	case FeedFunded:
+		return "t.donation_total_lamports DESC, t.published_at DESC, t.id DESC"
+	case FeedWatched:
+		return "t.view_count DESC, t.published_at DESC, t.id DESC"
+	case FeedLongest:
+		return "t.session_minutes DESC, t.published_at DESC, t.id DESC"
+	default:
+		return "t.published_at DESC, t.id DESC"
+	}
+}
+
+// pages reports whether this query can hand out a cursor.
+//
+// Only the default order can. The other three rank on a column that changes
+// underneath the reader — a donation lands, a view is counted — and a keyset
+// cursor over a moving value silently skips and repeats rows. Ranked views
+// return a single page instead of quietly lying about what comes next.
+func (q FeedQuery) pages() bool { return q.Sort == FeedRecent }
+
+// Feed returns published timelapses.
 //
 // Paging is keyset rather than OFFSET: the cursor names the last row seen, so a
 // donation landing between two page loads cannot shuffle a row from page two
 // onto page one, and the cost of page fifty is the same as page one.
-func (s *Store) Feed(ctx context.Context, cursor string, limit int) (domain.Page[domain.Timelapse], error) {
-	before, beforeID, err := decodeCursor(cursor)
+func (s *Store) Feed(ctx context.Context, q FeedQuery) (domain.Page[domain.Timelapse], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, err
 	}
+	// A cursor and a ranked order cannot be combined; the cursor is simply
+	// dropped, since there was no honest page two to resume from.
+	if !q.pages() {
+		before, beforeID = nil, nil
+	}
+
+	search := likePattern(q.Search)
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE t.status = 'published'
 		  AND ($1::timestamptz IS NULL OR (t.published_at, t.id) < ($1, $2::uuid))
-		ORDER BY t.published_at DESC, t.id DESC
-		LIMIT $3`, before, beforeID, limit+1)
+		  AND ($4::text IS NULL
+		       OR t.title ILIKE $4 ESCAPE '\'
+		       OR t.summary ILIKE $4 ESCAPE '\'
+		       OR u.display_name ILIKE $4 ESCAPE '\'
+		       OR u.handle::text ILIKE $4 ESCAPE '\')
+		ORDER BY `+q.orderBy()+`
+		LIMIT $3`, before, beforeID, q.Limit+1, search)
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
@@ -72,7 +149,33 @@ func (s *Store) Feed(ctx context.Context, cursor string, limit int) (domain.Page
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, err
 	}
-	return paginate(items, limit), nil
+	if !q.pages() {
+		if len(items) > q.Limit {
+			items = items[:q.Limit]
+		}
+		return domain.Page[domain.Timelapse]{Items: items}, nil
+	}
+	return paginate(items, q.Limit), nil
+}
+
+// likePattern turns a search term into a bounded ILIKE pattern, or nil when
+// there is nothing to search for.
+//
+// The wildcards a visitor types are escaped rather than honoured: a lone "%"
+// in the box should find nothing, not scan the whole table, and a "_" should
+// mean the underscore in a file name. The term is also capped, because the
+// pattern length is what the match costs.
+func likePattern(term string) *string {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return nil
+	}
+	if len(term) > 80 {
+		term = term[:80]
+	}
+	r := strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+	pattern := "%" + r.Replace(term) + "%"
+	return &pattern
 }
 
 // BySlug returns one timelapse regardless of status. Callers decide who may see

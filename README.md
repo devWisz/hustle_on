@@ -97,8 +97,10 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 
 - **Typography-led** — monochrome palette with a single green accent
 - **No emoji** — inline SVG icons only, consistent across every platform
-- **Glassmorphism & micro-animations** — premium feel with frosted-glass cards, staggered reveals, gradient accents
-- **Accessibility first** — visible focus rings, ARIA labels, `prefers-reduced-motion` respected
+- **No glow** — depth comes from shadow, border and motion, never a coloured halo
+- **Motion with one curve** — staggered reveals, counted figures, a press on every button; all of it collapses under `prefers-reduced-motion`
+- **Responsive from 320px** — fluid type, rows that stack before they crush, no horizontal scroll
+- **Accessibility first** — visible focus rings, ARIA labels, content never hidden by an animation that might not run
 - **New colors, radii, or shadows** must be added to [docs/design-system.md](docs/design-system.md) first
 
 ---

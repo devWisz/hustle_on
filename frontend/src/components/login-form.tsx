@@ -47,10 +47,10 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
   if (state === "sent") {
     return (
       <div className={className}>
-        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-5 animate-fade-in">
-          <div className="flex items-center gap-2 text-emerald-400 mb-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Link Dispatched</span>
+        <div className="animate-scale-in rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[var(--shadow-card)]">
+          <div className="mb-2 flex items-center gap-2 text-accent">
+            <span className="h-2 w-2 rounded-full bg-accent" />
+            <span className="text-[12px] font-semibold">Link sent</span>
           </div>
           <h2 className="text-[16px] font-semibold">Check your inbox</h2>
           <p className="mt-2 text-sm leading-relaxed text-fg-muted">
@@ -60,7 +60,7 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
           <button
             type="button"
             onClick={() => setState("idle")}
-            className="mt-4 text-[13px] text-fg-muted underline underline-offset-4 hover:text-fg transition"
+            className="link-underline mt-4 text-[13px] text-fg-muted transition-colors hover:text-fg"
           >
             Use a different address
           </button>

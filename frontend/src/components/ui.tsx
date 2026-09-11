@@ -11,14 +11,14 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 font-medium rounded-[var(--radius-control)] " +
-  "transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none " +
+  "press inline-flex items-center justify-center gap-2 font-medium rounded-[var(--radius-control)] " +
+  "transition-colors duration-200 disabled:opacity-50 disabled:pointer-events-none " +
   "whitespace-nowrap select-none";
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: "gradient-accent-bg text-accent-fg hover:shadow-[var(--shadow-glow)] hover:brightness-110",
+  primary: "bg-accent text-accent-fg hover:bg-accent-hover shadow-[var(--shadow-card)]",
   secondary:
-    "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised hover:shadow-sm",
+    "bg-surface text-fg border border-border hover:border-border-strong hover:bg-surface-raised",
   ghost: "text-fg-muted hover:text-fg hover:bg-surface-raised",
   danger: "bg-danger-soft text-danger border border-transparent hover:border-danger",
 };
@@ -26,7 +26,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
 const buttonSizes: Record<ButtonSize, string> = {
   sm: "h-8 px-3 text-[13px]",
   md: "h-10 px-4 text-sm",
-  lg: "h-12 px-6 text-[15px]",
+  lg: "h-11 px-5 text-[15px] sm:h-12 sm:px-6",
 };
 
 export function buttonClass(
@@ -110,9 +110,11 @@ export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInpu
   return (
     <input
       className={cx(
-        "w-full h-10 px-3 bg-surface border border-border rounded-[var(--radius-control)]",
-        "text-sm text-fg placeholder:text-fg-subtle",
-        "transition-all hover:border-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10",
+        "w-full h-11 px-3 bg-surface border border-border rounded-[var(--radius-control)] sm:h-10",
+        // 16px on small screens: anything smaller makes iOS Safari zoom the
+        // whole page the moment the field takes focus.
+        "text-base text-fg placeholder:text-fg-subtle sm:text-sm",
+        "transition-colors hover:border-border-strong focus:border-accent focus:outline-none focus-visible:outline-none",
         className,
       )}
       {...rest}
@@ -128,8 +130,8 @@ export function Textarea({
     <textarea
       className={cx(
         "w-full px-3 py-2.5 bg-surface border border-border rounded-[var(--radius-control)]",
-        "text-sm leading-relaxed text-fg placeholder:text-fg-subtle resize-y min-h-24",
-        "transition-all hover:border-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10",
+        "text-base leading-relaxed text-fg placeholder:text-fg-subtle resize-y min-h-24 sm:text-sm",
+        "transition-colors hover:border-border-strong focus:border-accent focus:outline-none focus-visible:outline-none",
         className,
       )}
       {...rest}
@@ -273,7 +275,7 @@ export function SectionHeading({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-6 mb-5">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
       <div>
         <h2 className="text-[19px] font-semibold">{title}</h2>
         {description ? <p className="mt-1 text-sm text-fg-muted">{description}</p> : null}
@@ -335,23 +337,33 @@ export function SpinnerCard({ label }: { label: string }) {
   );
 }
 
-/** A glassmorphism stat card for dashboards and hero sections. */
+/**
+ * A figure and its label, used on the home page and dashboard summaries.
+ *
+ * `value` accepts a node rather than a string so a caller can pass an animated
+ * counter; the layout is identical either way.
+ */
 export function GlassStat({
   label,
   value,
   icon,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="glass rounded-[var(--radius-card)] p-4 transition-all duration-200 hover:shadow-[var(--shadow-glow)]">
+    <div
+      className="glass card-hover rounded-[var(--radius-card)] p-4
+                 shadow-[var(--shadow-card)] sm:p-5"
+    >
       <div className="flex items-center gap-2">
         {icon ? <span className="text-accent">{icon}</span> : null}
-        <dd className="text-[22px] font-semibold tabular-nums leading-tight">{value}</dd>
+        <dd className="text-[clamp(1.25rem,1.1rem+0.7vw,1.5rem)] font-semibold tnum leading-tight">
+          {value}
+        </dd>
       </div>
-      <dt className="mt-1 text-[13px] text-fg-muted">{label}</dt>
+      <dt className="mt-1 text-[13px] leading-snug text-fg-muted">{label}</dt>
     </div>
   );
 }

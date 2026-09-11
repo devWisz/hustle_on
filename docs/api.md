@@ -45,7 +45,7 @@ landing between two page loads cannot shuffle a row from page two onto page one.
 | --- | --- | --- |
 | `GET` | `/health` | Liveness |
 | `GET` | `/health/ready` | Pings the database |
-| `GET` | `/v1/timelapses` | Feed. `?limit=` (1–50), `?cursor=` |
+| `GET` | `/v1/timelapses` | Feed. `?limit=` (1–50), `?cursor=`, `?q=`, `?sort=` |
 | `GET` | `/v1/timelapses/{slug}` | Unpublished rows: creator and admin only, else 404 |
 | `GET` | `/v1/timelapses/{slug}/donations` | Confirmed supporters |
 | `POST` | `/v1/timelapses/{slug}/views` | Counted once per viewer per day |
@@ -54,6 +54,23 @@ landing between two page loads cannot shuffle a row from page two onto page one.
 | `GET` | `/v1/stats` | Homepage totals |
 
 `reviewNote` and `submittedAt` are stripped from every public payload.
+
+### Reading the feed
+
+`?q=` matches the title, the summary, the creator's display name and their
+handle. Wildcards a visitor types are escaped rather than honoured — a lone `%`
+finds nothing instead of scanning the table — and the term is capped at 80
+characters, because the pattern length is what the match costs.
+
+`?sort=` takes `funded`, `watched` or `longest`; anything else, including an
+empty value, is newest first. An unrecognised value falls back rather than
+erroring, so a stale bookmark still renders a feed.
+
+Only the default order pages. The three ranked orders sort on a column that
+moves underneath the reader — a donation lands, a view is counted — and a keyset
+cursor over a moving value silently skips and repeats rows. A ranked request
+therefore comes back with no `nextCursor`, and a `cursor` sent with one is
+ignored.
 
 ## Authentication
 

@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, ShieldIcon } from "./icons";
+import { cx } from "@/lib/format";
+
+/**
+ * The hero illustration: a mock recording panel over a mock donation feed.
+ *
+ * It is decoration, so the whole thing is `aria-hidden` — a screen reader
+ * gets the headline and the real feed below, not a fictional session. It also
+ * animates on a timer, which means two rules: nothing here may shift layout
+ * (every row is a fixed height, so the panel cannot jump while somebody is
+ * reading the copy beside it), and everything stops for reduced motion.
+ */
 
 interface DemoDonation {
-  id: number;
   name: string;
   action: string;
   amount: string;
@@ -12,138 +22,204 @@ interface DemoDonation {
 }
 
 const DEMO_DONATIONS: DemoDonation[] = [
-  { id: 1, name: "@sarjak", action: "Building Next.js 15 App Shell", amount: "1.5 SOL", time: "2m ago" },
-  { id: 2, name: "@alex_code", action: "Refactoring Go Auth Engine", amount: "0.8 SOL", time: "8m ago" },
-  { id: 3, name: "@dev_sam", action: "Solana Wallet Verification", amount: "2.4 SOL", time: "15m ago" },
+  { name: "@sarjak", action: "Building the Next.js app shell", amount: "1.5 SOL", time: "2m ago" },
+  { name: "@alex_code", action: "Refactoring the Go auth engine", amount: "0.8 SOL", time: "8m ago" },
+  { name: "@dev_sam", action: "Solana wallet verification", amount: "2.4 SOL", time: "15m ago" },
 ];
 
+const SPEEDS = ["1x", "4x", "16x", "64x"] as const;
+
 export function HeroVisual() {
-  const [speed, setSpeed] = useState<"1x" | "4x" | "16x" | "64x">("16x");
-  const [activeDonation, setActiveDonation] = useState(0);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>("16x");
+  const [index, setIndex] = useState(0);
+  const [entering, setEntering] = useState(false);
+  const still = useReducedMotion();
 
   useEffect(() => {
+    if (still) return;
     const timer = setInterval(() => {
-      setActiveDonation((prev) => (prev + 1) % DEMO_DONATIONS.length);
-    }, 3500);
+      setIndex((prev) => (prev + 1) % DEMO_DONATIONS.length);
+      // Re-triggers the row's entrance by remounting it via `key` below.
+      setEntering(true);
+    }, 3800);
     return () => clearInterval(timer);
-  }, []);
+  }, [still]);
 
-  const current: DemoDonation = DEMO_DONATIONS[activeDonation] ?? DEMO_DONATIONS[0]!;
+  const current = DEMO_DONATIONS[index] ?? DEMO_DONATIONS[0]!;
 
   return (
-    <div className="relative w-full max-w-lg mx-auto lg:max-w-none">
-      {/* Glow effect under card */}
-      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-accent/20 via-primary/20 to-accent/10 blur-xl opacity-75 group-hover:opacity-100 transition duration-1000"></div>
-
-      <div className="relative rounded-[var(--radius-panel)] border border-border/80 bg-surface/90 backdrop-blur-xl p-5 shadow-2xl">
-        {/* Top bar header */}
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+    <div
+      aria-hidden
+      className="relative mx-auto w-full max-w-lg lg:max-w-none"
+    >
+      <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-4 shadow-[var(--shadow-raised)] sm:p-5">
+        {/* Panel header */}
+        <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={cx(
+                "h-2 w-2 shrink-0 rounded-full bg-danger",
+                still ? "" : "animate-blink",
+              )}
+            />
+            <span className="truncate text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+              Recorded session
             </span>
-            <span className="text-xs font-medium tracking-wide uppercase text-fg-muted">Recorded Session</span>
           </div>
-
-          <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent border border-accent/20">
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent">
             <ShieldIcon size={12} />
-            Human Reviewed
-          </div>
+            Reviewed
+          </span>
         </div>
 
-        {/* Video / Code Player Mockup */}
-        <div className="mt-4 relative rounded-xl bg-slate-950 border border-slate-800/80 p-4 font-mono text-xs overflow-hidden shadow-inner min-h-[190px]">
-          <div className="flex justify-between items-center text-[11px] text-slate-400 border-b border-slate-800/60 pb-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
-              <span className="ml-2 text-slate-300 font-sans font-medium truncate max-w-[170px] sm:max-w-[220px]">
-                sardhana/frontend/src/app/page.tsx
+        {/* Editor mock. Deliberately dark in both themes — it is a picture of a
+            code editor, not a surface of this product. */}
+        <div className="mt-4 overflow-hidden rounded-[var(--radius-card)] border border-[#23262d] bg-[#0d1017] p-3.5 font-mono text-[11px] sm:p-4 sm:text-xs">
+          <div className="flex items-center justify-between gap-2 border-b border-[#23262d] pb-2 text-[10px] text-[#8b93a7]">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-[#e06c75]/80" />
+              <span className="h-2 w-2 shrink-0 rounded-full bg-[#e5c07b]/80" />
+              <span className="h-2 w-2 shrink-0 rounded-full bg-[#98c379]/80" />
+              <span className="ml-1.5 truncate font-sans text-[#c8cedd]">
+                app/page.tsx
               </span>
             </div>
-            <span className="text-accent font-semibold">{speed} Speed</span>
+            <span className="tnum shrink-0 font-semibold text-[#5ec49a]">{speed}</span>
           </div>
 
-          <div className="space-y-1.5 text-slate-300">
-            <div className="flex gap-3">
-              <span className="text-slate-600 select-none">01</span>
-              <span><span className="text-purple-400">export async function</span> <span className="text-blue-300 font-semibold">PublishWork</span>() {'{'}</span>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-slate-600 select-none">02</span>
-              <span className="pl-4"><span className="text-purple-400">const</span> proof = <span className="text-purple-400">await</span> auditReview();</span>
-            </div>
-            <div className="flex gap-3 bg-accent/15 -mx-4 px-4 py-1 border-l-2 border-accent">
-              <span className="text-slate-500 select-none">03</span>
-              <span className="text-emerald-300"><span className="text-purple-400">return</span> &lt;<span className="text-amber-300 font-semibold">SolanaDirectTransfer</span> wallet={'{proof.wallet}'} /&gt;;</span>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-slate-600 select-none">04</span>
-              <span>{'}'}</span>
-            </div>
+          <div className="mt-3 space-y-1.5 text-[#c8cedd]">
+            <CodeLine n="01">
+              <span className="text-[#c678dd]">export async function</span>{" "}
+              <span className="font-semibold text-[#61afef]">PublishWork</span>() {"{"}
+            </CodeLine>
+            <CodeLine n="02">
+              <span className="pl-3.5 inline-block">
+                <span className="text-[#c678dd]">const</span> proof ={" "}
+                <span className="text-[#c678dd]">await</span> humanReview();
+              </span>
+            </CodeLine>
+            <CodeLine n="03" highlight>
+              <span className="text-[#98c379]">
+                <span className="text-[#c678dd]">return</span> transfer(proof.wallet);
+              </span>
+              <span className="ml-0.5 inline-block w-[1px] self-stretch bg-[#98c379] align-middle animate-[caret_1.1s_step-end_infinite]">
+                &nbsp;
+              </span>
+            </CodeLine>
+            <CodeLine n="04">{"}"}</CodeLine>
           </div>
 
-          {/* Speed selector controls */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg p-1">
-            {(["1x", "4x", "16x", "64x"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSpeed(s)}
-                className={`px-2 py-0.5 text-[10px] rounded font-medium transition ${
-                  speed === s ? "bg-accent text-white font-bold" : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+          {/* Playback scrubber. Its fill is set once from the chosen speed, so
+              it reads as a position rather than an endless loading bar. */}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-[#23262d]">
+              <div
+                className="h-full origin-left rounded-full bg-[#5ec49a] transition-transform duration-700 ease-out"
+                style={{ transform: `scaleX(${(SPEEDS.indexOf(speed) + 1) / SPEEDS.length})` }}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-[#23262d] bg-[#14171e] p-0.5">
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSpeed(s)}
+                  tabIndex={-1}
+                  className={cx(
+                    "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                    s === speed
+                      ? "bg-[#5ec49a] text-[#0d1017]"
+                      : "text-[#8b93a7] hover:text-[#c8cedd]",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Live Donation Feed Card */}
-        <div className="mt-4 rounded-xl border border-border/80 bg-surface/70 p-3.5 flex items-center justify-between transition-all duration-500">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-accent to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md shrink-0">
+        {/* Donation feed. Fixed height so the rotation never nudges the page. */}
+        <div className="mt-4 flex h-[62px] items-center justify-between gap-3 rounded-[var(--radius-card)] border border-border bg-surface-raised px-3.5">
+          <div
+            key={index}
+            className={cx("flex min-w-0 items-center gap-3", entering && "animate-fade-in")}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-fg">
               SOL
-            </div>
+            </span>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-fg">{current.name}</span>
-                <span className="text-[10px] text-fg-muted">• {current.time}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-[12px] font-semibold">{current.name}</span>
+                <span className="shrink-0 text-[10px] text-fg-subtle">{current.time}</span>
               </div>
-              <p className="text-[11px] text-fg-muted truncate max-w-[150px] sm:max-w-[200px]">
-                {current.action}
-              </p>
+              <p className="truncate text-[11px] text-fg-muted">{current.action}</p>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-xs font-bold text-accent">
-              +{current.amount}
-            </div>
-            <span className="text-[10px] text-emerald-500 font-medium flex items-center justify-end gap-0.5">
-              <CheckIcon size={10} /> Direct Payout
+          <div className="shrink-0 text-right">
+            <div className="tnum text-[12px] font-bold text-accent">+{current.amount}</div>
+            <span className="flex items-center justify-end gap-0.5 text-[10px] font-medium text-fg-subtle">
+              <CheckIcon size={10} /> Direct
             </span>
           </div>
         </div>
 
-        {/* Bottom stats badges */}
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px]">
-          <div className="rounded-lg border border-border/60 bg-surface/40 p-2">
-            <div className="font-semibold text-fg">100%</div>
-            <div className="text-[10px] text-fg-muted">Human Audited</div>
-          </div>
-          <div className="rounded-lg border border-border/60 bg-surface/40 p-2">
-            <div className="font-semibold text-fg">0%</div>
-            <div className="text-[10px] text-fg-muted">Platform Cut</div>
-          </div>
-          <div className="rounded-lg border border-border/60 bg-surface/40 p-2">
-            <div className="font-semibold text-accent">Instant</div>
-            <div className="text-[10px] text-fg-muted">SOL Transfers</div>
-          </div>
+        {/* Three claims, stated flat. */}
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <Claim value="100%" label="Human reviewed" />
+          <Claim value="0%" label="Platform cut" />
+          <Claim value="Direct" label="Wallet to wallet" accent />
         </div>
       </div>
     </div>
   );
+}
+
+function CodeLine({
+  n,
+  children,
+  highlight,
+}: {
+  n: string;
+  children: React.ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={cx(
+        "flex gap-3",
+        highlight && "-mx-3.5 border-l-2 border-[#5ec49a] bg-[#5ec49a]/10 px-3.5 py-0.5 sm:-mx-4 sm:px-4",
+      )}
+    >
+      <span className="shrink-0 select-none text-[#4b5263]">{n}</span>
+      <span className="min-w-0">{children}</span>
+    </div>
+  );
+}
+
+function Claim({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
+  return (
+    <div className="rounded-[var(--radius-control)] border border-border bg-surface-raised px-1.5 py-2">
+      <div className={cx("text-[12px] font-semibold", accent ? "text-accent" : "text-fg")}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-[10px] leading-tight text-fg-muted">{label}</div>
+    </div>
+  );
+}
+
+/** Tracks the reduced-motion preference, including a change made while open. */
+function useReducedMotion() {
+  const [still, setStill] = useState(false);
+  const mq = useRef<MediaQueryList>(null);
+
+  useEffect(() => {
+    mq.current = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setStill(mq.current.matches);
+    const onChange = (e: MediaQueryListEvent) => setStill(e.matches);
+    mq.current.addEventListener("change", onChange);
+    return () => mq.current?.removeEventListener("change", onChange);
+  }, []);
+
+  return still;
 }
