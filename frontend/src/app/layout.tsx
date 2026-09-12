@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import { HeaderFallback, SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { GuestBanner } from "@/components/guest";
 import { ToastProvider } from "@/components/toast";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
@@ -87,6 +88,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ToastProvider>
           <Suspense fallback={<HeaderFallback />}>
             <SiteHeader />
+          </Suspense>
+          {/* Only renders while a guest preview is running. */}
+          <Suspense fallback={null}>
+            <GuestBanner />
           </Suspense>
           <main id="main" className="flex-1">
             {children}

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { GUEST_COOKIE, isGuestPreviewable } from "@/lib/guest";
 
 /**
  * Edge middleware.
@@ -6,6 +7,12 @@ import { NextResponse, type NextRequest } from "next/server";
  * It does two things, and deliberately not a third. It sets the browser policy
  * headers for every response, and it bounces signed-out visitors away from
  * pages that need an account before those pages waste a render.
+ *
+ * A guest preview is the one exception to that bounce, and it is an exception
+ * about rendering, not about access. The guest cookie lets three pages render
+ * their sample state instead of redirecting; the API behind them still sees an
+ * unauthenticated request and still answers one, so a forged cookie buys
+ * exactly the sample data the button hands out for free.
  *
  * What it does not do is authorise anything. The session cookie's presence is
  * a hint — it could be expired, revoked, or belong to a member rather than an
@@ -53,10 +60,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cookieName = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "sardhana_session";
 
-  if (
-    PROTECTED.some((route) => pathname === route || pathname.startsWith(`${route}/`)) &&
-    !request.cookies.has(cookieName)
-  ) {
+  const needsAccount = PROTECTED.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+  const signedIn = request.cookies.has(cookieName);
+  const previewing = request.cookies.has(GUEST_COOKIE) && isGuestPreviewable(pathname);
+
+  if (needsAccount && !signedIn && !previewing) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
     return withHeaders(NextResponse.redirect(login));

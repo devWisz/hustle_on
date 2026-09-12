@@ -1,19 +1,21 @@
+import Link from "next/link";
 import { apiServer } from "@/lib/api";
-import type { Page, Stats, Timelapse } from "@/lib/types";
+import type { Page, SessionResponse, Stats, Timelapse } from "@/lib/types";
+import { isGuestPreview } from "@/lib/guest-server";
+import { SAMPLE_STATS, sampleFeed } from "@/lib/sample";
+import { formatCount } from "@/lib/format";
 import { TimelapseGrid } from "@/components/timelapse-card";
-import { ButtonLink, Container, EmptyState, GlassStat } from "@/components/ui";
+import { ButtonLink, Container, EmptyState } from "@/components/ui";
+import { EnterGuestButton, SampleTag } from "@/components/guest";
 import { CountUp } from "@/components/count-up";
 import { Reveal } from "@/components/reveal";
 import { FeedTabs, parseSort, type FeedSort } from "@/components/feed-tabs";
 import { HeroVisual } from "@/components/hero-visual";
 import {
   ArrowRightIcon,
-  ClockIcon,
-  EyeIcon,
   ShieldIcon,
   TrendingIcon,
   UploadIcon,
-  UsersIcon,
   WalletIcon,
 } from "@/components/icons";
 
@@ -28,20 +30,30 @@ export default async function HomePage({
   const sort = parseSort((await searchParams).sort);
   const query = sort ? `?limit=12&sort=${sort}` : "?limit=12";
 
-  const [feed, stats] = await Promise.all([
+  const [feed, stats, session, guest] = await Promise.all([
     apiServer<Page<Timelapse>>(`/v1/timelapses${query}`),
     apiServer<Stats>("/v1/stats", 120),
+    apiServer<SessionResponse>("/v1/auth/session", 0),
+    isGuestPreview(),
   ]);
-  const items = feed?.items ?? [];
+
+  const live = feed?.items ?? [];
+  // Sample records stand in only when a guest would otherwise be staring at an
+  // empty grid. Real content always wins, and a signed-out visitor who never
+  // asked for a preview sees the honest empty state.
+  const preview = guest && live.length === 0;
+  const items = preview ? sampleFeed(sort) : live;
+  const figures = stats && stats.publishedTimelapses > 0 ? stats : preview ? SAMPLE_STATS : null;
 
   return (
     <>
-      <Hero />
+      <Hero signedIn={Boolean(session?.authenticated)} guest={guest} />
+      {figures ? <StatBand stats={figures} sample={preview} /> : null}
       <Container>
-        {stats && stats.publishedTimelapses > 0 ? <StatGrid stats={stats} /> : null}
         <HowItWorks />
-        <Feed items={items} sort={sort} apiReachable={feed !== null} />
-        <ClosingCTA />
+        <Principles />
+        <Feed items={items} sort={sort} apiReachable={feed !== null} sample={preview} />
+        <ClosingCTA signedIn={Boolean(session?.authenticated)} guest={guest} />
       </Container>
     </>
   );
@@ -55,8 +67,12 @@ export default async function HomePage({
  * The backdrop is a ruled grid that fades out rather than a coloured bloom:
  * it gives the section an edge without putting light where no light source
  * exists, and it costs nothing on a phone.
+ *
+ * The second button is the one that matters for somebody who has just arrived.
+ * Uploading needs an account; looking does not, and saying so next to the
+ * action that would otherwise demand one is the only place that offer lands.
  */
-function Hero() {
+function Hero({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
   return (
     <div className="grid-backdrop border-b border-border">
       <Container className="py-12 sm:py-20 lg:py-24">
@@ -82,15 +98,31 @@ function Hero() {
                 Upload a timelapse
                 <ArrowRightIcon size={16} className="nudge-icon" />
               </ButtonLink>
-              <ButtonLink
-                href="/about"
-                variant="secondary"
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                How it works
-              </ButtonLink>
+
+              {signedIn || guest ? (
+                <ButtonLink
+                  href="/about"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  How it works
+                </ButtonLink>
+              ) : (
+                <EnterGuestButton
+                  next="/"
+                  label="Look around first"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                />
+              )}
             </div>
+
+            {!signedIn && !guest ? (
+              <p className="animate-fade-in-up delay-4 mt-3 text-[13px] text-fg-subtle">
+                No account needed to look — the whole product opens in preview mode.
+              </p>
+            ) : null}
 
             <ul className="animate-fade-in-up delay-4 mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-fg-subtle">
               <li className="flex items-center gap-1.5">
@@ -117,38 +149,64 @@ function Hero() {
 /**
  * The one place raw totals appear.
  *
- * Hours of recorded work leads, because that is what the site is a record of;
- * the SOL figure follows it rather than the other way round. Each figure counts
- * up once, when it first scrolls into view.
+ * A band of hairline-separated figures rather than four cards: these are one
+ * reading of the same thing, and boxing each of them separately says they are
+ * four unrelated facts. Hours of recorded work leads, because that is what the
+ * site is a record of; the SOL figure follows rather than the other way round.
+ * Each figure counts up once, when it first scrolls into view.
  */
-function StatGrid({ stats }: { stats: Stats }) {
+function StatBand({ stats, sample }: { stats: Stats; sample: boolean }) {
   const hours = Math.round(stats.sessionMinutesRecorded / 60);
-  const sol = stats.donationTotalLamports;
   return (
-    <Reveal>
-      <dl className="mt-12 grid grid-cols-2 gap-3 sm:mt-16 sm:grid-cols-4 sm:gap-4">
-        <GlassStat
-          label="Hours recorded"
-          icon={<ClockIcon size={18} />}
-          value={<CountUp value={hours} format="count" />}
-        />
-        <GlassStat
-          label="Timelapses published"
-          icon={<EyeIcon size={18} />}
-          value={<CountUp value={stats.publishedTimelapses} format="count" />}
-        />
-        <GlassStat
-          label="Creators"
-          icon={<UsersIcon size={18} />}
-          value={<CountUp value={stats.creators} format="count" />}
-        />
-        <GlassStat
-          label="Sent to creators"
-          icon={<TrendingIcon size={18} />}
-          value={<CountUp value={sol} format="sol" durationMs={1400} />}
-        />
-      </dl>
-    </Reveal>
+    <div className="border-b border-border bg-surface">
+      <Container className="py-8 sm:py-10">
+        <Reveal>
+          <div className="mb-6 flex items-center gap-3">
+            <span className="text-eyebrow">By the numbers</span>
+            {sample ? <SampleTag /> : null}
+          </div>
+          <dl className="figure-rail grid grid-cols-2 gap-y-8 sm:grid-cols-4">
+            <Figure label="Hours recorded" value={<CountUp value={hours} format="count" />} />
+            <Figure
+              label="Timelapses published"
+              value={<CountUp value={stats.publishedTimelapses} format="count" />}
+            />
+            <Figure label="Creators" value={<CountUp value={stats.creators} format="count" />} />
+            <Figure
+              label="Sent to creators"
+              value={<CountUp value={stats.donationTotalLamports} format="sol" durationMs={1400} />}
+              accent
+            />
+          </dl>
+        </Reveal>
+      </Container>
+    </div>
+  );
+}
+
+function Figure({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    // Padding and the divider rule both come from `.figure-rail`, so they stay
+    // in step when the grid changes from four columns to two.
+    <div>
+      <dd
+        className={
+          "tnum text-[clamp(1.5rem,1.2rem+1.4vw,2.125rem)] font-semibold leading-none" +
+          (accent ? " text-accent" : "")
+        }
+      >
+        {value}
+      </dd>
+      <dt className="mt-2 text-[13px] leading-snug text-fg-muted">{label}</dt>
+    </div>
   );
 }
 
@@ -170,32 +228,44 @@ const STEPS = [
   },
 ];
 
-/** Three steps, revealed one after another as the section arrives. */
+/**
+ * Three steps, revealed one after another as the section arrives.
+ *
+ * Set as a numbered sequence rather than three cards. The steps happen in an
+ * order, and a row of identical boxes is the one layout that does not say so.
+ */
 function HowItWorks() {
   return (
     <section className="mt-20 sm:mt-28" aria-labelledby="how-heading">
       <Reveal>
-        <h2 id="how-heading" className="text-title font-semibold">
+        <p className="eyebrow-rule text-eyebrow">How it works</p>
+        <h2 id="how-heading" className="text-title mt-4 font-semibold">
           Three steps, and one of them is a person
         </h2>
-        <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-fg-muted">
+        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-fg-muted">
           The review step is the whole product. Everything else is plumbing around it.
         </p>
       </Reveal>
 
-      <ol className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-5">
+      {/* Dividers rather than a one-pixel grid gap over a coloured ground: the
+          steps fade in one after another, and a gap would show through as a
+          grey slab for as long as a cell is still transparent. */}
+      <ol
+        className="mt-10 grid divide-y divide-border overflow-hidden rounded-[var(--radius-card)]
+                   border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+      >
         {STEPS.map((step, i) => (
           <Reveal as="li" key={step.title} delay={i * 110}>
-            <div className="card-hover h-full rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                  <step.icon size={17} />
+            <div className="h-full p-6 sm:p-7">
+              <div className="flex items-baseline gap-3">
+                <span className="tnum text-[26px] font-semibold leading-none text-border-strong">
+                  {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="tnum text-[12px] font-medium text-fg-subtle">
-                  Step {i + 1}
+                <span className="text-accent">
+                  <step.icon size={16} />
                 </span>
               </div>
-              <h3 className="mt-4 text-[15px] font-semibold">{step.title}</h3>
+              <h3 className="mt-5 text-[15px] font-semibold">{step.title}</h3>
               <p className="mt-2 text-[14px] leading-relaxed text-fg-muted">{step.body}</p>
             </div>
           </Reveal>
@@ -205,27 +275,95 @@ function HowItWorks() {
   );
 }
 
+const PRINCIPLES = [
+  {
+    claim: "Nothing publishes itself",
+    detail:
+      "Published is set by one statement, behind the admin role, and every decision is written to an audit trail.",
+  },
+  {
+    claim: "Rejections carry a reason",
+    detail:
+      "The API refuses a decline with no note, and so does a database constraint. Creators read the reason on their dashboard.",
+  },
+  {
+    claim: "Donations never touch us",
+    detail:
+      "SOL moves wallet to wallet. No key is held, no cut is taken, and the transfer is verified on-chain before it is credited.",
+  },
+];
+
+/**
+ * The three properties the product is actually built on.
+ *
+ * Stated as claim and enforcement, because a promise about review is worth
+ * nothing without the sentence explaining what stops it being broken.
+ */
+function Principles() {
+  return (
+    <section className="mt-20 sm:mt-28" aria-labelledby="principles-heading">
+      <Reveal>
+        <p className="eyebrow-rule text-eyebrow">What holds it together</p>
+        <h2 id="principles-heading" className="text-title mt-4 font-semibold">
+          Three promises, each with something enforcing it
+        </h2>
+      </Reveal>
+
+      <dl className="mt-8 divide-y divide-border border-y border-border">
+        {PRINCIPLES.map((principle, i) => (
+          <Reveal key={principle.claim} delay={i * 90}>
+            <div className="grid gap-2 py-5 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:gap-8 sm:py-6">
+              <dt className="text-[15px] font-semibold">{principle.claim}</dt>
+              <dd className="text-[14px] leading-relaxed text-fg-muted">{principle.detail}</dd>
+            </div>
+          </Reveal>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function Feed({
   items,
   sort,
   apiReachable,
+  sample,
 }: {
   items: Timelapse[];
   sort: FeedSort;
   apiReachable: boolean;
+  sample: boolean;
 }) {
   return (
     <section id="feed" className="mt-20 scroll-mt-24 sm:mt-28">
       <Reveal>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-title font-semibold">Published work</h2>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-eyebrow">The feed</p>
+            <h2 className="text-title mt-3 font-semibold">
+              Published work
+              {items.length > 0 ? (
+                <span className="tnum ml-3 align-middle text-[15px] font-normal text-fg-subtle">
+                  {formatCount(items.length)}
+                </span>
+              ) : null}
+            </h2>
+          </div>
           <FeedTabs active={sort} />
         </div>
       </Reveal>
 
+      {sample ? (
+        <p className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
+          <SampleTag />
+          Invented sessions, shown so the layout has something in it. Real submissions replace
+          them the moment there are any.
+        </p>
+      ) : null}
+
       <div className="mt-8">
         {items.length > 0 ? (
-          <TimelapseGrid items={items} />
+          <TimelapseGrid items={items} sample={sample} />
         ) : apiReachable ? (
           <EmptyState
             title="Nothing published yet"
@@ -247,30 +385,49 @@ function Feed({
   );
 }
 
-function ClosingCTA() {
+function ClosingCTA({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
   return (
     <Reveal direction="scale">
-      <section className="mb-16 mt-20 sm:mt-28">
-        <div className="glass rounded-[var(--radius-panel)] px-6 py-10 text-center shadow-[var(--shadow-card)] sm:px-12 sm:py-14">
-          <h2 className="text-title font-semibold">Ready to show your work?</h2>
+      <section className="mb-20 mt-20 sm:mt-28">
+        <div className="grid-backdrop rounded-[var(--radius-panel)] border border-border bg-surface px-6 py-12 text-center shadow-[var(--shadow-card)] sm:px-12 sm:py-16">
+          <p className="text-eyebrow">Start here</p>
+          <h2 className="text-title mt-4 font-semibold">Ready to show your work?</h2>
           <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-fg-muted">
             Record what you build, write what you learned, and let the people who watch it
             decide whether it was worth doing.
           </p>
-          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
             <ButtonLink href="/upload" size="lg" className="group w-full sm:w-auto">
               Start uploading
               <ArrowRightIcon size={16} className="nudge-icon" />
             </ButtonLink>
-            <ButtonLink
-              href="/about"
-              variant="secondary"
-              size="lg"
-              className="w-full sm:w-auto"
-            >
-              Read how review works
-            </ButtonLink>
+            {signedIn || guest ? (
+              <ButtonLink
+                href="/about"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                Read how review works
+              </ButtonLink>
+            ) : (
+              <EnterGuestButton
+                next="/dashboard"
+                label="See the creator dashboard"
+                size="lg"
+                className="w-full sm:w-auto"
+              />
+            )}
           </div>
+          {!signedIn ? (
+            <p className="mt-5 text-[13px] text-fg-subtle">
+              Or read{" "}
+              <Link href="/about" className="link-underline text-fg-muted hover:text-fg">
+                how review works
+              </Link>{" "}
+              before you decide.
+            </p>
+          ) : null}
         </div>
       </section>
     </Reveal>

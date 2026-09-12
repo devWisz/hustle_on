@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { apiServer } from "@/lib/api";
 import type { PublicUser, Timelapse } from "@/lib/types";
+import { isGuestPreview } from "@/lib/guest-server";
+import { SAMPLE_TIMELAPSES, findSampleCreator } from "@/lib/sample";
 import { formatDate, formatSol, shortAddress } from "@/lib/format";
 import { TimelapseGrid } from "@/components/timelapse-card";
+import { SampleNote } from "@/components/guest";
 import { Avatar, Container, EmptyState } from "@/components/ui";
 
 export const revalidate = 60;
@@ -14,23 +17,36 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
-  const creator = await apiServer<PublicUser>(`/v1/creators/${handle}`);
-  if (!creator) return { title: "Creator" };
+  const live = await apiServer<PublicUser>(`/v1/creators/${handle}`);
+  if (!live) {
+    const sample = findSampleCreator(handle);
+    return sample
+      ? { title: `${sample.displayName} (sample)`, robots: { index: false, follow: false } }
+      : { title: "Creator" };
+  }
   return {
-    title: creator.displayName,
-    description: creator.bio ?? `Timelapses published by ${creator.displayName}.`,
+    title: live.displayName,
+    description: live.bio ?? `Timelapses published by ${live.displayName}.`,
   };
 }
 
 export default async function CreatorPage({ params }: Props) {
   const { handle } = await params;
-  const [creator, timelapses] = await Promise.all([
+  const [live, timelapses] = await Promise.all([
     apiServer<PublicUser>(`/v1/creators/${handle}`),
     apiServer<{ items: Timelapse[] }>(`/v1/creators/${handle}/timelapses`),
   ]);
+
+  // A sample profile exists only for the creators in the preview feed, and
+  // only while a preview is running.
+  const sample = !live && (await isGuestPreview()) ? findSampleCreator(handle) : undefined;
+  const creator = live ?? sample;
   if (!creator) notFound();
 
-  const items = timelapses?.items ?? [];
+  const isSample = !live;
+  const items = isSample
+    ? SAMPLE_TIMELAPSES.filter((t) => t.creator.handle === handle)
+    : (timelapses?.items ?? []);
 
   return (
     <Container className="py-12">
@@ -47,6 +63,12 @@ export default async function CreatorPage({ params }: Props) {
         </div>
       </header>
 
+      {isSample ? (
+        <SampleNote className="mt-6">
+          An invented creator from the preview feed. Real profiles look exactly like this.
+        </SampleNote>
+      ) : null}
+
       <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-5">
         <Figure label="Published" value={String(creator.timelapseCount)} />
         <Figure label="Received" value={formatSol(creator.donationTotalLamports)} />
@@ -60,7 +82,7 @@ export default async function CreatorPage({ params }: Props) {
       <section className="mt-10">
         <h2 className="mb-6 text-[19px] font-semibold">Timelapses</h2>
         {items.length > 0 ? (
-          <TimelapseGrid items={items} />
+          <TimelapseGrid items={items} sample={isSample} />
         ) : (
           <EmptyState
             title="Nothing published yet"

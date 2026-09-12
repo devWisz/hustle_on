@@ -115,6 +115,7 @@ export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInpu
         // whole page the moment the field takes focus.
         "text-base text-fg placeholder:text-fg-subtle sm:text-sm",
         "transition-colors hover:border-border-strong focus:border-accent focus:outline-none focus-visible:outline-none",
+        "disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-fg-subtle disabled:hover:border-border",
         className,
       )}
       {...rest}
@@ -132,6 +133,7 @@ export function Textarea({
         "w-full px-3 py-2.5 bg-surface border border-border rounded-[var(--radius-control)]",
         "text-base leading-relaxed text-fg placeholder:text-fg-subtle resize-y min-h-24 sm:text-sm",
         "transition-colors hover:border-border-strong focus:border-accent focus:outline-none focus-visible:outline-none",
+        "disabled:cursor-not-allowed disabled:resize-none disabled:bg-surface-raised disabled:text-fg-subtle disabled:hover:border-border",
         className,
       )}
       {...rest}
@@ -298,10 +300,13 @@ export function EmptyState({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+    <div
+      className="flex flex-col items-center justify-center rounded-[var(--radius-card)]
+                 border border-dashed border-border-strong px-6 py-16 text-center"
+    >
       {icon ? <div className="mb-4 text-fg-subtle">{icon}</div> : null}
       <h3 className="text-[15px] font-medium">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-sm text-fg-muted">{description}</p>
+      <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-fg-muted">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );

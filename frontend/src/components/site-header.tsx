@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { apiServer } from "@/lib/api";
 import type { SessionResponse } from "@/lib/types";
+import { isGuestPreview } from "@/lib/guest-server";
 import { SiteHeaderClient } from "./site-header-client";
 
 /**
@@ -15,9 +16,12 @@ import { SiteHeaderClient } from "./site-header-client";
  * resolve the session with an async fetch before anything is sent to the browser.
  */
 export async function SiteHeader() {
-  const session = await apiServer<SessionResponse>("/v1/auth/session", 0);
+  const [session, guest] = await Promise.all([
+    apiServer<SessionResponse>("/v1/auth/session", 0),
+    isGuestPreview(),
+  ]);
   const user = session?.authenticated ? session.user : undefined;
-  return <SiteHeaderClient user={user} />;
+  return <SiteHeaderClient user={user} guest={guest} />;
 }
 
 /** Shown while the server component above is still resolving the session. */

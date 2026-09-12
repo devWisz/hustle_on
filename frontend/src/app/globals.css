@@ -234,6 +234,32 @@ canvas {
   line-height: 1.62;
 }
 
+/* A section label. Small, tracked and quiet — it names the band without
+   competing with the heading under it. */
+.text-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+/* An eyebrow with a rule running out from it, which is what stops a row of
+   small caps from reading as a stray line of text. */
+.eyebrow-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eyebrow-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-strong), transparent);
+}
+
 /* ---------------------------------------------------------------------------
    Keyframes
    --------------------------------------------------------------------------- */
@@ -452,6 +478,53 @@ canvas {
 
 .gradient-accent-bg {
   background: var(--gradient-accent);
+}
+
+/* A row of figures separated by hairlines rather than boxed in cards.
+
+   The rule is drawn on the left of each cell and suppressed on whichever cell
+   starts a row — two across on a phone, four on a desktop — so it survives the
+   grid reflowing. The same rule governs the cell's left padding, which is what
+   keeps the first figure of every row flush with the column it sits in. */
+.figure-rail > * {
+  position: relative;
+  padding-inline: 16px;
+}
+
+.figure-rail > *::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--border);
+}
+
+.figure-rail > *:nth-child(2n + 1) {
+  padding-inline-start: 0;
+}
+
+.figure-rail > *:nth-child(2n + 1)::before {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .figure-rail > * {
+    padding-inline: 24px;
+  }
+  .figure-rail > *:nth-child(2n + 1) {
+    padding-inline-start: 24px;
+  }
+  .figure-rail > *:nth-child(2n + 1)::before {
+    display: block;
+  }
+  .figure-rail > *:nth-child(4n + 1) {
+    padding-inline-start: 0;
+  }
+  .figure-rail > *:nth-child(4n + 1)::before {
+    display: none;
+  }
 }
 
 .gradient-divider {

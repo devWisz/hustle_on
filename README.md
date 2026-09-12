@@ -46,6 +46,20 @@ sardhana/
 └── scripts/        # Developer tooling
 ```
 
+## Looking around first
+
+Nothing about the product is hidden behind the sign-in form. **Look around
+first** on the home page starts a guest preview: the feed, a watch page, a
+creator profile, the creator dashboard, the submission form and the account
+settings all open, filled in with clearly labelled sample records wherever there
+is nothing real to show.
+
+The cookie that turns it on is a rendering preference, not a credential — it
+unlocks nothing on the API, which still answers an unauthenticated request the
+way it always did. Writing anything still needs an account, because a submission
+has to belong to somebody a reviewer can write back to. See
+[docs/guest-preview.md](docs/guest-preview.md).
+
 ## Quick start
 
 ```bash
@@ -96,6 +110,7 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 ## Design principles
 
 - **Typography-led** — monochrome palette with a single green accent
+- **No unlabelled fake data** — sample records live in guest preview only, always tagged, always beaten by real data
 - **No emoji** — inline SVG icons only, consistent across every platform
 - **No glow** — depth comes from shadow, border and motion, never a coloured halo
 - **Motion with one curve** — staggered reveals, counted figures, a press on every button; all of it collapses under `prefers-reduced-motion`

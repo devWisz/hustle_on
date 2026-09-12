@@ -78,8 +78,17 @@ a coloured dot. Colour reinforces; it never carries the meaning alone.
 **Empty states say what to do.** `EmptyState` takes an action for a reason. "No
 submissions yet" with an upload button beats an empty grid.
 
-**Never fabricate content.** No placeholder avatars of invented people, no
-sample metrics, no simulated player. An empty state is honest; fake data is not.
+**Never fabricate content that is not labelled as such.** Real data and
+invented data must never be indistinguishable. Outside guest preview the rule is
+absolute: no placeholder avatars of invented people, no sample metrics, no
+simulated player — an empty state is honest, silent fake data is not.
+
+Guest preview is the single exception, and it is an exception about labelling
+rather than about honesty. Everything it renders comes from `lib/sample.ts`,
+every surface built from it carries a `SampleTag` or a `SampleNote`, real data
+always wins when there is any, and sample slugs are prefixed `sample-` so a
+preview URL can never collide with a real one. A sample page also returns
+`robots: noindex`. See [guest-preview.md](guest-preview.md).
 
 **Focus is always visible.** One treatment, defined once in `globals.css`.
 Keyboard users must never have to guess where they are.
@@ -93,6 +102,31 @@ scoped to `.js` — a class the boot script in `layout.tsx` sets before first
 paint. No script, no class, no hiding. The same script lifts the class again if
 `data-hydrated` has not appeared four seconds after load, so a bundle that fails
 to load degrades to a still page rather than a blank one.
+
+## Composition utilities
+
+Three utilities in `globals.css` do most of the work of making a section read as
+composed rather than as a stack of boxes.
+
+| Utility | What it is for |
+|---|---|
+| `text-eyebrow` | The small tracked label naming a band above its heading |
+| `eyebrow-rule` | An eyebrow with a rule running out from it, so small caps do not read as a stray line |
+| `figure-rail` | A row of figures separated by hairlines instead of boxed in cards; the rule and the cell padding both move when the grid reflows from four columns to two |
+
+**Prefer a divider to a boxed card** when the things in a row are one reading of
+the same subject. Three steps in an order are a sequence, not three unrelated
+facts, and a row of identical boxes is the one layout that cannot say so.
+
+**A grid gap is not a divider.** `gap-px` over a coloured ground shows through
+as a grey slab for as long as a cell is still transparent, which is the entire
+duration of a staggered reveal. Use `divide-x` / `divide-y` on a surface.
+
+**Cards with no image get artwork, not a grey rectangle.** `ThumbArtwork`
+(`components/thumb.tsx`) draws a ruled field whose angle and density are hashed
+from the slug, with the work's initials set large and quiet over it. It is
+deterministic, so the same timelapse looks the same on every visit, and it is
+`aria-hidden`, because the card's own title carries the meaning.
 
 ## Motion
 

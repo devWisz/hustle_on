@@ -3,31 +3,76 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { apiServer } from "@/lib/api";
 import type { Donation, SelfUser, Timelapse } from "@/lib/types";
+import { isGuestPreview } from "@/lib/guest-server";
+import { SAMPLE_RECEIVED, SAMPLE_SELF, SAMPLE_SUBMISSIONS } from "@/lib/sample";
 import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
-import { ButtonLink, Card, Container, EmptyState, GlassStat, SectionHeading } from "@/components/ui";
-import { ClockIcon, EyeIcon, TrendingIcon, UploadIcon, WalletIcon, ZapIcon } from "@/components/icons";
+import { GuestGate, SampleNote } from "@/components/guest";
+import {
+  ButtonLink,
+  Card,
+  Container,
+  EmptyState,
+  GlassStat,
+  SectionHeading,
+} from "@/components/ui";
+import {
+  ClockIcon,
+  EyeIcon,
+  TrendingIcon,
+  UploadIcon,
+  WalletIcon,
+  ZapIcon,
+} from "@/components/icons";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const me = await apiServer<SelfUser>("/v1/me", 0);
-  if (!me) redirect("/login?next=/dashboard");
+
+  // A guest gets the same screen built from sample records. It is the one page
+  // that explains what the product does for a creator, so sending somebody to
+  // a sign-in form to find out is the wrong order.
+  if (!me) {
+    if (await isGuestPreview()) {
+      return (
+        <DashboardView
+          me={SAMPLE_SELF}
+          items={SAMPLE_SUBMISSIONS}
+          donations={SAMPLE_RECEIVED}
+          sample
+        />
+      );
+    }
+    redirect("/login?next=/dashboard");
+  }
 
   const [mine, received] = await Promise.all([
     apiServer<{ items: Timelapse[] }>("/v1/me/timelapses", 0),
     apiServer<{ items: Donation[] }>("/v1/me/donations", 0),
   ]);
-  const items = mine?.items ?? [];
-  const donations = received?.items ?? [];
 
+  return <DashboardView me={me} items={mine?.items ?? []} donations={received?.items ?? []} />;
+}
+
+function DashboardView({
+  me,
+  items,
+  donations,
+  sample = false,
+}: {
+  me: SelfUser;
+  items: Timelapse[];
+  donations: Donation[];
+  sample?: boolean;
+}) {
   return (
     <Container className="py-12">
-      {/* Dashboard header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 animate-fade-in-up">
+      <div className="animate-fade-in-up flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
+          <p className="text-eyebrow">Creator dashboard</p>
+          <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-tight">
             Your <span className="text-accent">work</span>
           </h1>
           <p className="mt-1.5 text-sm text-fg-muted">
@@ -35,14 +80,22 @@ export default async function DashboardPage() {
             timelapse{me.timelapseCount === 1 ? "" : "s"}.
           </p>
         </div>
-        <ButtonLink href="/upload">
-          <UploadIcon size={16} />
-          Upload a timelapse
-        </ButtonLink>
+        {sample ? null : (
+          <ButtonLink href="/upload">
+            <UploadIcon size={16} />
+            Upload a timelapse
+          </ButtonLink>
+        )}
       </div>
 
-      {/* Quick stats */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 stagger-children">
+      {sample ? (
+        <SampleNote className="mt-6">
+          This is an invented account, so you can see what the screen looks like with work on it.
+          Nothing here belongs to anybody and nothing you do is saved.
+        </SampleNote>
+      ) : null}
+
+      <div className="stagger-children mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <GlassStat
           label="Published"
           value={formatCount(me.timelapseCount)}
@@ -65,37 +118,53 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {!me.payoutVerified ? <WalletPrompt /> : null}
+      {sample ? (
+        <GuestGate
+          className="mt-8"
+          title="This is where your own submissions would be"
+          body="An account takes one email and one click on a link — there is no password and nothing to fill in afterwards. Your first upload goes to review the same day."
+          next="/upload"
+        />
+      ) : !me.payoutVerified ? (
+        <WalletPrompt />
+      ) : null}
 
-      {/* Quick actions */}
-      <section className="mt-8">
-        <div className="flex items-center gap-2 mb-4">
-          <ZapIcon size={16} className="text-accent" />
-          <h2 className="text-[15px] font-semibold">Quick actions</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/upload" variant="secondary" size="sm">
-            <UploadIcon size={14} />
-            New upload
-          </ButtonLink>
-          <ButtonLink href="/settings" variant="secondary" size="sm">
-            <WalletIcon size={14} />
-            Wallet settings
-          </ButtonLink>
-          <ButtonLink href={`/creator/${me.handle}`} variant="secondary" size="sm">
-            <EyeIcon size={14} />
-            View profile
-          </ButtonLink>
-        </div>
-      </section>
+      {sample ? null : (
+        <section className="mt-8">
+          <div className="mb-4 flex items-center gap-2">
+            <ZapIcon size={16} className="text-accent" />
+            <h2 className="text-[15px] font-semibold">Quick actions</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href="/upload" variant="secondary" size="sm">
+              <UploadIcon size={14} />
+              New upload
+            </ButtonLink>
+            <ButtonLink href="/settings" variant="secondary" size="sm">
+              <WalletIcon size={14} />
+              Wallet settings
+            </ButtonLink>
+            <ButtonLink href={`/creator/${me.handle}`} variant="secondary" size="sm">
+              <EyeIcon size={14} />
+              View profile
+            </ButtonLink>
+          </div>
+        </section>
+      )}
 
-      {/* Submissions */}
       <section className="mt-10">
-        <SectionHeading title="Submissions" />
+        <SectionHeading
+          title="Submissions"
+          description={
+            sample
+              ? "One published, one waiting, one declined — the three states a submission can be in."
+              : undefined
+          }
+        />
         {items.length > 0 ? (
-          <ul className="space-y-3 stagger-children">
+          <ul className="stagger-children space-y-3">
             {items.map((t) => (
-              <SubmissionRow key={t.id} timelapse={t} />
+              <SubmissionRow key={t.id} timelapse={t} linkable={!sample} />
             ))}
           </ul>
         ) : (
@@ -107,14 +176,16 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* Donations received */}
       {donations.length > 0 ? (
         <section className="mt-12">
           <SectionHeading title="Donations received" />
           <Card className="px-5">
             <ul className="divide-y divide-border">
               {donations.map((d) => (
-                <li key={d.id} className="flex items-start justify-between gap-4 py-3.5 transition-colors hover:bg-surface-raised/50">
+                <li
+                  key={d.id}
+                  className="flex items-start justify-between gap-4 py-3.5 transition-colors hover:bg-surface-raised/50"
+                >
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
                     {d.message ? (
@@ -122,7 +193,9 @@ export default async function DashboardPage() {
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm tabular-nums font-medium text-accent">{formatSol(d.amountLamports)}</p>
+                    <p className="text-sm font-medium tabular-nums text-accent">
+                      {formatSol(d.amountLamports)}
+                    </p>
                     {d.confirmedAt ? (
                       <p className="text-[12px] text-fg-subtle">{timeAgo(d.confirmedAt)}</p>
                     ) : null}
@@ -144,17 +217,17 @@ export default async function DashboardPage() {
  * they were declined has no way to fix it, which is the whole point of asking
  * a reviewer to write one.
  */
-function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
+function SubmissionRow({ timelapse, linkable }: { timelapse: Timelapse; linkable: boolean }) {
   const t = timelapse;
-  const linkable = t.status === "published";
+  const href = linkable && t.status === "published" ? `/watch/${t.slug}` : null;
   return (
     <li>
-      <Card className="p-4 card-hover">
+      <Card className="card-hover p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-[15px] font-medium">
-              {linkable ? (
-                <Link href={`/watch/${t.slug}`} className="transition-colors hover:text-accent">
+              {href ? (
+                <Link href={href} className="transition-colors hover:text-accent">
                   {t.title}
                 </Link>
               ) : (
@@ -174,7 +247,10 @@ function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
 
         {t.status === "rejected" && t.reviewNote ? (
           <div className="mt-3 rounded-[var(--radius-control)] bg-danger-soft px-3 py-2.5">
-            <p className="text-[13px] leading-relaxed text-danger">{t.reviewNote}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-danger">
+              Why this was declined
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-danger">{t.reviewNote}</p>
           </div>
         ) : null}
       </Card>
@@ -184,7 +260,10 @@ function SubmissionRow({ timelapse }: { timelapse: Timelapse }) {
 
 function WalletPrompt() {
   return (
-    <Card className="card-hover mt-8 flex flex-wrap items-center justify-between gap-4 p-5" variant="glass">
+    <Card
+      className="card-hover mt-8 flex flex-wrap items-center justify-between gap-4 p-5"
+      variant="glass"
+    >
       <div>
         <h2 className="text-[15px] font-semibold">No wallet on file</h2>
         <p className="mt-1 text-sm text-fg-muted">

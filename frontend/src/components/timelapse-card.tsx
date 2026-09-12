@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Timelapse } from "@/lib/types";
-import { formatCount, formatDuration, formatSession, formatSol, timeAgo } from "@/lib/format";
+import { cx, formatCount, formatDuration, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { Avatar } from "./ui";
+import { SampleTag } from "./guest";
+import { ThumbArtwork } from "./thumb";
 import { ClockIcon, EyeIcon, PlayIcon } from "./icons";
 
 /**
@@ -11,14 +13,21 @@ import { ClockIcon, EyeIcon, PlayIcon } from "./icons";
  * real hours, then who made it. The donation total sits last and quiet — this
  * is a record of work, and a leaderboard would make it something else.
  */
-export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
+export function TimelapseCard({
+  timelapse,
+  sample = false,
+}: {
+  timelapse: Timelapse;
+  /** Marks an invented record, so nobody mistakes a preview for the real feed. */
+  sample?: boolean;
+}) {
   const t = timelapse;
   return (
     <article className="group">
       <Link
         href={`/watch/${t.slug}`}
-        className="block overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-raised
-                   card-hover"
+        className="card-hover relative block overflow-hidden rounded-[var(--radius-card)]
+                   border border-border bg-surface-raised"
       >
         <div className="relative aspect-video w-full overflow-hidden">
           {t.thumbnailUrl ? (
@@ -26,25 +35,37 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
             <img
               src={t.thumbnailUrl}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-surface-raised text-fg-subtle">
-              <PlayIcon size={28} />
+            <div className="h-full w-full transition-transform duration-500 group-hover:scale-[1.04]">
+              <ThumbArtwork seed={t.slug} title={t.title} creator={t.creator.displayName} />
             </div>
           )}
 
-          {/* Play overlay on hover */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-300 group-hover:bg-black/30">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-fg
-                            opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100
-                            shadow-lg">
-              <PlayIcon size={20} />
+          {/* The play affordance. Pointer devices get it on hover; a touch
+              device has no hover, so it is simply always there. */}
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/0
+                       transition-colors duration-300 group-hover:bg-black/25"
+          >
+            <span
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-fg
+                         shadow-[var(--shadow-raised)] transition-all duration-300
+                         sm:scale-90 sm:opacity-0 sm:group-hover:scale-100 sm:group-hover:opacity-100"
+            >
+              <PlayIcon size={18} />
             </span>
           </div>
 
+          {sample ? <SampleTag className="absolute left-2 top-2 bg-surface/90" /> : null}
+
           {t.durationSeconds > 0 ? (
-            <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-0.5 font-mono text-[11px] tabular-nums text-white backdrop-blur-sm">
+            <span
+              className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5
+                         font-mono text-[11px] tabular-nums text-white backdrop-blur-sm"
+            >
               {formatDuration(t.durationSeconds)}
             </span>
           ) : null}
@@ -52,15 +73,18 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
       </Link>
 
       <div className="mt-3">
-        <h3 className="text-[15px] font-medium leading-snug">
+        {/* Two lines, always. A title that wraps in one card and not the next
+            pushes every row under it out of step with its neighbours, which is
+            the thing that stops a grid reading as a grid. */}
+        <h3 className="line-clamp-2 min-h-[2.7em] text-[15px] font-medium leading-snug">
           <Link href={`/watch/${t.slug}`} className="transition-colors hover:text-accent">
             {t.title}
           </Link>
         </h3>
 
         {t.sessionMinutes > 0 ? (
-          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-fg-muted">
-            <ClockIcon size={13} />
+          <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-fg-muted">
+            <ClockIcon size={13} className="shrink-0 text-fg-subtle" />
             {formatSession(t.sessionMinutes)}
           </p>
         ) : null}
@@ -68,17 +92,19 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
         <div className="mt-2.5 flex items-center gap-2 text-[13px] text-fg-muted">
           <Link
             href={`/creator/${t.creator.handle}`}
-            className="flex items-center gap-2 transition-colors hover:text-fg"
+            className="flex min-w-0 items-center gap-2 transition-colors hover:text-fg"
           >
             <Avatar name={t.creator.displayName} src={t.creator.avatarUrl} size={20} />
-            {t.creator.displayName}
+            <span className="truncate">{t.creator.displayName}</span>
           </Link>
           {t.publishedAt ? (
             <>
               <span aria-hidden className="text-fg-subtle">
                 ·
               </span>
-              <time dateTime={t.publishedAt}>{timeAgo(t.publishedAt)}</time>
+              <time dateTime={t.publishedAt} className="shrink-0">
+                {timeAgo(t.publishedAt)}
+              </time>
             </>
           ) : null}
         </div>
@@ -89,7 +115,9 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
             {formatCount(t.viewCount)}
           </span>
           {t.donationTotalLamports > 0 ? (
-            <span className="tabular-nums text-accent">{formatSol(t.donationTotalLamports)} received</span>
+            <span className="tabular-nums text-accent">
+              {formatSol(t.donationTotalLamports)} received
+            </span>
           ) : null}
         </div>
       </div>
@@ -98,11 +126,19 @@ export function TimelapseCard({ timelapse }: { timelapse: Timelapse }) {
 }
 
 /** The grid every list of timelapses uses, so column counts stay consistent. */
-export function TimelapseGrid({ items }: { items: Timelapse[] }) {
+export function TimelapseGrid({
+  items,
+  sample = false,
+  className,
+}: {
+  items: Timelapse[];
+  sample?: boolean;
+  className?: string;
+}) {
   return (
-    <div className="grid gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+    <div className={cx("stagger-children grid gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3", className)}>
       {items.map((t) => (
-        <TimelapseCard key={t.id} timelapse={t} />
+        <TimelapseCard key={t.id} timelapse={t} sample={sample} />
       ))}
     </div>
   );

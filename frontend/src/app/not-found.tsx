@@ -4,12 +4,13 @@ export default function NotFound() {
   return (
     <Container width="narrow" className="py-24 text-center">
       <div className="animate-fade-in-up">
-        {/* Large animated 404 */}
-        <div className="relative mx-auto mb-6 w-fit">
-          <span className="text-[clamp(4.5rem,18vw,8.75rem)] font-bold leading-none tracking-tighter text-accent">
+        {/* The numerals carry the page. Depth comes from the rule under them,
+            never from a coloured halo. */}
+        <div className="mx-auto mb-8 w-fit">
+          <span className="tnum block text-[clamp(4.5rem,18vw,8.75rem)] font-semibold leading-none tracking-tighter text-fg">
             404
           </span>
-          <div className="absolute inset-0 blur-3xl opacity-20 gradient-accent-bg rounded-full" />
+          <span className="mx-auto mt-4 block h-px w-24 bg-border-strong" />
         </div>
 
         <h1 className="text-[26px] font-semibold tracking-tight sm:text-[30px]">

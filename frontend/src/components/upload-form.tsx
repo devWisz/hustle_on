@@ -15,13 +15,18 @@ import { UploadIcon } from "./icons";
  * before a human can review the result, and splitting that across four steps
  * only hides how much is being asked for. The multi-step part is the upload
  * itself, which is reported as progress rather than as pages.
+ *
+ * In `preview` mode — a guest looking around without an account — every field
+ * still works and nothing is sent. The submit button says what would happen
+ * rather than pretending to do it, because a form that silently discards what
+ * somebody typed is worse than one that never accepted it.
  */
 
 const MIN_SUMMARY = 40;
 
 type Stage = "idle" | "uploading" | "recording" | "submitting" | "done";
 
-export function UploadForm() {
+export function UploadForm({ preview = false }: { preview?: boolean }) {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -50,6 +55,13 @@ export function UploadForm() {
     event.preventDefault();
     setError("");
     setFieldErrors({});
+
+    if (preview) {
+      setError(
+        "This is a preview, so nothing was sent. Sign in with an email link and this form submits for real.",
+      );
+      return;
+    }
 
     if (!file) {
       setError("Choose a video file to upload.");
@@ -234,12 +246,14 @@ export function UploadForm() {
         </p>
       ) : null}
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" size="lg" loading={busy}>
-          {stageLabel(stage)}
+          {preview ? "Submit for review" : stageLabel(stage)}
         </Button>
         <p className="text-[13px] text-fg-muted">
-          Goes to review first. You will see the decision on your dashboard.
+          {preview
+            ? "Needs an account — a submission has to belong to somebody."
+            : "Goes to review first. You will see the decision on your dashboard."}
         </p>
       </div>
     </form>
