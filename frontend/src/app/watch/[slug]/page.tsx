@@ -9,6 +9,9 @@ import { formatCount, formatDate, formatSession, formatSol } from "@/lib/format"
 import { TimelapsePlayer } from "@/components/timelapse-player";
 import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/donate-panel";
 import { ShareButton } from "@/components/share-button";
+import { BookmarkButton } from "@/components/bookmark-button";
+import { SessionInspector } from "@/components/session-inspector";
+import { DiscussionPanel } from "@/components/discussion-panel";
 import { SampleNote, SampleTag } from "@/components/guest";
 import { ThumbArtwork } from "@/components/thumb";
 import { Avatar, Card, Container } from "@/components/ui";
