@@ -281,3 +281,148 @@ export function EyeIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function BookmarkIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props} filled={filled}>
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </Svg>
+  );
+}
+
+export function RepeatIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m17 1 4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="m7 23-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </Svg>
+  );
+}
+
+export function SkipBackIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19 20 9 12l10-8v16z" />
+      <line x1="5" y1="19" x2="5" y2="5" />
+    </Svg>
+  );
+}
+
+export function SkipForwardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m5 4 10 8-10 8V4z" />
+      <line x1="19" y1="5" x2="19" y2="19" />
+    </Svg>
+  );
+}
+
+export function MaximizeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15 3h6v6" />
+      <path d="M9 21H3v-6" />
+      <path d="M21 3l-7 7" />
+      <path d="M3 21l7-7" />
+    </Svg>
+  );
+}
+
+export function MinimizeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 14h6v6" />
+      <path d="M20 10h-6V4" />
+      <path d="M14 10l7-7" />
+      <path d="M3 21l7-7" />
+    </Svg>
+  );
+}
+
+export function PipIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="18" height="14" x="3" y="5" rx="2" />
+      <rect width="7" height="5" x="12" y="12" rx="1" />
+    </Svg>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="13" height="13" x="9" y="9" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </Svg>
+  );
+}
+
+export function CodeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </Svg>
+  );
+}
+
+export function TagIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+      <circle cx="7" cy="7" r="1" fill="currentColor" />
+    </Svg>
+  );
+}
+
+export function MessageSquareIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </Svg>
+  );
+}
+
+export function ThumbsUpIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.5a3.5 3.5 0 0 0 3.5-3.5V5a2 2 0 0 1 4 0v.88Z" />
+    </Svg>
+  );
+}
+
+export function VolumeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </Svg>
+  );
+}
+
+export function VolumeXIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="22" y1="9" x2="16" y2="15" />
+      <line x1="16" y1="9" x2="22" y2="15" />
+    </Svg>
+  );
+}
+
+export function QrCodeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect width="6" height="6" x="3" y="3" rx="1" />
+      <rect width="6" height="6" x="15" y="3" rx="1" />
+      <rect width="6" height="6" x="3" y="15" rx="1" />
+      <path d="M15 15h2v2h-2z" />
+      <path d="M19 15h2v6h-6v-2h4v-4z" />
+      <path d="M15 19h2v2h-2z" />
+    </Svg>
+  );
+}

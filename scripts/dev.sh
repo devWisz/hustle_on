@@ -20,5 +20,5 @@ prefix() { while IFS= read -r line; do printf '[%s] %s\n' "$1" "$line"; done; }
 ( cd "$ROOT/frontend" && npm run dev     2>&1 | prefix web ) & pids+=($!)
 
 echo "api  http://localhost:${API_PORT:-8085}"
-echo "web  http://localhost:3000"
+echo "web  http://localhost:3001"
 wait
