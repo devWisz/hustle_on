@@ -1,33 +1,228 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Timelapse } from "@/lib/types";
+import { formatDuration, formatSession } from "@/lib/format";
+import {
+  MaximizeIcon,
+  MinimizeIcon,
+  PipIcon,
+  PlayIcon,
+  RepeatIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
+  VolumeIcon,
+  VolumeXIcon,
+  ZapIcon,
+} from "./icons";
 
-/**
- * The video player.
- *
- * It is a plain `<video controls>`. A custom transport would mean rebuilding
- * keyboard control, captions, picture-in-picture and the OS media keys, all of
- * which the native element already does correctly.
- */
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 4];
+
 export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const counted = useRef(false);
 
-  // A view is recorded once the person has actually watched a few seconds,
-  // not on page load: a bounce is not a view, and the API deduplicates the
-  // rest per day anyway.
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(timelapse.durationSeconds || 0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [loop, setLoop] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // View count tracking after 5s of watching
   useEffect(() => {
     if (!timelapse.playbackUrl) return;
     const timer = setTimeout(() => {
       if (counted.current) return;
       counted.current = true;
-      void api(`/v1/timelapses/${timelapse.slug}/views`, { method: "POST" }).catch(() => {
-        // A missed view count is not worth telling anybody about.
-      });
+      void api(`/v1/timelapses/${timelapse.slug}/views`, { method: "POST" }).catch(() => {});
     }, 5000);
     return () => clearTimeout(timer);
   }, [timelapse.slug, timelapse.playbackUrl]);
+
+  // Video event listeners
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onTimeUpdate = () => setCurrentTime(v.currentTime);
+    const onLoadedMetadata = () => {
+      if (v.duration && !isNaN(v.duration)) setDuration(v.duration);
+    };
+    const onEnded = () => {
+      if (!loop) setPlaying(false);
+    };
+
+    v.addEventListener("play", onPlay);
+    v.addEventListener("pause", onPause);
+    v.addEventListener("timeupdate", onTimeUpdate);
+    v.addEventListener("loadedmetadata", onLoadedMetadata);
+    v.addEventListener("ended", onEnded);
+
+    return () => {
+      v.removeEventListener("play", onPlay);
+      v.removeEventListener("pause", onPause);
+      v.removeEventListener("timeupdate", onTimeUpdate);
+      v.removeEventListener("loadedmetadata", onLoadedMetadata);
+      v.removeEventListener("ended", onEnded);
+    };
+  }, [loop]);
+
+  // Fullscreen change listener
+  useEffect(() => {
+    function onFullscreenChange() {
+      setFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  // Keyboard controls when focused or hovering player
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const v = videoRef.current;
+      if (!v) return;
+
+      // Only handle if container is active or hovered
+      if (!containerRef.current?.contains(document.activeElement) && document.activeElement !== document.body) {
+        return;
+      }
+
+      switch (e.key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "j":
+        case "ArrowLeft":
+          e.preventDefault();
+          skip(-5);
+          break;
+        case "l":
+        case "ArrowRight":
+          e.preventDefault();
+          skip(5);
+          break;
+        case "m":
+          e.preventDefault();
+          toggleMute();
+          break;
+        case "r":
+          e.preventDefault();
+          toggleLoop();
+          break;
+        case "f":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [playing, muted, loop]);
+
+  const resetControlsTimer = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    if (playing) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+        setShowSpeedMenu(false);
+      }, 3000);
+    }
+  }, [playing]);
+
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }
+
+  function skip(seconds: number) {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, Math.min(v.duration || duration, v.currentTime + seconds));
+    resetControlsTimer();
+  }
+
+  function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = videoRef.current;
+    if (!v) return;
+    const target = parseFloat(e.target.value);
+    v.currentTime = target;
+    setCurrentTime(target);
+    resetControlsTimer();
+  }
+
+  function handleSpeedChange(speed: number) {
+    const v = videoRef.current;
+    if (!v) return;
+    v.playbackRate = speed;
+    setPlaybackSpeed(speed);
+    setShowSpeedMenu(false);
+    resetControlsTimer();
+  }
+
+  function toggleLoop() {
+    const v = videoRef.current;
+    if (!v) return;
+    v.loop = !loop;
+    setLoop(!loop);
+    resetControlsTimer();
+  }
+
+  function toggleMute() {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !muted;
+    setMuted(!muted);
+    resetControlsTimer();
+  }
+
+  async function togglePip() {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await v.requestPictureInPicture();
+      }
+    } catch {
+      // PiP not supported or rejected
+    }
+  }
+
+  async function toggleFullscreen() {
+    const container = containerRef.current;
+    if (!container) return;
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Fullscreen failed
+    }
+  }
 
   if (!timelapse.playbackUrl) {
     return (
@@ -37,18 +232,218 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     );
   }
 
+  const compressionRatio =
+    timelapse.sessionMinutes > 0 && duration > 0
+      ? Math.round((timelapse.sessionMinutes * 60) / duration)
+      : null;
+
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-black shadow-[var(--shadow-raised)]">
+    <div
+      ref={containerRef}
+      onMouseMove={resetControlsTimer}
+      onMouseLeave={() => playing && setShowControls(false)}
+      tabIndex={0}
+      className="group relative aspect-video w-full overflow-hidden rounded-[var(--radius-card)]
+                 border border-border bg-black shadow-[var(--shadow-raised)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
       <video
-        controls
+        ref={videoRef}
         preload="metadata"
         playsInline
         poster={timelapse.thumbnailUrl}
-        className="aspect-video w-full"
+        onClick={togglePlay}
+        className="h-full w-full cursor-pointer object-contain"
       >
         <source src={timelapse.playbackUrl} />
         Your browser cannot play this video.
       </video>
+
+      {/* Large central play/pause click target */}
+      {!playing && (
+        <div
+          onClick={togglePlay}
+          className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/30 transition-opacity"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface/95 text-fg shadow-[var(--shadow-raised)] transition-transform hover:scale-105">
+            <PlayIcon size={24} />
+          </span>
+        </div>
+      )}
+
+      {/* Top badges bar */}
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3.5 transition-opacity duration-300 ${
+          showControls || !playing ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {compressionRatio && compressionRatio > 1 ? (
+          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
+            <ZapIcon size={12} className="text-accent" />
+            <span>
+              {formatSession(timelapse.sessionMinutes)} compressed to {formatDuration(duration)}
+            </span>
+            <span className="rounded bg-accent/20 px-1 py-0.2 font-mono text-[10px] text-accent">
+              {compressionRatio}x
+            </span>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {loop && (
+          <div className="flex items-center gap-1 rounded-full border border-accent/30 bg-black/70 px-2 py-0.5 text-[11px] font-medium text-accent backdrop-blur-md">
+            <RepeatIcon size={12} />
+            <span>Loop on</span>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom control bar */}
+      <div
+        className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-6 transition-opacity duration-300 ${
+          showControls || !playing ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {/* Progress scrubber */}
+        <div className="relative mb-2 flex items-center">
+          <input
+            type="range"
+            min={0}
+            max={duration || 1}
+            step={0.1}
+            value={currentTime}
+            onChange={handleSeek}
+            aria-label="Seek video timeline"
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/25 accent-accent transition-all hover:h-2"
+          />
+        </div>
+
+        {/* Transport controls */}
+        <div className="flex items-center justify-between gap-2 text-white">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Play/Pause */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? "Pause (Space/k)" : "Play (Space/k)"}
+              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] hover:bg-white/15"
+            >
+              {playing ? (
+                <span className="flex h-3.5 w-3.5 gap-1">
+                  <span className="h-full w-1 rounded-xs bg-white" />
+                  <span className="h-full w-1 rounded-xs bg-white" />
+                </span>
+              ) : (
+                <PlayIcon size={16} />
+              )}
+            </button>
+
+            {/* Skip -5s */}
+            <button
+              type="button"
+              onClick={() => skip(-5)}
+              aria-label="Skip back 5 seconds (j / ←)"
+              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+            >
+              <SkipBackIcon size={15} />
+            </button>
+
+            {/* Skip +5s */}
+            <button
+              type="button"
+              onClick={() => skip(5)}
+              aria-label="Skip forward 5 seconds (l / →)"
+              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+            >
+              <SkipForwardIcon size={15} />
+            </button>
+
+            {/* Mute toggle */}
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label={muted ? "Unmute (m)" : "Mute (m)"}
+              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+            >
+              {muted ? <VolumeXIcon size={15} /> : <VolumeIcon size={15} />}
+            </button>
+
+            {/* Time readout */}
+            <div className="ml-1 font-mono text-[11px] tabular-nums text-white/80">
+              {formatDuration(currentTime)} / {formatDuration(duration)}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Speed selector */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                aria-label="Playback speed"
+                className="press flex h-7 items-center gap-1 rounded-[var(--radius-control)] border border-white/20 bg-white/10 px-2 font-mono text-[11px] font-medium text-white hover:bg-white/20"
+              >
+                {playbackSpeed}x
+              </button>
+
+              {showSpeedMenu && (
+                <div className="absolute bottom-9 right-0 z-20 flex min-w-[72px] flex-col overflow-hidden rounded-md border border-border bg-surface p-1 shadow-lg">
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => handleSpeedChange(s)}
+                      className={`press flex items-center justify-between rounded px-2 py-1 text-left font-mono text-[12px] ${
+                        playbackSpeed === s
+                          ? "bg-accent/15 font-semibold text-accent"
+                          : "text-fg-muted hover:bg-surface-raised hover:text-fg"
+                      }`}
+                    >
+                      <span>{s}x</span>
+                      {playbackSpeed === s && <span className="text-[10px]">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Loop button */}
+            <button
+              type="button"
+              onClick={toggleLoop}
+              aria-label={loop ? "Disable loop (r)" : "Enable loop (r)"}
+              aria-pressed={loop}
+              className={`press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] transition-colors ${
+                loop
+                  ? "border border-accent/40 bg-accent/20 text-accent"
+                  : "text-white/80 hover:bg-white/15 hover:text-white"
+              }`}
+            >
+              <RepeatIcon size={15} />
+            </button>
+
+            {/* Picture in Picture */}
+            <button
+              type="button"
+              onClick={togglePip}
+              aria-label="Picture-in-Picture"
+              className="press hidden sm:flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+            >
+              <PipIcon size={15} />
+            </button>
+
+            {/* Fullscreen */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={fullscreen ? "Exit fullscreen (f)" : "Enter fullscreen (f)"}
+              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+            >
+              {fullscreen ? <MinimizeIcon size={15} /> : <MaximizeIcon size={15} />}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
