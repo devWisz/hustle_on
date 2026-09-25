@@ -99,6 +99,44 @@ type DonationIntent struct {
 	Cluster   string `json:"cluster"`
 }
 
+// Note is a peer observation left against a published timelapse.
+//
+// The author is embedded rather than referenced by id, because the thread is
+// public: a reader deciding whether an observation holds up needs to see who
+// made it, and a second round trip per note to resolve a name is a cost the
+// list endpoint should not impose.
+type Note struct {
+	ID   string `json:"id"`
+	Body string `json:"body"`
+
+	// Absent means the note is about the work as a whole. Zero is a real
+	// timestamp, which is why this is a pointer rather than a plain int.
+	TimestampSeconds *int `json:"timestampSeconds,omitempty"`
+
+	HelpfulCount int `json:"helpfulCount"`
+	// Whether the caller has already marked this note helpful. Always false for
+	// a signed-out reader, who has no identity to record a vote against.
+	ViewerHasVoted bool `json:"viewerHasVoted"`
+
+	Author    Creator   `json:"author"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// AuditEntry is one recorded operator action, as the review panel reads it.
+//
+// Actor is nullable because an account can be deleted without erasing the
+// decisions it took: the entry survives, attributed to nobody, which is the
+// honest record.
+type AuditEntry struct {
+	ID          int64          `json:"id"`
+	Action      string         `json:"action"`
+	SubjectType string         `json:"subjectType"`
+	SubjectID   string         `json:"subjectId,omitempty"`
+	Actor       *Creator       `json:"actor,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreatedAt   time.Time      `json:"createdAt"`
+}
+
 // Stats is the anonymous homepage snapshot. Queue depth stays off it, so the
 // public site cannot be used to measure how far behind review is.
 type Stats struct {
