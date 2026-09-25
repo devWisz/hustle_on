@@ -18,6 +18,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /v1/timelapses", s.wrap(s.handleFeed))
 	m.HandleFunc("GET /v1/timelapses/{slug}", s.wrap(s.handleTimelapse))
 	m.HandleFunc("GET /v1/timelapses/{slug}/donations", s.wrap(s.handleTimelapseDonations))
+	m.HandleFunc("GET /v1/timelapses/{slug}/notes", s.wrap(s.handleTimelapseNotes))
 	m.HandleFunc("POST /v1/timelapses/{slug}/views", s.wrap(s.handleRecordView))
 	m.HandleFunc("GET /v1/creators/{handle}", s.wrap(s.handleCreator))
 	m.HandleFunc("GET /v1/creators/{handle}/timelapses", s.wrap(s.handleCreatorTimelapses))
@@ -36,6 +37,16 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /v1/me/donations", s.wrap(s.handleMyDonations))
 	m.HandleFunc("POST /v1/me/wallet/challenge", s.wrap(s.handleWalletChallenge))
 	m.HandleFunc("POST /v1/me/wallet/verify", s.wrap(s.handleWalletVerify))
+	m.HandleFunc("GET /v1/me/bookmarks", s.wrap(s.handleMyBookmarks))
+	m.HandleFunc("PUT /v1/me/bookmarks/{slug}", s.wrap(s.handleAddBookmark))
+	m.HandleFunc("DELETE /v1/me/bookmarks/{slug}", s.wrap(s.handleRemoveBookmark))
+
+	// --- peer notes ------------------------------------------------------
+	// Reading is public (registered above with the other public reads); these
+	// three require an account, because each one records who said it.
+	m.HandleFunc("POST /v1/timelapses/{slug}/notes", s.wrap(s.handleCreateNote))
+	m.HandleFunc("POST /v1/timelapses/{slug}/notes/{noteId}/vote", s.wrap(s.handleVoteNote))
+	m.HandleFunc("DELETE /v1/timelapses/{slug}/notes/{noteId}", s.wrap(s.handleDeleteNote))
 
 	// --- publishing ------------------------------------------------------
 	m.HandleFunc("POST /v1/uploads", s.wrap(s.handleCreateUpload))
@@ -51,6 +62,7 @@ func (s *Server) routes() {
 
 	// --- review (admin only) ---------------------------------------------
 	m.HandleFunc("GET /v1/admin/queue", s.wrap(s.handleReviewQueue))
+	m.HandleFunc("GET /v1/admin/audit", s.wrap(s.handleAuditLog))
 	m.HandleFunc("POST /v1/admin/timelapses/{id}/approve", s.wrap(s.handleApprove))
 	m.HandleFunc("POST /v1/admin/timelapses/{id}/reject", s.wrap(s.handleReject))
 	m.HandleFunc("DELETE /v1/admin/timelapses/{id}", s.wrap(s.handleTakeDown))

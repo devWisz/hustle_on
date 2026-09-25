@@ -47,6 +47,11 @@ type Config struct {
 
 	RateLimitAnon int
 	RateLimitAuth int
+	// RateLimitIPCeiling is a deliberately generous per-address ceiling applied
+	// before the session is resolved. It exists only to bound the work an
+	// address can cause ahead of authentication; the meaningful budget is the
+	// per-caller one applied afterwards.
+	RateLimitIPCeiling int
 }
 
 // IsProduction reports whether relaxed development behaviour is forbidden.
@@ -131,6 +136,10 @@ func Load() (Config, error) {
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 60),
 		// Sign-in attempts get their own, far tighter budget than page traffic.
 		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
+		// Ten times the per-caller budget: an office or a shared connection
+		// should not be throttled as if it were one person, but a single
+		// address still cannot make unbounded work.
+		RateLimitIPCeiling: envInt("RATE_LIMIT_IP_CEILING", 600),
 	}
 
 	origins := env("CORS_ALLOWED_ORIGINS", c.WebURL+","+c.AdminURL)
