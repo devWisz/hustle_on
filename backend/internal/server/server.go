@@ -25,6 +25,7 @@ type Server struct {
 	chain   *solana.Client
 	media   *media.Storage
 	limiter *ratelimit.Limiter
+	ceil    *ratelimit.Limiter
 	authLim *ratelimit.Limiter
 	mux     *http.ServeMux
 }
@@ -40,6 +41,7 @@ func New(cfg config.Config, log *slog.Logger, st *store.Store, authSvc *auth.Ser
 		chain:   chain,
 		media:   storage,
 		limiter: ratelimit.New(cfg.RateLimitAnon),
+		ceil:    ratelimit.New(cfg.RateLimitIPCeiling),
 		authLim: ratelimit.New(cfg.RateLimitAuth),
 		mux:     http.NewServeMux(),
 	}
@@ -51,13 +53,20 @@ func New(cfg config.Config, log *slog.Logger, st *store.Store, authSvc *auth.Ser
 func (s *Server) Handler() http.Handler {
 	// Order matters and reads outermost first: a panic in any later layer is
 	// still caught, and every request is logged with the id assigned above it.
+	//
+	// attachSession sits outside rateLimit so the limiter can key on who is
+	// calling rather than only on where they are calling from. The price of
+	// resolving the session first is one indexed lookup per request, which is
+	// why ipCeiling wraps it: that is the layer that bounds what a single
+	// address can make the process do before it knows who is asking.
 	return s.recoverPanic(
 		s.requestID(
 			s.logRequests(
 				s.securityHeaders(
 					s.cors(
-						s.rateLimit(
-							s.attachSession(s.mux)))))))
+						s.ipCeiling(
+							s.attachSession(
+								s.rateLimit(s.mux))))))))
 }
 
 // ListenAndServe runs the API until the context is cancelled, then drains.
