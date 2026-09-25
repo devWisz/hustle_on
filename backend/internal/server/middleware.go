@@ -153,9 +153,38 @@ func (s *Server) originAllowed(origin string) bool {
 	return false
 }
 
-// rateLimit applies a per-client budget. Authenticated callers are keyed by
-// user id so one office behind a single NAT address is not throttled as one
-// client, while anonymous traffic is keyed by address.
+// ipCeiling bounds how much work one address can cause before its session has
+// been resolved.
+//
+// It is deliberately far looser than the real budget: a household, an office or
+// a mobile carrier's NAT can legitimately present thousands of distinct callers
+// from one address, and throttling all of them as a single client is the bug
+// this whole arrangement exists to avoid. What it does stop is one address
+// spraying requests, each with a different cookie, to make the process perform a
+// session lookup for every one.
+func (s *Server) ipCeiling(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+		key := "ip:" + clientIP(r).String()
+		if !s.ceil.Allow(key) {
+			retry := s.ceil.RetryAfter(key)
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+			s.writeError(w, r, apierr.TooManyRequests(""))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// rateLimit applies a per-client budget.
+//
+// An authenticated caller is keyed by user id, so one office behind a single NAT
+// address is not throttled as one client, while anonymous traffic is keyed by
+// address — there is nothing else to key it on. This is why the middleware runs
+// after attachSession; before it, the user simply is not known yet.
 func (s *Server) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
@@ -163,6 +192,9 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 			return
 		}
 		key := "ip:" + clientIP(r).String()
+		if u, ok := currentUser(r); ok {
+			key = "user:" + u.ID
+		}
 		if !s.limiter.Allow(key) {
 			retry := s.limiter.RetryAfter(key)
 			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
