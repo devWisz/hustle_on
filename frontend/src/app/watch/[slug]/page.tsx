@@ -2,11 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiServer } from "@/lib/api";
-import type { Donation, Timelapse } from "@/lib/types";
+import type { Donation, Note, SelfUser, Timelapse } from "@/lib/types";
 import { isGuestPreview } from "@/lib/guest-server";
-import { findSampleTimelapse, isSampleSlug, sampleDonations } from "@/lib/sample";
+import {
+  findSampleTimelapse,
+  isSampleSlug,
+  sampleDonations,
+  sampleNotes,
+} from "@/lib/sample";
 import { formatCount, formatDate, formatSession, formatSol } from "@/lib/format";
 import { TimelapsePlayer } from "@/components/timelapse-player";
+import { PlayerSeekProvider } from "@/components/player-seek";
 import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/donate-panel";
 import { ShareButton } from "@/components/share-button";
 import { BookmarkButton } from "@/components/bookmark-button";
@@ -18,6 +24,9 @@ import { Avatar, Card, Container } from "@/components/ui";
 import { ClockIcon, EyeIcon, GitHubIcon, PlayIcon, XIcon } from "@/components/icons";
 
 export const revalidate = 30;
+
+/** Used to build the share and embed links a creator can copy. */
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -53,105 +62,132 @@ export default async function WatchPage({ params }: Props) {
   if (!timelapse) notFound();
 
   const isSample = !live;
-  const [creator, donations] = isSample
-    ? [undefined, { items: sampleDonations(slug) } as { items: Donation[] }]
+  const [creator, donations, notes, me] = isSample
+    ? [
+        undefined,
+        { items: sampleDonations(slug) } as { items: Donation[] },
+        { items: sampleNotes(slug) } as { items: Note[] },
+        null,
+      ]
     : await Promise.all([
         apiServer<{ payoutAddress?: string }>(`/v1/creators/${timelapse.creator.handle}`, 120),
         apiServer<{ items: Donation[] }>(`/v1/timelapses/${slug}/donations`),
+        // Not cached: a note the reader has just posted must be there when the
+        // page comes back, and a thread is the one part of this page that
+        // changes because of something the reader did a second ago.
+        apiServer<{ items: Note[] }>(`/v1/timelapses/${slug}/notes`, 0),
+        apiServer<SelfUser>("/v1/me", 0),
       ]);
 
   return (
-    <Container width="wide" className="py-10">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="animate-fade-in-up min-w-0">
-          {isSample ? (
-            <SamplePlayer timelapse={timelapse} />
-          ) : (
-            <TimelapsePlayer timelapse={timelapse} />
-          )}
-
-          <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-            {timelapse.title}
-          </h1>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-muted">
-            {timelapse.sessionMinutes > 0 ? (
-              <span className="flex items-center gap-1.5">
-                <ClockIcon size={14} />
-                {formatSession(timelapse.sessionMinutes)}
-              </span>
-            ) : null}
-            <span className="flex items-center gap-1.5 tabular-nums">
-              <EyeIcon size={14} />
-              {formatCount(timelapse.viewCount)} views
-            </span>
-            {timelapse.publishedAt ? (
-              <time dateTime={timelapse.publishedAt}>{formatDate(timelapse.publishedAt)}</time>
-            ) : null}
-            {isSample ? null : (
-              <ShareButton
-                title={timelapse.title}
-                text={timelapse.summary.slice(0, 120)}
-                path={`/watch/${timelapse.slug}`}
-              />
+    <PlayerSeekProvider>
+      <Container width="wide" className="py-10">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="animate-fade-in-up min-w-0">
+            {isSample ? (
+              <SamplePlayer timelapse={timelapse} />
+            ) : (
+              <TimelapsePlayer timelapse={timelapse} />
             )}
-          </div>
 
-          <CreatorLine timelapse={timelapse} linkable={!isSample} />
+            <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
+              {timelapse.title}
+            </h1>
 
-          {/* The write-up is the substance of a submission, so it gets the
-              width and the leading of something meant to be read. */}
-          <section className="mt-8">
-            <h2 className="text-eyebrow">What I did</h2>
-            <div className="mt-4 max-w-[68ch] whitespace-pre-wrap text-[15px] leading-[1.7] text-fg">
-              {timelapse.summary}
-            </div>
-          </section>
-
-          <WorkLinks timelapse={timelapse} />
-        </div>
-
-        <aside
-          className="animate-slide-in-right space-y-6 lg:sticky lg:top-20 lg:self-start"
-          style={{ animationDelay: "200ms" }}
-        >
-          {isSample ? (
-            <Card className="p-5">
-              <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-                Support this work
-                <SampleTag />
-              </h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-                On a real timelapse this is where the amount goes. Your wallet shows exactly where
-                the SOL is going before you approve anything, it never passes through Sardhana, and
-                the transfer is checked on-chain before it is credited.
-              </p>
-              <p className="mt-3 text-[13px] text-fg-subtle">
-                Disabled here — there is no creator behind an invented record.
-              </p>
-            </Card>
-          ) : creator?.payoutAddress ? (
-            <DonatePanel timelapse={timelapse} />
-          ) : (
-            <DonationsUnavailable handle={timelapse.creator.displayName} />
-          )}
-
-          <Card className="p-5">
-            <h2 className="text-[15px] font-semibold">
-              Supporters
-              {timelapse.donationTotalLamports > 0 ? (
-                <span className="ml-2 font-normal tabular-nums text-accent">
-                  {formatSol(timelapse.donationTotalLamports)}
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-muted">
+              {timelapse.sessionMinutes > 0 ? (
+                <span className="flex items-center gap-1.5">
+                  <ClockIcon size={14} />
+                  {formatSession(timelapse.sessionMinutes)}
                 </span>
               ) : null}
-            </h2>
-            <div className="mt-2">
-              <SupporterList donations={donations?.items ?? []} />
+              <span className="flex items-center gap-1.5 tabular-nums">
+                <EyeIcon size={14} />
+                {formatCount(timelapse.viewCount)} views
+              </span>
+              {timelapse.publishedAt ? (
+                <time dateTime={timelapse.publishedAt}>{formatDate(timelapse.publishedAt)}</time>
+              ) : null}
+              {isSample ? null : (
+                <>
+                  <ShareButton
+                    title={timelapse.title}
+                    text={timelapse.summary.slice(0, 120)}
+                    path={`/watch/${timelapse.slug}`}
+                  />
+                  <BookmarkButton timelapse={timelapse} variant="inline" />
+                </>
+              )}
             </div>
-          </Card>
-        </aside>
-      </div>
-    </Container>
+
+            <CreatorLine timelapse={timelapse} linkable={!isSample} />
+
+            {/* The write-up is the substance of a submission, so it gets the
+                width and the leading of something meant to be read. */}
+            <section className="mt-8">
+              <h2 className="text-eyebrow">What I did</h2>
+              <div className="mt-4 max-w-[68ch] whitespace-pre-wrap text-[15px] leading-[1.7] text-fg">
+                {timelapse.summary}
+              </div>
+            </section>
+
+            <WorkLinks timelapse={timelapse} />
+
+            <DiscussionPanel
+              slug={timelapse.slug}
+              title={timelapse.title}
+              initialNotes={notes?.items ?? []}
+              signedIn={Boolean(me)}
+              sample={isSample}
+            />
+          </div>
+
+          <aside
+            className="animate-slide-in-right space-y-6 lg:sticky lg:top-20 lg:self-start"
+            style={{ animationDelay: "200ms" }}
+          >
+            {isSample ? (
+              <Card className="p-5">
+                <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+                  Support this work
+                  <SampleTag />
+                </h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
+                  On a real timelapse this is where the amount goes. Your wallet shows exactly where
+                  the SOL is going before you approve anything, it never passes through Sardhana, and
+                  the transfer is checked on-chain before it is credited.
+                </p>
+                <p className="mt-3 text-[13px] text-fg-subtle">
+                  Disabled here — there is no creator behind an invented record.
+                </p>
+              </Card>
+            ) : creator?.payoutAddress ? (
+              <DonatePanel timelapse={timelapse} />
+            ) : (
+              <DonationsUnavailable handle={timelapse.creator.displayName} />
+            )}
+
+            <Card className="p-5">
+              <h2 className="text-[15px] font-semibold">
+                Supporters
+                {timelapse.donationTotalLamports > 0 ? (
+                  <span className="ml-2 font-normal tabular-nums text-accent">
+                    {formatSol(timelapse.donationTotalLamports)}
+                  </span>
+                ) : null}
+              </h2>
+              <div className="mt-2">
+                <SupporterList donations={donations?.items ?? []} />
+              </div>
+            </Card>
+
+            {/* Nothing to inspect on an invented record, and embedding a page
+                that does not exist would hand out a broken snippet. */}
+            {isSample ? null : <SessionInspector timelapse={timelapse} siteUrl={SITE_URL} />}
+          </aside>
+        </div>
+      </Container>
+    </PlayerSeekProvider>
   );
 }
 

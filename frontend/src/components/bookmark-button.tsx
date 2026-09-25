@@ -5,6 +5,7 @@ import type { Timelapse } from "@/lib/types";
 import { BookmarkIcon } from "./icons";
 import { useToast } from "./toast";
 import { cx } from "@/lib/format";
+import { ApiError } from "@/lib/api";
 
 interface BookmarkButtonProps {
   timelapse: Timelapse;
@@ -18,17 +19,23 @@ export function BookmarkButton({
   className,
 }: BookmarkButtonProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
-  const { success } = useToast();
+  const { success, error } = useToast();
   const saved = isBookmarked(timelapse.slug);
 
-  function handleClick(e: React.MouseEvent) {
+  async function handleClick(e: React.MouseEvent) {
+    // The button sits inside a card that is itself a link, so both the
+    // navigation and the card's own handlers are suppressed.
     e.preventDefault();
     e.stopPropagation();
-    const nowSaved = toggleBookmark(timelapse);
-    if (nowSaved) {
-      success("Saved to your bookmarks");
-    } else {
-      success("Removed from bookmarks");
+    try {
+      const nowSaved = await toggleBookmark(timelapse);
+      success(nowSaved ? "Saved to your bookmarks" : "Removed from bookmarks");
+    } catch (err) {
+      error(
+        err instanceof ApiError
+          ? err.message
+          : "That could not be saved. Check your connection and try again.",
+      );
     }
   }
 

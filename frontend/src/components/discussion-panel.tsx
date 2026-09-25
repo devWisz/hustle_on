@@ -1,247 +1,297 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDuration } from "@/lib/format";
-import { Avatar, Button, Card, Textarea } from "./ui";
-import { MessageSquareIcon, ThumbsUpIcon } from "./icons";
+import Link from "next/link";
+import { ApiError, api } from "@/lib/api";
+import type { Note } from "@/lib/types";
+import { formatDuration, timeAgo } from "@/lib/format";
+import { Avatar, Button, Textarea } from "./ui";
+import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "./icons";
 import { useToast } from "./toast";
+import { usePlayerSeek } from "./player-seek";
+import { SampleNote, SampleTag } from "./guest";
 
-export interface Note {
-  id: string;
-  author: string;
-  handle?: string;
-  avatarUrl?: string;
-  timestampSeconds?: number;
-  body: string;
-  helpfulCount: number;
-  createdAt: string;
-}
-
-const DEFAULT_NOTES: Record<string, Note[]> = {
-  "rewriting-the-borrow-checker-pass": [
-    {
-      id: "note-1",
-      author: "Alex Rivers",
-      handle: "arivers",
-      timestampSeconds: 38,
-      body: "The fixpoint algorithm over the dominator tree completely eliminates the nested loop miscompilation. Clean separation of back-edges.",
-      helpfulCount: 14,
-      createdAt: "2026-09-19T14:20:00Z",
-    },
-    {
-      id: "note-2",
-      author: "Elena Rostova",
-      handle: "elena_dev",
-      timestampSeconds: 15,
-      body: "Notice how the region inference pass was walking the CFG twice before — rewrites like this are why session timelapses are so valuable to study.",
-      helpfulCount: 9,
-      createdAt: "2026-09-20T08:12:00Z",
-    },
-  ],
-  "oscillator-bank-from-scratch": [
-    {
-      id: "note-3",
-      author: "Marcus Chen",
-      handle: "mchen_audio",
-      timestampSeconds: 28,
-      body: "That wavetable index off-by-one was so subtle. Caught it right when the harmonic spectrum analyzer showed high frequency aliasing foldback.",
-      helpfulCount: 12,
-      createdAt: "2026-09-20T11:45:00Z",
-    },
-  ],
-};
+/**
+ * The peer notes under a timelapse.
+ *
+ * Every note here is either a real record read from the API or, inside a guest
+ * preview, an invented one behind a sample badge — there is no third case, and
+ * in particular no hard-coded thread that appears on a real page. A very
+ * believable fake discussion is worse than an empty one, because it is the part
+ * of the page a reader is most likely to take at face value.
+ */
 
 export function DiscussionPanel({
   slug,
   title,
-  onSeekTimestamp,
+  initialNotes,
+  signedIn,
+  sample = false,
 }: {
   slug: string;
   title: string;
-  onSeekTimestamp?: (seconds: number) => void;
+  /** Server-rendered first paint, so the thread is there without JavaScript. */
+  initialNotes: Note[];
+  /** Whether the visitor has an account to write a note with. */
+  signedIn: boolean;
+  /** Preview mode: the thread is shown but nothing on it can be written. */
+  sample?: boolean;
 }) {
-  const { success } = useToast();
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [authorName, setAuthorName] = useState("");
+  const { success, error } = useToast();
+  const seek = usePlayerSeek();
+
+  const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [body, setBody] = useState("");
   const [timestampInput, setTimestampInput] = useState("");
-  const [upvoted, setUpvoted] = useState<Record<string, boolean>>({});
+  const [posting, setPosting] = useState(false);
+  const [busyNote, setBusyNote] = useState<string | null>(null);
 
-  const storageKey = `sardhana-notes-${slug}`;
-
+  // A client-side navigation between two watch pages reuses this component, so
+  // the server's fresh list has to be adopted rather than kept from before.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        setNotes(JSON.parse(stored));
-      } else {
-        const defaults = DEFAULT_NOTES[slug] ?? [];
-        setNotes(defaults);
-      }
-    } catch {
-      setNotes(DEFAULT_NOTES[slug] ?? []);
+    setNotes(initialNotes);
+  }, [initialNotes]);
+
+  /** Parses "1:30", "90" or "1:02:30" into seconds; null when unparseable. */
+  function parseTimestamp(raw: string): number | null {
+    const value = raw.trim();
+    if (!value) return null;
+    const parts = value.split(":");
+    if (parts.length > 3) return null;
+    let total = 0;
+    for (const part of parts) {
+      const n = Number(part);
+      if (!Number.isInteger(n) || n < 0) return null;
+      total = total * 60 + n;
     }
-  }, [slug, storageKey]);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = body.trim();
-    if (!text) return;
-
-    let timestamp: number | undefined;
-    if (timestampInput.trim()) {
-      const parts = timestampInput.trim().split(":");
-      if (parts.length === 2) {
-        const m = parseInt(parts[0] || "0", 10);
-        const s = parseInt(parts[1] || "0", 10);
-        if (!isNaN(m) && !isNaN(s)) timestamp = m * 60 + s;
-      } else {
-        const s = parseInt(timestampInput.trim(), 10);
-        if (!isNaN(s)) timestamp = s;
-      }
-    }
-
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      author: authorName.trim() || "Anonymous Peer",
-      handle: authorName.trim().toLowerCase().replace(/\s+/g, "_") || "peer",
-      timestampSeconds: timestamp,
-      body: text,
-      helpfulCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [newNote, ...notes];
-    setNotes(updated);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
-
-    setBody("");
-    setTimestampInput("");
-    success("Your technical note has been posted.");
+    return total;
   }
 
-  function handleUpvote(noteId: string) {
-    if (upvoted[noteId]) return;
+  const timestampValue = parseTimestamp(timestampInput);
+  const timestampInvalid = timestampInput.trim() !== "" && timestampValue === null;
 
-    const updated = notes.map((n) => {
-      if (n.id === noteId) {
-        return { ...n, helpfulCount: n.helpfulCount + 1 };
-      }
-      return n;
-    });
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = body.trim();
+    if (!text || timestampInvalid) return;
 
-    setNotes(updated);
-    setUpvoted((prev) => ({ ...prev, [noteId]: true }));
+    setPosting(true);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch {
-      // ignore
+      const created = await api<Note>(`/v1/timelapses/${slug}/notes`, {
+        method: "POST",
+        body: {
+          body: text,
+          ...(timestampValue === null ? {} : { timestampSeconds: timestampValue }),
+        },
+      });
+      setNotes((current) => [created, ...current]);
+      setBody("");
+      setTimestampInput("");
+      success("Your note is on the thread.");
+    } catch (err) {
+      error(err instanceof ApiError ? err.message : "That note could not be posted.");
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  async function handleVote(note: Note) {
+    setBusyNote(note.id);
+    // Optimistic: the mark is one bit and the server's answer replaces it.
+    const next = !note.viewerHasVoted;
+    setNotes((current) =>
+      current.map((n) =>
+        n.id === note.id
+          ? { ...n, viewerHasVoted: next, helpfulCount: n.helpfulCount + (next ? 1 : -1) }
+          : n,
+      ),
+    );
+    try {
+      const result = await api<{ helpfulCount: number; viewerHasVoted: boolean }>(
+        `/v1/timelapses/${slug}/notes/${note.id}/vote`,
+        { method: "POST", body: { helpful: next } },
+      );
+      setNotes((current) =>
+        current.map((n) => (n.id === note.id ? { ...n, ...result } : n)),
+      );
+    } catch (err) {
+      // Put the note back exactly as the server last described it.
+      setNotes((current) => current.map((n) => (n.id === note.id ? note : n)));
+      error(err instanceof ApiError ? err.message : "That vote did not register.");
+    } finally {
+      setBusyNote(null);
+    }
+  }
+
+  async function handleDelete(note: Note) {
+    setBusyNote(note.id);
+    try {
+      await api(`/v1/timelapses/${slug}/notes/${note.id}`, { method: "DELETE" });
+      setNotes((current) => current.filter((n) => n.id !== note.id));
+      success("Note removed.");
+    } catch (err) {
+      error(err instanceof ApiError ? err.message : "That note could not be removed.");
+    } finally {
+      setBusyNote(null);
     }
   }
 
   return (
-    <div className="mt-10 border-t border-border pt-8">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-[18px] font-semibold tracking-tight">
+    <section className="mt-10 border-t border-border pt-8" aria-labelledby="notes-heading">
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="notes-heading"
+          className="flex items-center gap-2 text-[18px] font-semibold tracking-tight"
+        >
           <MessageSquareIcon size={18} />
-          <span>Peer Review &amp; Technical Notes</span>
-          <span className="text-[13px] font-normal text-fg-subtle tabular-nums">
+          <span>Peer notes</span>
+          <span className="text-[13px] font-normal tabular-nums text-fg-subtle">
             ({notes.length})
           </span>
+          {sample ? <SampleTag /> : null}
         </h2>
       </div>
 
-      <p className="mt-1 text-[13px] text-fg-muted">
-        Discuss the engineering decisions, catch subtle bugs, or leave technical observations on{" "}
-        <span className="font-medium text-fg">{title}</span>.
+      <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-fg-muted">
+        Observations on the implementation, the architecture or a specific moment in{" "}
+        <span className="font-medium text-fg">{title}</span>. Click a timestamp to jump the video
+        to it.
       </p>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="mt-5 rounded-lg border border-border bg-surface p-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
-          <input
-            type="text"
-            placeholder="Your name or handle (optional)"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            className="rounded-[var(--radius-control)] border border-border bg-surface-raised px-3 py-1.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-border-strong"
+      {sample ? (
+        <SampleNote className="mt-5">
+          An invented thread, shown so the page is not empty. Nothing here can be posted, voted on
+          or deleted.
+        </SampleNote>
+      ) : signedIn ? (
+        <form onSubmit={handleSubmit} className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4">
+          <Textarea
+            rows={3}
+            placeholder="Share an observation on the implementation, architecture or technique…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            maxLength={2000}
+            aria-label="Your note"
           />
-          <input
-            type="text"
-            placeholder="Timestamp (e.g. 0:42)"
-            value={timestampInput}
-            onChange={(e) => setTimestampInput(e.target.value)}
-            className="rounded-[var(--radius-control)] border border-border bg-surface-raised px-3 py-1.5 text-sm font-mono text-fg placeholder:text-fg-subtle outline-none focus:border-border-strong"
-          />
-        </div>
 
-        <Textarea
-          rows={3}
-          placeholder="Share an observation on the implementation, architecture, or technique..."
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          className="mt-3 w-full"
-        />
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="sm:w-44">
+              <label htmlFor="note-timestamp" className="block text-[12px] font-medium text-fg-muted">
+                Timestamp <span className="font-normal text-fg-subtle">(optional)</span>
+              </label>
+              <input
+                id="note-timestamp"
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 0:42"
+                value={timestampInput}
+                onChange={(e) => setTimestampInput(e.target.value)}
+                aria-invalid={timestampInvalid || undefined}
+                aria-describedby={timestampInvalid ? "note-timestamp-error" : undefined}
+                className="mt-1 h-10 w-full rounded-[var(--radius-control)] border border-border bg-surface-raised px-3 font-mono text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle hover:border-border-strong focus:border-accent"
+              />
+              {timestampInvalid ? (
+                <p id="note-timestamp-error" role="alert" className="mt-1 text-[12px] text-danger">
+                  Use seconds, or mm:ss.
+                </p>
+              ) : null}
+            </div>
 
-        <div className="mt-3 flex justify-end">
-          <Button type="submit" size="sm" disabled={!body.trim()}>
-            Post note
-          </Button>
-        </div>
-      </form>
-
-      {/* Notes List */}
-      <div className="mt-6 space-y-4">
-        {notes.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-fg-muted">
-            No notes yet. Be the first to share an observation on this session.
+            <Button type="submit" size="sm" loading={posting} disabled={!body.trim() || timestampInvalid}>
+              Post note
+            </Button>
           </div>
+        </form>
+      ) : (
+        <div className="mt-5 rounded-[var(--radius-card)] border border-dashed border-border-strong bg-surface p-4">
+          <p className="text-sm text-fg-muted">
+            Notes are written by people with an account, so every observation has an author who can
+            answer for it.
+          </p>
+          <Link
+            href={`/login?next=${encodeURIComponent(`/watch/${slug}`)}`}
+            className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline"
+          >
+            Get a sign-in link to join the thread
+          </Link>
+        </div>
+      )}
+
+      <ul className="mt-6 space-y-3">
+        {notes.length === 0 ? (
+          <li className="rounded-[var(--radius-card)] border border-dashed border-border-strong py-10 text-center text-sm text-fg-muted">
+            No notes yet. Be the first to point something out.
+          </li>
         ) : (
           notes.map((note) => (
-            <div
+            <li
               key={note.id}
-              className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-border-strong"
+              className="rounded-[var(--radius-card)] border border-border bg-surface p-4 transition-colors duration-200 hover:border-border-strong"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Avatar name={note.author} size={22} />
-                  <span className="text-[13px] font-medium text-fg">{note.author}</span>
-                  {note.timestampSeconds !== undefined && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <Avatar name={note.author.displayName} src={note.author.avatarUrl} size={22} />
+                <span className="text-[13px] font-medium text-fg">{note.author.displayName}</span>
+                <span className="text-[12px] text-fg-subtle">@{note.author.handle}</span>
+                <span aria-hidden className="text-fg-subtle">
+                  ·
+                </span>
+                <time dateTime={note.createdAt} className="text-[12px] text-fg-subtle">
+                  {timeAgo(note.createdAt)}
+                </time>
+
+                {note.timestampSeconds !== undefined ? (
+                  <button
+                    type="button"
+                    onClick={() => seek?.seek(note.timestampSeconds!)}
+                    disabled={!seek}
+                    className="press ml-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 font-mono text-[11px] font-medium text-accent transition-colors duration-200 hover:bg-accent/20 disabled:cursor-default disabled:opacity-60"
+                    title={seek ? "Jump the video to this moment" : "This page has no video"}
+                  >
+                    {formatDuration(note.timestampSeconds)}
+                  </button>
+                ) : null}
+
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleVote(note)}
+                    disabled={!signedIn || busyNote === note.id}
+                    aria-pressed={note.viewerHasVoted}
+                    aria-label={
+                      note.viewerHasVoted ? "Remove your helpful mark" : "Mark this note helpful"
+                    }
+                    title={signedIn ? undefined : "Sign in to mark a note helpful"}
+                    className={`press flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      note.viewerHasVoted
+                        ? "border-accent/40 bg-accent-soft text-accent"
+                        : "border-border bg-surface-raised text-fg-muted hover:text-fg"
+                    }`}
+                  >
+                    <ThumbsUpIcon size={12} />
+                    <span className="tabular-nums">{note.helpfulCount}</span>
+                  </button>
+
+                  {note.viewerCanDelete ? (
                     <button
                       type="button"
-                      onClick={() => onSeekTimestamp?.(note.timestampSeconds!)}
-                      className="press rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-accent hover:bg-accent/20"
-                      title="Seek to video timestamp"
+                      onClick={() => handleDelete(note)}
+                      disabled={busyNote === note.id}
+                      aria-label="Delete this note"
+                      className="press rounded-full border border-transparent p-1 text-fg-subtle transition-colors duration-200 hover:border-danger/40 hover:text-danger disabled:opacity-60"
                     >
-                      @{formatDuration(note.timestampSeconds)}
+                      <TrashIcon size={13} />
                     </button>
-                  )}
+                  ) : null}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpvote(note.id)}
-                  aria-label="Upvote note"
-                  className={`press flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                    upvoted[note.id]
-                      ? "border-accent/40 bg-accent/15 text-accent"
-                      : "border-border bg-surface-raised text-fg-muted hover:text-fg"
-                  }`}
-                >
-                  <ThumbsUpIcon size={12} />
-                  <span className="tabular-nums">{note.helpfulCount}</span>
-                </button>
               </div>
 
-              <p className="mt-2.5 text-sm leading-relaxed text-fg-muted">{note.body}</p>
-            </div>
+              <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-fg-muted">
+                {note.body}
+              </p>
+            </li>
           ))
         )}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }
