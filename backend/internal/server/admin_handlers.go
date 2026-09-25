@@ -38,7 +38,7 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) error {
 		}
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.approve", id, nil)
+	s.audit(r, reviewer.ID, "timelapse.approve", "timelapse", id, nil)
 
 	updated, err := s.store.ByID(r.Context(), id)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) error {
 		}
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.reject", id, map[string]any{"note": note})
+	s.audit(r, reviewer.ID, "timelapse.reject", "timelapse", id, map[string]any{"note": note})
 
 	updated, err := s.store.ByID(r.Context(), id)
 	if err != nil {
@@ -95,7 +95,7 @@ func (s *Server) handleTakeDown(w http.ResponseWriter, r *http.Request) error {
 	if err := s.store.Remove(r.Context(), id, ""); err != nil {
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.takedown", id, nil)
+	s.audit(r, reviewer.ID, "timelapse.takedown", "timelapse", id, nil)
 	return noContent(w)
 }
 
@@ -122,9 +122,25 @@ type adminUser struct{ ID string }
 // audit records a decision. A failure to write the trail is logged but never
 // fails the request: the decision has already been applied, and reporting an
 // error the caller cannot act on would only invite them to apply it twice.
-func (s *Server) audit(r *http.Request, actorID, action, subjectID string, meta map[string]any) {
-	if err := s.store.RecordAudit(r.Context(), actorID, action, "timelapse", subjectID, meta); err != nil {
+func (s *Server) audit(r *http.Request, actorID, action, subjectType, subjectID string, meta map[string]any) {
+	if err := s.store.RecordAudit(r.Context(), actorID, action, subjectType, subjectID, meta); err != nil {
 		s.log.ErrorContext(r.Context(), "write audit log",
 			"action", action, "subject", subjectID, "error", err)
 	}
+}
+
+// handleAuditLog returns the most recent operator actions.
+//
+// The review panel shows its own history. An operator can see what was decided,
+// by whom and when, which is what makes the audit table worth writing: a record
+// nobody can read changes nobody's behaviour.
+func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
+		return err
+	}
+	entries, err := s.store.RecentAudit(r.Context(), queryInt(r, "limit", 50, 1, 200))
+	if err != nil {
+		return storeErr(err, "Audit log")
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"items": entries})
 }

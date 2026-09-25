@@ -170,7 +170,7 @@ func (s *Server) handleDeleteNote(w http.ResponseWriter, r *http.Request) error 
 		return storeErr(err, "Note")
 	}
 	if asAdmin {
-		s.audit(r, u.ID, "note.delete", noteID, map[string]any{"authorId": note.Author.ID})
+		s.audit(r, u.ID, "note.delete", "note", noteID, map[string]any{"authorId": note.Author.ID})
 	}
 	return noContent(w)
 }
