@@ -57,6 +57,15 @@ func (s *Server) handleTimelapseNotes(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return storeErr(err, "Note")
 	}
+
+	// Who may remove a note is decided here, once, rather than being inferred by
+	// each client from an author id it would otherwise have to be trusted with.
+	u, signedIn := currentUser(r)
+	isAdmin := signedIn && u.Role == roleAdmin
+	for i := range notes {
+		notes[i].ViewerCanDelete = isAdmin || (signedIn && notes[i].Author.ID == u.ID)
+	}
+
 	return writeJSON(w, http.StatusOK, map[string]any{"items": notes})
 }
 

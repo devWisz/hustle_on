@@ -78,6 +78,33 @@ export interface DonationIntent {
   cluster: string;
 }
 
+/** A peer observation left against a published timelapse. */
+export interface Note {
+  id: string;
+  body: string;
+  /** Absent when the note is about the work as a whole. */
+  timestampSeconds?: number;
+  helpfulCount: number;
+  /** Whether this browser's account has already marked the note helpful. */
+  viewerHasVoted: boolean;
+  /** Whether this browser's account may remove the note. */
+  viewerCanDelete: boolean;
+  author: Creator;
+  createdAt: string;
+}
+
+/** One recorded operator action, as the review panel reads it. */
+export interface AuditEntry {
+  id: number;
+  action: string;
+  subjectType: string;
+  subjectId?: string;
+  /** Absent when the account that took the decision has since been deleted. */
+  actor?: Creator;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface Stats {
   creators: number;
   publishedTimelapses: number;

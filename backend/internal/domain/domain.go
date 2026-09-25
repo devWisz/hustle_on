@@ -117,6 +117,10 @@ type Note struct {
 	// Whether the caller has already marked this note helpful. Always false for
 	// a signed-out reader, who has no identity to record a vote against.
 	ViewerHasVoted bool `json:"viewerHasVoted"`
+	// Whether the caller may remove this note. Decided by the server rather than
+	// inferred by the client from a user id, so the rule for who may moderate
+	// lives in exactly one place.
+	ViewerCanDelete bool `json:"viewerCanDelete"`
 
 	Author    Creator   `json:"author"`
 	CreatedAt time.Time `json:"createdAt"`

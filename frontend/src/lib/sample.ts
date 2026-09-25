@@ -1,4 +1,4 @@
-import type { Donation, PublicUser, SelfUser, Stats, Timelapse } from "./types";
+import type { Donation, Note, PublicUser, SelfUser, Stats, Timelapse } from "./types";
 import { LAMPORTS_PER_SOL } from "./format";
 
 /**
@@ -199,6 +199,51 @@ const SAMPLE_BIOS: Record<string, string> = {
   priya: "Interface work on products that are already shipped and already dense.",
   dan: "Platform migrations, written down so the next person does not have to guess.",
 };
+
+/**
+ * Sample peer notes for a previewed timelapse.
+ *
+ * A thread is the most believable part of a watch page, so leaving it empty in
+ * a preview would undersell the page — but an invented observation attributed
+ * to a name is exactly the kind of unlabelled fake data the product refuses to
+ * show. The panel renders these behind a sample badge and disables everything
+ * that would write, so they can only ever be read as illustration.
+ */
+export function sampleNotes(slug: string): Note[] {
+  const timelapse = findSampleTimelapse(slug);
+  if (!timelapse) return [];
+  return [
+    {
+      id: `${timelapse.id}-n1`,
+      body: "The part around the middle is worth watching twice — the fixpoint is computed over the dominator tree rather than the CFG, which is why the nested case stops miscompiling.",
+      timestampSeconds: 38,
+      helpfulCount: 14,
+      viewerHasVoted: false,
+      viewerCanDelete: false,
+      author: { id: "s-n1", handle: "arivers", displayName: "Alex Rivers" },
+      createdAt: ago(80),
+    },
+    {
+      id: `${timelapse.id}-n2`,
+      body: "Notice how the region inference pass was walking the graph twice before this change. That redundant traversal is the actual bug, and the rewrite is what removes it.",
+      timestampSeconds: 15,
+      helpfulCount: 9,
+      viewerHasVoted: false,
+      viewerCanDelete: false,
+      author: { id: "s-n2", handle: "elena_dev", displayName: "Elena Rostova" },
+      createdAt: ago(240),
+    },
+    {
+      id: `${timelapse.id}-n3`,
+      body: "Leaving the two failing tests in rather than skipping them is the right call, and the commit message saying so is better than a green suite that lies.",
+      helpfulCount: 6,
+      viewerHasVoted: false,
+      viewerCanDelete: false,
+      author: { id: "s-n3", handle: "mchen", displayName: "Marcus Chen" },
+      createdAt: ago(610),
+    },
+  ];
+}
 
 export function sampleDonations(slug: string): Donation[] {
   const timelapse = findSampleTimelapse(slug);

@@ -1,5 +1,3 @@
-import type { Timelapse } from "./types";
-
 export interface Category {
   id: string;
   label: string;
