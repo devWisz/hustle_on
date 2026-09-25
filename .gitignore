@@ -38,3 +38,5 @@ coverage/
 vendor/
 *.test
 .neon
+# Local build cache, used when the machine's default cache is not writable.
+.gocache/
