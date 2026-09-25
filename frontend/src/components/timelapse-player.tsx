@@ -36,6 +36,31 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // The video element is the source of truth for these, but the handlers that
+  // read them are event callbacks and must not be rebuilt whenever one changes.
+  // Each value is mirrored into a ref so a callback always sees the current one:
+  // a callback that had closed over `muted` would keep reading the value from
+  // the render that created it, which is how a mute key ends up a no-op.
+  const playingRef = useRef(playing);
+  const loopRef = useRef(loop);
+  const mutedRef = useRef(muted);
+  const durationRef = useRef(duration);
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+  useEffect(() => {
+    loopRef.current = loop;
+  }, [loop]);
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
+  const seek = usePlayerSeek();
+
   // View count tracking after 5s of watching
   useEffect(() => {
     if (!timelapse.playbackUrl) return;
@@ -47,7 +72,8 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     return () => clearTimeout(timer);
   }, [timelapse.slug, timelapse.playbackUrl]);
 
-  // Video event listeners
+  // Video event listeners. Subscribed once: the state they carry lives on the
+  // element itself, so there is nothing here for a re-render to update.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -59,7 +85,9 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       if (v.duration && !isNaN(v.duration)) setDuration(v.duration);
     };
     const onEnded = () => {
-      if (!loop) setPlaying(false);
+      // With `loop` set on the element, `ended` does not fire at all, so this
+      // only ever runs for a normal, un-looped finish.
+      if (!loopRef.current) setPlaying(false);
     };
 
     v.addEventListener("play", onPlay);
@@ -75,7 +103,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       v.removeEventListener("loadedmetadata", onLoadedMetadata);
       v.removeEventListener("ended", onEnded);
     };
-  }, [loop]);
+  }, []);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -86,16 +114,89 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
-  // Keyboard controls when focused or hovering player
+  const resetControlsTimer = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    if (playingRef.current) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+        setShowSpeedMenu(false);
+      }, 3000);
+    }
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, []);
+
+  const skip = useCallback(
+    (seconds: number) => {
+      const v = videoRef.current;
+      if (!v) return;
+      v.currentTime = Math.max(0, Math.min(v.duration || durationRef.current, v.currentTime + seconds));
+      resetControlsTimer();
+    },
+    [resetControlsTimer],
+  );
+
+  const toggleLoop = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const next = !loopRef.current;
+    v.loop = next;
+    setLoop(next);
+    resetControlsTimer();
+  }, [resetControlsTimer]);
+
+  const toggleMute = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const next = !mutedRef.current;
+    v.muted = next;
+    setMuted(next);
+    resetControlsTimer();
+  }, [resetControlsTimer]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const container = containerRef.current;
+    if (!container) return;
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Fullscreen failed
+    }
+  }, []);
+
+  // Clicking a note's timestamp scrubs the video to it and starts playing —
+  // jumping to a moment and then leaving it paused is not what the click means.
+  useEffect(() => {
+    if (!seek) return;
+    return seek.register((seconds) => {
+      const v = videoRef.current;
+      if (!v) return;
+      v.currentTime = Math.max(0, Math.min(v.duration || durationRef.current, seconds));
+      v.play().catch(() => {});
+      resetControlsTimer();
+    });
+  }, [seek, resetControlsTimer]);
+
+  // Keyboard controls. Every handler below is stable, so this subscribes once
+  // instead of being torn down and rebuilt on each state change.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      const v = videoRef.current;
-      if (!v) return;
-
-      // Only handle if container is active or hovered
       if (!containerRef.current?.contains(document.activeElement) && document.activeElement !== document.body) {
         return;
       }
@@ -126,42 +227,14 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
           break;
         case "f":
           e.preventDefault();
-          toggleFullscreen();
+          void toggleFullscreen();
           break;
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [playing, muted, loop]);
-
-  const resetControlsTimer = useCallback(() => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    if (playing) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-        setShowSpeedMenu(false);
-      }, 3000);
-    }
-  }, [playing]);
-
-  function togglePlay() {
-    const v = videoRef.current;
-    if (!v) return;
-    if (v.paused) {
-      v.play().catch(() => {});
-    } else {
-      v.pause();
-    }
-  }
-
-  function skip(seconds: number) {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration || duration, v.currentTime + seconds));
-    resetControlsTimer();
-  }
+  }, [togglePlay, skip, toggleMute, toggleLoop, toggleFullscreen]);
 
   function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
     const v = videoRef.current;
@@ -181,22 +254,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     resetControlsTimer();
   }
 
-  function toggleLoop() {
-    const v = videoRef.current;
-    if (!v) return;
-    v.loop = !loop;
-    setLoop(!loop);
-    resetControlsTimer();
-  }
-
-  function toggleMute() {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = !muted;
-    setMuted(!muted);
-    resetControlsTimer();
-  }
-
   async function togglePip() {
     const v = videoRef.current;
     if (!v) return;
@@ -208,20 +265,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       }
     } catch {
       // PiP not supported or rejected
-    }
-  }
-
-  async function toggleFullscreen() {
-    const container = containerRef.current;
-    if (!container) return;
-    try {
-      if (!document.fullscreenElement) {
-        await container.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {
-      // Fullscreen failed
     }
   }
 
