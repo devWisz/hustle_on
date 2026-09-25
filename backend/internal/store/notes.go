@@ -98,6 +98,16 @@ func (s *Store) CreateNote(ctx context.Context, timelapseID, authorID, body stri
 func (s *Store) SetNoteVote(ctx context.Context, noteID, userID string, helpful bool) (int, error) {
 	var count int
 	err := s.tx(ctx, func(tx pgx.Tx) error {
+		// The note is read first, and locked, for two reasons: a vote against a
+		// note that does not exist becomes a clean not-found rather than a
+		// foreign-key violation reported as a conflict, and holding the row here
+		// stops a vote racing a deletion of the note it is counting towards.
+		if err := tx.QueryRow(ctx,
+			`SELECT helpful_count FROM timelapse_notes WHERE id = $1 FOR UPDATE`,
+			noteID).Scan(&count); err != nil {
+			return normalize(err)
+		}
+
 		var err error
 		if helpful {
 			_, err = tx.Exec(ctx, `
@@ -110,8 +120,8 @@ func (s *Store) SetNoteVote(ctx context.Context, noteID, userID string, helpful 
 		if err != nil {
 			return normalize(err)
 		}
-		// A vote against a missing note must not look like a success, so the
-		// total is read back inside the same transaction.
+		// Read back rather than adjusted in Go: the trigger has already applied
+		// the change, so this is the number every other reader sees.
 		return normalize(tx.QueryRow(ctx,
 			`SELECT helpful_count FROM timelapse_notes WHERE id = $1`, noteID).Scan(&count))
 	})

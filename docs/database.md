@@ -1,12 +1,14 @@
 # Database
 
-Four migrations, five tables. The schema is small because the product is one
+Six migrations, eight tables. The schema is small because the product is one
 path, and every table on it earns its place.
 
 ```
 users ──┬──< timelapses ──< timelapse_views
         │         │
-        │         └────────< donations >──── users (donor, nullable)
+        │         ├────────< donations >──── users (donor, nullable)
+        │         ├────────< timelapse_notes ──< note_votes
+        │         └────────< bookmarks
         │
         ├──< sessions
         ├──< magic_link_tokens
@@ -20,6 +22,8 @@ users ──┬──< timelapses ──< timelapse_views
 | `0002_auth` | `magic_link_tokens`, `sessions`, `wallet_challenges`, `audit_log` |
 | `0003_timelapses` | `timelapses`, `timelapse_views` |
 | `0004_donations` | `donations` |
+| `0005_engagement` | `bookmarks`, `timelapse_notes`, `note_votes` |
+| `0006_search_indexes` | `pg_trgm` and the trigram indexes the feed search needs |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -64,6 +68,28 @@ CHECK (donor_id IS NULL OR donor_id <> creator_id)
 The unique signature is what stops one transaction being credited twice, at the
 level below the code that tries.
 
+**A note only attaches to work the public can see.**
+```sql
+CREATE TRIGGER timelapse_notes_published_only BEFORE INSERT ON timelapse_notes
+```
+Without it the notes endpoint would be a way to hang text off a draft its author
+never published, or off something since taken down. The rule lives in the
+database because "published" is checked in more than one place.
+
+**A note's helpful count is derived, never asserted.**
+```sql
+CREATE TRIGGER note_votes_count AFTER INSERT OR DELETE ON note_votes
+```
+The count is incremented by the trigger that sees the vote row, so it cannot
+disagree with the rows that justify it — no handler does the arithmetic.
+
+**One vote per person per note.**
+```sql
+PRIMARY KEY (note_id, user_id)
+```
+The same shape as the view deduplication: the tally cannot be inflated by asking
+twice, because the second ask is not a row.
+
 ## Design notes
 
 **One `users` table, not `users` plus `profiles`.** At this scale a profile
@@ -99,6 +125,17 @@ donation was supposed to land.
 **Tokens are stored as digests.** `magic_link_tokens.token_hash` and
 `sessions.token_hash` are SHA-256. A dump of either table grants nobody a
 session.
+
+**A bookmark is a join row, not a copy.** `bookmarks` stores the pair of account
+and timelapse, so a corrected title or a takedown is reflected in every saved
+list immediately. The list query reads the timelapse as it stands now and skips
+anything no longer `published`.
+
+**Search is indexed with trigrams.** The feed's search box matches a substring
+anywhere in a title, summary or creator name, which a B-tree cannot serve — there
+is no prefix to seek to. `0006_search_indexes` adds `pg_trgm` and a GIN index per
+matched column, turning a sequential scan into an index lookup. `handle` is
+`citext`, so its index is built over an explicit `::text` cast.
 
 ## Running migrations
 

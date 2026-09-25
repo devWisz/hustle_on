@@ -132,14 +132,6 @@ export default async function WatchPage({ params }: Props) {
             </section>
 
             <WorkLinks timelapse={timelapse} />
-
-            <DiscussionPanel
-              slug={timelapse.slug}
-              title={timelapse.title}
-              initialNotes={notes?.items ?? []}
-              signedIn={Boolean(me)}
-              sample={isSample}
-            />
           </div>
 
           <aside
@@ -185,6 +177,24 @@ export default async function WatchPage({ params }: Props) {
                 that does not exist would hand out a broken snippet. */}
             {isSample ? null : <SessionInspector timelapse={timelapse} siteUrl={SITE_URL} />}
           </aside>
+        </div>
+
+        {/* The thread sits below both columns rather than at the end of the
+            first one. On a phone that ordering matters: a long discussion above
+            the donate panel would bury the one action this page exists to
+            offer. The empty second cell keeps it aligned with the write-up on a
+            wide screen instead of stretching across the sidebar too. */}
+        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0">
+            <DiscussionPanel
+              slug={timelapse.slug}
+              title={timelapse.title}
+              initialNotes={notes?.items ?? []}
+              signedIn={Boolean(me)}
+              sample={isSample}
+            />
+          </div>
+          <div aria-hidden className="hidden lg:block" />
         </div>
       </Container>
     </PlayerSeekProvider>

@@ -52,6 +52,16 @@ const SECURITY_HEADERS: Record<string, string> = {
 /** Routes that are pointless without an account. */
 const PROTECTED = ["/dashboard", "/settings", "/upload", "/admin"];
 
+/**
+ * Routes whose response is specific to one person and must never be stored.
+ *
+ * These pages render the signed-in account — its submissions, its settings, the
+ * review queue — so a cached copy served to the next visitor would be one
+ * person's page shown to another. `/auth` is included because a verification
+ * link carries a one-time token in the URL.
+ */
+const NO_STORE = ["/admin", "/dashboard", "/settings", "/upload", "/auth"];
+
 function isDev(): boolean {
   return process.env.NODE_ENV !== "production";
 }
@@ -69,16 +79,27 @@ export function middleware(request: NextRequest) {
   if (needsAccount && !signedIn && !previewing) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
-    return withHeaders(NextResponse.redirect(login));
+    return withHeaders(NextResponse.redirect(login), pathname);
   }
 
-  return withHeaders(NextResponse.next());
+  return withHeaders(NextResponse.next(), pathname);
 }
 
-function withHeaders(response: NextResponse): NextResponse {
+function withHeaders(response: NextResponse, pathname: string): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
+
+  // Public pages are rendered per request and already vary on the session
+  // cookie, so a shared cache has to be told that explicitly. `append` rather
+  // than `set`: Next sets its own Vary values, and overwriting them would drop
+  // the ones that keep a cached response from being reused incorrectly.
+  response.headers.append("Vary", "Cookie");
+
+  if (NO_STORE.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
+
   return response;
 }
 

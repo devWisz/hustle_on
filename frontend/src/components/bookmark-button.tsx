@@ -70,7 +70,10 @@ export function BookmarkButton({
         "press flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200",
         saved
           ? "border-accent/40 bg-accent text-accent-fg opacity-100 shadow-sm"
-          : "border-border/60 bg-black/60 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover:opacity-100",
+          : // Hidden until the card is hovered, but revealed on focus as well:
+            // an opacity-only reveal leaves a keyboard user tabbing onto a
+            // control they cannot see.
+            "border-border/60 bg-black/60 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
         className,
       )}
     >

@@ -7,6 +7,7 @@ import { isGuestPreview } from "@/lib/guest-server";
 import { SAMPLE_RECEIVED, SAMPLE_SELF, SAMPLE_SUBMISSIONS } from "@/lib/sample";
 import { formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { StatusBadge } from "@/components/status-badge";
+import { SavedList } from "@/components/saved-list";
 import { GuestGate, SampleNote } from "@/components/guest";
 import {
   ButtonLink,
@@ -206,6 +207,18 @@ function DashboardView({
           </Card>
         </section>
       ) : null}
+
+      {/* A preview has no saved list of its own; showing the visitor's local one
+          next to an invented account would read as if it belonged to it. */}
+      {sample ? null : (
+        <section className="mt-12">
+          <SectionHeading
+            title="Saved"
+            description="Timelapses you have bookmarked to come back to."
+          />
+          <SavedList />
+        </section>
+      )}
     </Container>
   );
 }

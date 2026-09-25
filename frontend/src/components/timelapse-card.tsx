@@ -91,10 +91,14 @@ export function TimelapseCard({
           </div>
         </Link>
 
-        {/* Quick Save Bookmark button overlay */}
-        <div className="absolute right-2 top-2 z-10">
-          <BookmarkButton timelapse={t} />
-        </div>
+        {/* Quick save. Not offered on a sample record: saving one would put an
+            invented timelapse into a real saved list, where its link would then
+            404 the moment the preview ended. */}
+        {sample ? null : (
+          <div className="absolute right-2 top-2 z-10">
+            <BookmarkButton timelapse={t} />
+          </div>
+        )}
       </div>
 
       <div className="mt-3">

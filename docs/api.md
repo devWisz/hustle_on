@@ -48,6 +48,7 @@ landing between two page loads cannot shuffle a row from page two onto page one.
 | `GET` | `/v1/timelapses` | Feed. `?limit=` (1–50), `?cursor=`, `?q=`, `?sort=` |
 | `GET` | `/v1/timelapses/{slug}` | Unpublished rows: creator and admin only, else 404 |
 | `GET` | `/v1/timelapses/{slug}/donations` | Confirmed supporters |
+| `GET` | `/v1/timelapses/{slug}/notes` | Peer notes, newest first |
 | `POST` | `/v1/timelapses/{slug}/views` | Counted once per viewer per day |
 | `GET` | `/v1/creators/{handle}` | Public profile |
 | `GET` | `/v1/creators/{handle}/timelapses` | Their published work |
@@ -91,6 +92,35 @@ ignored.
 | `GET` | `/v1/me/donations` | Received |
 | `POST` | `/v1/me/wallet/challenge` | `{ address }` → the message to sign |
 | `POST` | `/v1/me/wallet/verify` | `{ address, nonce, signature, issuedAt }` |
+| `GET` | `/v1/me/bookmarks` | Saved timelapses, most recently saved first |
+| `PUT` | `/v1/me/bookmarks/{slug}` | Save. Idempotent |
+| `DELETE` | `/v1/me/bookmarks/{slug}` | Unsave. Removing one that was never saved is a 204 |
+
+## Peer notes
+
+Reading a thread needs no account. Writing one does, because a note is authored
+speech and has to belong to somebody.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/v1/timelapses/{slug}/notes` | `{ body, timestampSeconds? }`. `body` 2–2000 chars |
+| `POST` | `/v1/timelapses/{slug}/notes/{noteId}/vote` | `{ helpful }`. Send the state you want, not a toggle |
+| `DELETE` | `/v1/timelapses/{slug}/notes/{noteId}` | The author, or an admin moderating |
+
+Every response carries two answers the caller could not work out for itself:
+
+- `viewerHasVoted` — false for a signed-out reader, who has no identity to have
+  voted with.
+- `viewerCanDelete` — decided by the server, so the rule for who may moderate
+  lives in one place rather than in each client.
+
+A vote is idempotent: the caller sends the state it wants, so a double-click or a
+retried request converges instead of flipping twice. An admin removing somebody
+else's note is a moderation action and is written to the audit log.
+
+All three write endpoints are 404 for a slug that is not `published`, which is
+the same answer a stranger gets for a slug that does not exist — whether a given
+slug is an unpublished draft is not something an anonymous caller can probe.
 
 ## Publishing
 
@@ -119,9 +149,30 @@ because the settle worker finishes anything left open.
 | Method | Path | Notes |
 | --- | --- | --- |
 | `GET` | `/v1/admin/queue` | Oldest submission first |
+| `GET` | `/v1/admin/audit` | Most recent operator actions, `?limit=` (1–200) |
 | `POST` | `/v1/admin/timelapses/{id}/approve` | Publishes |
 | `POST` | `/v1/admin/timelapses/{id}/reject` | `{ note }`, 10–500 chars, required |
 | `DELETE` | `/v1/admin/timelapses/{id}` | Takedown after publication |
+
+The audit trail is append-only and readable only by an admin. It is what makes
+the record worth writing: an operator can see what was decided, by whom and when.
+A deleted account leaves its decisions standing, attributed to nobody.
+
+## Rate limits
+
+Two budgets apply, and they are keyed differently on purpose.
+
+A per-address ceiling (`RATE_LIMIT_IP_CEILING`, default 600/min) is applied
+*before* the session is resolved. It is deliberately far looser than the real
+budget: a household, an office or a carrier NAT can present thousands of distinct
+callers from one address, and throttling all of them as one client is the bug
+this arrangement exists to avoid. What it bounds is how much work one address can
+cause ahead of authentication.
+
+The meaningful budget (`RATE_LIMIT_ANON`, default 60/min) is applied *after*, and
+is keyed by user id when the caller is signed in and by address when they are
+not. Sign-in attempts have their own far tighter budget
+(`RATE_LIMIT_AUTH_ATTEMPTS`, default 5/min).
 
 ## Development only
 

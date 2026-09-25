@@ -3,7 +3,7 @@
 Migrations, seed data, and the notes that explain them.
 
 ```
-migrations/   0001…0004, each with an .up.sql and a .down.sql
+migrations/   0001…0006, each with an .up.sql and a .down.sql
 seeds/        dev_seed.sql — development only
 ```
 
