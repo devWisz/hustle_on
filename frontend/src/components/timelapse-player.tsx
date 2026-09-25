@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Timelapse } from "@/lib/types";
 import { formatDuration, formatSession } from "@/lib/format";
+import { usePlayerSeek } from "./player-seek";
 import {
   MaximizeIcon,
   MinimizeIcon,
