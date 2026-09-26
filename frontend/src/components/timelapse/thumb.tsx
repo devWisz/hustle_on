@@ -1,20 +1,5 @@
-/**
- * Stand-in artwork for a timelapse with no thumbnail.
- *
- * Most submissions arrive without one, and a grid of identical grey rectangles
- * with a play glyph in the middle is what makes a real feed look like a
- * placeholder. This draws something instead: a ruled field whose angle and
- * density come from the slug, with the work's initials set large and quiet
- * over it. Two different timelapses therefore look different, and the same one
- * looks the same on every visit — it is a hash, not a random number.
- *
- * It is decoration, so it is inert to assistive technology: the card's own
- * title and creator carry the meaning.
- */
-
 const ANGLES = [-30, -15, 0, 15, 30, 45, 60, 75];
 
-/** A small, stable hash. Deterministic across server and client renders. */
 function hash(value: string): number {
   let h = 2166136261;
   for (let i = 0; i < value.length; i++) {
@@ -24,7 +9,6 @@ function hash(value: string): number {
   return Math.abs(h);
 }
 
-/** Up to two initials from the title, falling back to the creator's. */
 function monogram(title: string, fallback: string): string {
   const words = title
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
@@ -51,7 +35,7 @@ export function ThumbArtwork({
   const angle = ANGLES[h % ANGLES.length] ?? 30;
   const spacing = 9 + (h % 5) * 3;
   const letters = monogram(title, creator);
-  // Namespaced so several cards on one page cannot collide over a pattern id.
+
   const patternId = `rule-${h.toString(36)}`;
 
   return (
@@ -84,7 +68,6 @@ export function ThumbArtwork({
       <rect width="320" height="180" fill="var(--surface-raised)" />
       <rect width="320" height="180" fill={`url(#${patternId})`} opacity="0.55" />
 
-      {/* The initials, set to read as texture rather than as a label. */}
       <text
         x="22"
         y="132"
@@ -98,7 +81,6 @@ export function ThumbArtwork({
         {letters}
       </text>
 
-      {/* One short accent rule, the only colour in the frame. */}
       <rect x="22" y="28" width="34" height="3" rx="1.5" fill="var(--accent)" />
     </svg>
   );

@@ -2,10 +2,10 @@
 
 import { useBookmarks } from "@/lib/bookmarks";
 import type { Timelapse } from "@/lib/types";
-import { BookmarkIcon } from "./icons";
-import { useToast } from "./toast";
+import { BookmarkIcon } from "../ui/icons";
+import { useToast } from "../layout/toast";
 import { cx } from "@/lib/format";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 
 interface BookmarkButtonProps {
   timelapse: Timelapse;
@@ -23,8 +23,7 @@ export function BookmarkButton({
   const saved = isBookmarked(timelapse.slug);
 
   async function handleClick(e: React.MouseEvent) {
-    // The button sits inside a card that is itself a link, so both the
-    // navigation and the card's own handlers are suppressed.
+
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -70,9 +69,8 @@ export function BookmarkButton({
         "press flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200",
         saved
           ? "border-accent/40 bg-accent text-accent-fg opacity-100 shadow-sm"
-          : // Hidden until the card is hovered, but revealed on focus as well:
-            // an opacity-only reveal leaves a keyboard user tabbing onto a
-            // control they cannot see.
+          :
+
             "border-border/60 bg-black/60 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
         className,
       )}

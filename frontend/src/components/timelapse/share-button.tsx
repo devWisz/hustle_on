@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useToast } from "./toast";
-import { CheckIcon, LinkIcon } from "./icons";
-import { buttonClass } from "./ui";
+import { useToast } from "../layout/toast";
+import { CheckIcon, LinkIcon } from "../ui/icons";
+import { buttonClass } from "../ui/button";
 
-/**
- * Shares the current page.
- *
- * Where the platform offers a share sheet we hand off to it, because that is
- * the route to the apps people actually send links through. Everywhere else it
- * copies to the clipboard. The URL is resolved at click time rather than at
- * render so the component works unchanged on any route, and so a server render
- * never has to know the origin.
- */
 export function ShareButton({
   title,
   text,
@@ -23,7 +14,7 @@ export function ShareButton({
 }: {
   title: string;
   text?: string;
-  /** Defaults to the current location. */
+
   path?: string;
   label?: string;
   className?: string;
@@ -34,8 +25,6 @@ export function ShareButton({
   async function share() {
     const url = path ? new URL(path, window.location.origin).toString() : window.location.href;
 
-    // `navigator.share` rejects with AbortError when someone dismisses the
-    // sheet. That is not a failure and must not surface as one.
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title, text, url });

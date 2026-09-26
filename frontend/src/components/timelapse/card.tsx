@@ -2,10 +2,10 @@ import Link from "next/link";
 import type { Timelapse } from "@/lib/types";
 import { cx, formatCount, formatDuration, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { getTimelapseTags } from "@/lib/tags";
-import { Avatar } from "./ui";
+import { Avatar } from "../ui/button";
 import { SampleTag } from "./guest";
 import { CardPreview } from "./card-preview";
-import { ClockIcon, EyeIcon, ZapIcon } from "./icons";
+import { ClockIcon, EyeIcon, ZapIcon } from "../ui/icons";
 import { BookmarkButton } from "./bookmark-button";
 
 /**

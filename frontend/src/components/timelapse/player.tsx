@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api/client";
 import type { Timelapse } from "@/lib/types";
 import { formatDuration, formatSession } from "@/lib/format";
-import { isSampleSlug } from "@/lib/sample";
+import { isSampleSlug } from "@/lib/demo/content";
 import { usePlayerSeek } from "./player-seek";
 import {
   MaximizeIcon,
@@ -17,7 +17,7 @@ import {
   VolumeIcon,
   VolumeXIcon,
   ZapIcon,
-} from "./icons";
+} from "../ui/icons";
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 
@@ -37,11 +37,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // The video element is the source of truth for these, but the handlers that
-  // read them are event callbacks and must not be rebuilt whenever one changes.
-  // Each value is mirrored into a ref so a callback always sees the current one:
-  // a callback that had closed over `muted` would keep reading the value from
-  // the render that created it, which is how a mute key ends up a no-op.
   const playingRef = useRef(playing);
   const loopRef = useRef(loop);
   const mutedRef = useRef(muted);
@@ -62,8 +57,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
 
   const seek = usePlayerSeek();
 
-  // View count tracking after 5s of watching. A demo record has no row on the
-  // API to count against, so it is never reported.
   useEffect(() => {
     if (!timelapse.playbackUrl || isSampleSlug(timelapse.slug)) return;
     const timer = setTimeout(() => {
@@ -74,8 +67,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     return () => clearTimeout(timer);
   }, [timelapse.slug, timelapse.playbackUrl]);
 
-  // Video event listeners. Subscribed once: the state they carry lives on the
-  // element itself, so there is nothing here for a re-render to update.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -87,8 +78,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       if (v.duration && !isNaN(v.duration)) setDuration(v.duration);
     };
     const onEnded = () => {
-      // With `loop` set on the element, `ended` does not fire at all, so this
-      // only ever runs for a normal, un-looped finish.
+
       if (!loopRef.current) setPlaying(false);
     };
 
@@ -107,7 +97,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     };
   }, []);
 
-  // Fullscreen change listener
   useEffect(() => {
     function onFullscreenChange() {
       setFullscreen(Boolean(document.fullscreenElement));
@@ -179,8 +168,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     }
   }, []);
 
-  // Clicking a note's timestamp scrubs the video to it and starts playing —
-  // jumping to a moment and then leaving it paused is not what the click means.
   useEffect(() => {
     if (!seek) return;
     return seek.register((seconds) => {
@@ -192,8 +179,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     });
   }, [seek, resetControlsTimer]);
 
-  // Keyboard controls. Every handler below is stable, so this subscribes once
-  // instead of being torn down and rebuilt on each state change.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = document.activeElement?.tagName;
@@ -304,7 +289,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         Your browser cannot play this video.
       </video>
 
-      {/* Large central play/pause click target */}
       {!playing && (
         <div
           onClick={togglePlay}
@@ -316,7 +300,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         </div>
       )}
 
-      {/* Top badges bar */}
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3.5 transition-opacity duration-300 ${
           showControls || !playing ? "opacity-100" : "opacity-0"
@@ -344,13 +327,12 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         )}
       </div>
 
-      {/* Bottom control bar */}
       <div
         className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-6 transition-opacity duration-300 ${
           showControls || !playing ? "opacity-100" : "opacity-0"
         }`}
       >
-        {/* Progress scrubber */}
+
         <div className="relative mb-2 flex items-center">
           <input
             type="range"
@@ -364,10 +346,9 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
           />
         </div>
 
-        {/* Transport controls */}
         <div className="flex items-center justify-between gap-2 text-white">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Play/Pause */}
+
             <button
               type="button"
               onClick={togglePlay}
@@ -384,7 +365,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               )}
             </button>
 
-            {/* Skip -5s */}
             <button
               type="button"
               onClick={() => skip(-5)}
@@ -394,7 +374,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               <SkipBackIcon size={15} />
             </button>
 
-            {/* Skip +5s */}
             <button
               type="button"
               onClick={() => skip(5)}
@@ -404,7 +383,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               <SkipForwardIcon size={15} />
             </button>
 
-            {/* Mute toggle */}
             <button
               type="button"
               onClick={toggleMute}
@@ -414,14 +392,13 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               {muted ? <VolumeXIcon size={15} /> : <VolumeIcon size={15} />}
             </button>
 
-            {/* Time readout */}
             <div className="ml-1 font-mono text-[11px] tabular-nums text-white/80">
               {formatDuration(currentTime)} / {formatDuration(duration)}
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Speed selector */}
+
             <div className="relative">
               <button
                 type="button"
@@ -453,7 +430,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               )}
             </div>
 
-            {/* Loop button */}
             <button
               type="button"
               onClick={toggleLoop}
@@ -468,7 +444,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               <RepeatIcon size={15} />
             </button>
 
-            {/* Picture in Picture */}
             <button
               type="button"
               onClick={togglePip}
@@ -478,7 +453,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               <PipIcon size={15} />
             </button>
 
-            {/* Fullscreen */}
             <button
               type="button"
               onClick={toggleFullscreen}

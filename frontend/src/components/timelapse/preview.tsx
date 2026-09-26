@@ -3,14 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ThumbArtwork } from "./thumb";
 
-/**
- * A card's picture, which starts playing when a pointer rests on it.
- *
- * The video is not in the page until the first hover, so a feed of twelve
- * cards costs twelve posters, not twelve downloads. It fades in only once a
- * frame is actually playing, which keeps a slow file from flashing black over
- * the poster. Touch screens and reduced-motion visitors keep the still image.
- */
 export function CardPreview({
   seed,
   title,

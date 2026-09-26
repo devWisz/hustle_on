@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Timelapse } from "@/lib/types";
 import { cx, formatSession } from "@/lib/format";
-import { ArrowRightIcon, PlayIcon } from "./icons";
+import { ArrowRightIcon, PlayIcon } from "../ui/icons";
 
 /**
  * The hero's moving picture: real timelapses, playing one after another.
