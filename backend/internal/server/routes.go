@@ -1,5 +1,7 @@
 package server
 
+import "net/http"
+
 // routes registers every endpoint.
 //
 // The list is the API's access-control map, so it is written to be read that
