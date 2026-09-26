@@ -66,6 +66,11 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /v1/admin/timelapses/{id}/approve", s.wrap(s.handleApprove))
 	m.HandleFunc("POST /v1/admin/timelapses/{id}/reject", s.wrap(s.handleReject))
 	m.HandleFunc("DELETE /v1/admin/timelapses/{id}", s.wrap(s.handleTakeDown))
+	m.HandleFunc("GET /v1/admin/members", s.wrap(s.handleMembers))
+	m.HandleFunc("POST /v1/admin/members/{id}/suspend", s.wrap(s.handleMemberStatus("suspended")))
+	m.HandleFunc("POST /v1/admin/members/{id}/reinstate", s.wrap(s.handleMemberStatus("active")))
+	m.HandleFunc("GET /v1/admin/ledger", s.wrap(s.handleLedger))
+	m.HandleFunc("GET /v1/admin/activity", s.wrap(s.handleActivity))
 
 	// --- local object storage (development only) -------------------------
 	// Registered only when no real bucket is configured, so a production

@@ -38,12 +38,11 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) error {
 		}
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.approve", "timelapse", id, nil)
-
 	updated, err := s.store.ByID(r.Context(), id)
 	if err != nil {
 		return storeErr(err, "Timelapse")
 	}
+	s.audit(r, reviewer.ID, "timelapse.approve", "timelapse", id, map[string]any{"title": updated.Title})
 	return writeJSON(w, http.StatusOK, updated)
 }
 
@@ -75,12 +74,11 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) error {
 		}
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.reject", "timelapse", id, map[string]any{"note": note})
-
 	updated, err := s.store.ByID(r.Context(), id)
 	if err != nil {
 		return storeErr(err, "Timelapse")
 	}
+	s.audit(r, reviewer.ID, "timelapse.reject", "timelapse", id, map[string]any{"title": updated.Title, "note": note})
 	return writeJSON(w, http.StatusOK, updated)
 }
 
@@ -92,10 +90,14 @@ func (s *Server) handleTakeDown(w http.ResponseWriter, r *http.Request) error {
 	}
 	// An empty owner id lets the store match the row regardless of who created
 	// it, which is exactly the power this endpoint exists to grant.
+	target, err := s.store.ByID(r.Context(), id)
+	if err != nil {
+		return storeErr(err, "Timelapse")
+	}
 	if err := s.store.Remove(r.Context(), id, ""); err != nil {
 		return storeErr(err, "Timelapse")
 	}
-	s.audit(r, reviewer.ID, "timelapse.takedown", "timelapse", id, nil)
+	s.audit(r, reviewer.ID, "timelapse.takedown", "timelapse", id, map[string]any{"title": target.Title})
 	return noContent(w)
 }
 
@@ -143,4 +145,100 @@ func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) error {
 		return storeErr(err, "Audit log")
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"items": entries})
+}
+
+func (s *Server) handleMembers(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
+		return err
+	}
+	items, err := s.store.Members(r.Context(), queryString(r, "q", 80), queryInt(r, "limit", 100, 1, 500))
+	if err != nil {
+		return storeErr(err, "Members")
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+type memberStatusBody struct {
+	Note string `json:"note"`
+}
+
+func (s *Server) handleMemberStatus(status string) handler {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		admin, err := requireAdmin(r)
+		if err != nil {
+			return err
+		}
+		if err := s.checkCSRF(r); err != nil {
+			return err
+		}
+		id := r.PathValue("id")
+		if !validate.IsUUID(id) {
+			return apierr.NotFound("Member")
+		}
+		if id == admin.ID {
+			return apierr.Conflict("You cannot change the status of your own account.")
+		}
+		var body memberStatusBody
+		if r.ContentLength != 0 {
+			if err := decode(r, &body); err != nil {
+				return err
+			}
+		}
+		note := validate.CleanText(body.Note)
+		if v := validate.New().Length("note", note, 0, 500); v.Any() {
+			return v.Err()
+		}
+
+		name, err := s.store.SetMemberStatus(r.Context(), id, status)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return apierr.Conflict("That member is already in that state, or is an admin.")
+			}
+			return storeErr(err, "Member")
+		}
+		if status == "suspended" {
+			if err := s.auth.RevokeAll(r.Context(), id); err != nil {
+				s.log.ErrorContext(r.Context(), "revoke suspended member sessions", "member", id, "error", err)
+			}
+		}
+
+		action := "member.reinstate"
+		if status == "suspended" {
+			action = "member.suspend"
+		}
+		meta := map[string]any{"title": name}
+		if note != "" {
+			meta["note"] = note
+		}
+		s.audit(r, admin.ID, action, "user", id, meta)
+		return noContent(w)
+	}
+}
+
+func (s *Server) handleLedger(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
+		return err
+	}
+	status := queryString(r, "status", 20)
+	switch status {
+	case "", "pending", "submitted", "confirmed", "failed":
+	default:
+		return apierr.BadRequest("Unknown status filter.")
+	}
+	items, err := s.store.Ledger(r.Context(), status, queryInt(r, "limit", 200, 1, 500))
+	if err != nil {
+		return storeErr(err, "Ledger")
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
+		return err
+	}
+	items, err := s.store.Activity(r.Context(), queryInt(r, "days", 30, 7, 90))
+	if err != nil {
+		return storeErr(err, "Activity")
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }

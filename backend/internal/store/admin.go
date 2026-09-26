@@ -81,7 +81,7 @@ func (s *Store) Ledger(ctx context.Context, status string, limit int) ([]domain.
 	out := []domain.LedgerEntry{}
 	for rows.Next() {
 		var (
-			e                                       domain.LedgerEntry
+			e                                        domain.LedgerEntry
 			donorID, donorHandle, donorName, donorAv *string
 		)
 		if err := rows.Scan(&e.ID, &e.Amount, &e.Message, &e.Status, &e.Signature,
