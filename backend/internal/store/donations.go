@@ -147,38 +147,90 @@ func (s *Store) UnsettledDonations(ctx context.Context, limit int) ([]UnsettledD
 	return out, normalize(rows.Err())
 }
 
-// TimelapseDonations lists the confirmed supporters under one timelapse.
-func (s *Store) TimelapseDonations(ctx context.Context, timelapseID string, limit int) ([]domain.Donation, error) {
+// TimelapseDonations lists the confirmed supporters under one timelapse,
+// largest first.
+//
+// The cursor carries all three sort columns — amount, then confirmation time,
+// then id — because the order is a three-level one. Ordering by amount alone
+// would leave two equal gifts with no defined order, which is precisely the row
+// pair a page boundary is most likely to fall between.
+//
+// confirmed_at IS NOT NULL is belt and braces: a confirmed row always has one,
+// but a null in the sort key would make the row comparison null and drop the
+// row from every page after the first.
+func (s *Store) TimelapseDonations(ctx context.Context, timelapseID string, q PageQuery) (domain.Page[domain.Donation], error) {
+	var beforeAmount *int64
+	var beforeAt *time.Time
+	var beforeID *string
+	if parts, err := decodeKeyset(q.Cursor, 3); err != nil {
+		return domain.Page[domain.Donation]{}, err
+	} else if parts != nil {
+		amount, err := parseKeysetInt(parts[0])
+		if err != nil {
+			return domain.Page[domain.Donation]{}, err
+		}
+		at, err := parseKeysetTime(parts[1])
+		if err != nil {
+			return domain.Page[domain.Donation]{}, err
+		}
+		beforeAmount, beforeAt, beforeID = &amount, &at, &parts[2]
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT d.id::text, d.amount_lamports, COALESCE(d.message, ''), d.status::text,
 		       COALESCE(d.signature, ''), d.confirmed_at, d.created_at,
 		       u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, '')
 		FROM donations d
 		LEFT JOIN users u ON u.id = d.donor_id
-		WHERE d.timelapse_id = $1 AND d.status = 'confirmed'
-		ORDER BY d.amount_lamports DESC, d.confirmed_at DESC
-		LIMIT $2`, timelapseID, limit)
+		WHERE d.timelapse_id = $1 AND d.status = 'confirmed' AND d.confirmed_at IS NOT NULL
+		  AND ($2::bigint IS NULL
+		       OR (d.amount_lamports, d.confirmed_at, d.id) < ($2, $3::timestamptz, $4::uuid))
+		ORDER BY d.amount_lamports DESC, d.confirmed_at DESC, d.id DESC
+		LIMIT $5`, timelapseID, beforeAmount, beforeAt, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Donation]{}, normalize(err)
 	}
-	return collectDonations(rows)
+	items, err := collectDonations(rows)
+	if err != nil {
+		return domain.Page[domain.Donation]{}, err
+	}
+	return pageOf(items, q.Limit, donationCursor), nil
 }
 
-// CreatorDonations lists what a creator has received across all their work.
-func (s *Store) CreatorDonations(ctx context.Context, creatorID string, limit int) ([]domain.Donation, error) {
+// CreatorDonations lists what a creator has received across all their work,
+// most recent first.
+func (s *Store) CreatorDonations(ctx context.Context, creatorID string, q PageQuery) (domain.Page[domain.Donation], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Donation]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT d.id::text, d.amount_lamports, COALESCE(d.message, ''), d.status::text,
 		       COALESCE(d.signature, ''), d.confirmed_at, d.created_at,
 		       u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, '')
 		FROM donations d
 		LEFT JOIN users u ON u.id = d.donor_id
-		WHERE d.creator_id = $1 AND d.status = 'confirmed'
-		ORDER BY d.confirmed_at DESC
-		LIMIT $2`, creatorID, limit)
+		WHERE d.creator_id = $1 AND d.status = 'confirmed' AND d.confirmed_at IS NOT NULL
+		  AND ($2::timestamptz IS NULL OR (d.confirmed_at, d.id) < ($2, $3::uuid))
+		ORDER BY d.confirmed_at DESC, d.id DESC
+		LIMIT $4`, creatorID, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Donation]{}, normalize(err)
 	}
-	return collectDonations(rows)
+	items, err := collectDonations(rows)
+	if err != nil {
+		return domain.Page[domain.Donation]{}, err
+	}
+	return pageOf(items, q.Limit, donationCursor), nil
+}
+
+// donationCursor packs the sort key both donation lists above use. They share
+// one order — confirmation time, then id — so they can share the cursor.
+func donationCursor(d domain.Donation) string {
+	if d.ConfirmedAt == nil {
+		return ""
+	}
+	return encodeKeyset(keysetTime(*d.ConfirmedAt), d.ID)
 }
 
 func collectDonations(rows pgx.Rows) ([]domain.Donation, error) {
