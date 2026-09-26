@@ -176,7 +176,7 @@ export const DEMO_LEDGER: LedgerEntry[] = LEDGER_SHAPE.map(
 export const DEMO_ACTIVITY: ActivityDay[] = Array.from({ length: 30 }, (_, i) => {
   const day = 29 - i;
   const wave = Math.sin(i / 3.2) * 2.4 + Math.cos(i / 1.7) * 1.3;
-  const submitted = Math.max(1, Math.round(5 + wave + (i > 20 ? 2 : 0)));
+  const submitted = Math.max(3, Math.round(6 + wave + (i > 20 ? 2 : 0)));
   const rejected = Math.max(0, Math.round(submitted * 0.22 + Math.sin(i) * 0.8));
   const approved = Math.max(0, submitted - rejected - (i % 6 === 0 ? 1 : 0));
   const date = new Date(Date.now() - day * 86_400_000);
