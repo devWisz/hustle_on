@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cx } from "@/lib/format";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
 import { Avatar } from "../ui/avatar";
@@ -170,7 +171,8 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
         </div>
       </div>
 
-      {open ? (
+      {open
+        ? createPortal(
         <div
           ref={menu}
           role="dialog"
@@ -231,8 +233,10 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
               </Link>
             )}
           </div>
-        </div>
-      ) : null}
+        </div>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }
