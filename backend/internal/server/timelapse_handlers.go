@@ -182,9 +182,6 @@ func (s *Server) handleCreateUpload(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body uploadBody
 	if err := decode(r, &body); err != nil {
 		return err
@@ -218,9 +215,6 @@ type createTimelapseBody struct {
 func (s *Server) handleCreateTimelapse(w http.ResponseWriter, r *http.Request) error {
 	user, err := requireUser(r)
 	if err != nil {
-		return err
-	}
-	if err := s.checkCSRF(r); err != nil {
 		return err
 	}
 	var body createTimelapseBody
@@ -447,9 +441,6 @@ func (s *Server) handleMyDonations(w http.ResponseWriter, r *http.Request) error
 func (s *Server) ownedTimelapse(r *http.Request) (user auth.User, id string, err error) {
 	user, err = requireUser(r)
 	if err != nil {
-		return user, "", err
-	}
-	if err = s.checkCSRF(r); err != nil {
 		return user, "", err
 	}
 	id = r.PathValue("id")

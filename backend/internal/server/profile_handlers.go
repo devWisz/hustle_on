@@ -28,9 +28,6 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body updateMeBody
 	if err := decode(r, &body); err != nil {
 		return err

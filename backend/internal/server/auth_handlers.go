@@ -22,17 +22,9 @@ type requestLinkBody struct {
 // account, suspended account. Anything else would turn this endpoint into an
 // oracle for which email addresses have accounts here.
 func (s *Server) handleRequestLink(w http.ResponseWriter, r *http.Request) error {
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body requestLinkBody
 	if err := decode(r, &body); err != nil {
 		return err
-	}
-
-	// Sign-in attempts get their own, much tighter budget than ordinary traffic.
-	if !s.authLim.Allow("auth:" + clientIP(r).String()) {
-		return apierr.TooManyRequests("Too many sign-in attempts. Try again shortly.")
 	}
 
 	err := s.auth.StartLogin(r.Context(), auth.LoginRequest{
@@ -65,15 +57,9 @@ type verifyBody struct {
 
 // handleVerifyLink consumes a sign-in token and starts a session.
 func (s *Server) handleVerifyLink(w http.ResponseWriter, r *http.Request) error {
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body verifyBody
 	if err := decode(r, &body); err != nil {
 		return err
-	}
-	if !s.authLim.Allow("verify:" + clientIP(r).String()) {
-		return apierr.TooManyRequests("Too many attempts. Try again shortly.")
 	}
 
 	user, err := s.auth.CompleteLogin(r.Context(), body.Token)
@@ -99,9 +85,6 @@ func (s *Server) handleVerifyLink(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) error {
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var value string
 	if c, err := r.Cookie(s.cfg.SessionCookieName); err == nil {
 		value = c.Value
@@ -162,9 +145,6 @@ func (s *Server) handleWalletChallenge(w http.ResponseWriter, r *http.Request) e
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body walletChallengeBody
 	if err := decode(r, &body); err != nil {
 		return err
@@ -200,9 +180,6 @@ type walletVerifyBody struct {
 func (s *Server) handleWalletVerify(w http.ResponseWriter, r *http.Request) error {
 	user, err := requireUser(r)
 	if err != nil {
-		return err
-	}
-	if err := s.checkCSRF(r); err != nil {
 		return err
 	}
 	var body walletVerifyBody

@@ -107,9 +107,6 @@ func (s *Server) reviewTarget(r *http.Request) (user adminUser, id string, err e
 	if err != nil {
 		return user, "", err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return user, "", err
-	}
 	id = r.PathValue("id")
 	if !validate.IsUUID(id) {
 		return user, "", apierr.NotFound("Timelapse")

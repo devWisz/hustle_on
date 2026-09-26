@@ -27,9 +27,6 @@ type createDonationBody struct {
 // is signed. That is what makes the confirmation step meaningful: it compares
 // the chain against a number the client did not get to choose after the fact.
 func (s *Server) handleCreateDonation(w http.ResponseWriter, r *http.Request) error {
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body createDonationBody
 	if err := decode(r, &body); err != nil {
 		return err
@@ -105,9 +102,6 @@ type confirmDonationBody struct {
 // this handler has fetched the finalized transaction from an RPC node and seen
 // that the recipient's balance actually rose by at least the promised amount.
 func (s *Server) handleConfirmDonation(w http.ResponseWriter, r *http.Request) error {
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	id := r.PathValue("id")
 	if !validate.IsUUID(id) {
 		return apierr.NotFound("Donation")

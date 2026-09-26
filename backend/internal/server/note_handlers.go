@@ -81,9 +81,6 @@ func (s *Server) handleCreateNote(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	var body noteBody
 	if err := decode(r, &body); err != nil {
 		return err
@@ -122,9 +119,6 @@ func (s *Server) handleVoteNote(w http.ResponseWriter, r *http.Request) error {
 	if _, err := requireUser(r); err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	noteID := r.PathValue("noteId")
 	if !validate.IsUUID(noteID) {
 		return apierr.NotFound("Note")
@@ -155,9 +149,6 @@ func (s *Server) handleVoteNote(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) handleDeleteNote(w http.ResponseWriter, r *http.Request) error {
 	u, err := requireUser(r)
 	if err != nil {
-		return err
-	}
-	if err := s.checkCSRF(r); err != nil {
 		return err
 	}
 	noteID := r.PathValue("noteId")
@@ -208,9 +199,6 @@ func (s *Server) handleAddBookmark(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if err := s.checkCSRF(r); err != nil {
-		return err
-	}
 	slug := r.PathValue("slug")
 	if _, err := s.publishedTimelapse(r, slug); err != nil {
 		return err
@@ -229,9 +217,6 @@ func (s *Server) handleAddBookmark(w http.ResponseWriter, r *http.Request) error
 func (s *Server) handleRemoveBookmark(w http.ResponseWriter, r *http.Request) error {
 	u, err := requireUser(r)
 	if err != nil {
-		return err
-	}
-	if err := s.checkCSRF(r); err != nil {
 		return err
 	}
 	slug := r.PathValue("slug")
