@@ -57,6 +57,7 @@ func run() error {
 	authSvc, err := auth.NewService(auth.Config{
 		AppURL:          cfg.WebURL,
 		CookieName:      cfg.SessionCookieName,
+		CookieDomain:    cfg.CookieDomain,
 		Secure:          strings.HasPrefix(cfg.WebURL, "https://"),
 		SessionTTL:      cfg.SessionTTL,
 		MagicLinkTTL:    cfg.MagicLinkTTL,

@@ -26,6 +26,7 @@ type Config struct {
 
 	SessionSecret     []byte
 	SessionCookieName string
+	CookieDomain      string
 	SessionTTL        time.Duration
 	MagicLinkTTL      time.Duration
 
@@ -114,6 +115,7 @@ func Load() (Config, error) {
 
 		SessionSecret:     []byte(os.Getenv("SESSION_SECRET")),
 		SessionCookieName: env("SESSION_COOKIE_NAME", "sardhana_session"),
+		CookieDomain:      strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
 		SessionTTL:        time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
 		MagicLinkTTL:      time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
@@ -163,6 +165,15 @@ func (c Config) validate() error {
 	}
 	if len(c.AllowedOrigins) == 0 {
 		problems = append(problems, "CORS_ALLOWED_ORIGINS must list at least one origin")
+	}
+	if c.CookieDomain != "" {
+		host := strings.TrimPrefix(strings.TrimPrefix(c.WebURL, "https://"), "http://")
+		host, _, _ = strings.Cut(host, "/")
+		host, _, _ = strings.Cut(host, ":")
+		domain := strings.TrimPrefix(c.CookieDomain, ".")
+		if host != domain && !strings.HasSuffix(host, "."+domain) {
+			problems = append(problems, "SESSION_COOKIE_DOMAIN must contain the WEB_PUBLIC_URL host")
+		}
 	}
 
 	if c.IsProduction() {
