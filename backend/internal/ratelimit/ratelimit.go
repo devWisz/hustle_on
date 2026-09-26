@@ -17,11 +17,20 @@ type bucket struct {
 
 // Limiter is a keyed token bucket, safe for concurrent use.
 type Limiter struct {
-	mu       sync.Mutex
-	buckets  map[string]*bucket
-	rate     float64 // tokens added per second
-	capacity float64
-	lastGC   time.Time
+	mu        sync.Mutex
+	buckets   map[string]*bucket
+	rate      float64 // tokens added per second
+	capacity  float64
+	perMinute int
+	lastGC    time.Time
+}
+
+// Decision is the outcome of one check: whether the request may proceed, what
+// is left of the caller's budget, and how long to wait if it may not.
+type Decision struct {
+	Allowed    bool
+	Remaining  int
+	RetryAfter time.Duration
 }
 
 // New builds a limiter allowing perMinute requests per key, bursting to
@@ -36,15 +45,28 @@ func New(perMinute int) *Limiter {
 		capacity = 1
 	}
 	return &Limiter{
-		buckets:  make(map[string]*bucket),
-		rate:     float64(perMinute) / 60,
-		capacity: capacity,
-		lastGC:   time.Now(),
+		buckets:   make(map[string]*bucket),
+		rate:      float64(perMinute) / 60,
+		capacity:  capacity,
+		perMinute: perMinute,
+		lastGC:    time.Now(),
 	}
 }
 
+// PerMinute is the configured budget, published to clients so a rate-limited
+// caller can see what it is being held to rather than guessing.
+func (l *Limiter) PerMinute() int { return l.perMinute }
+
 // Allow consumes a token for key, reporting whether the request may proceed.
-func (l *Limiter) Allow(key string) bool {
+func (l *Limiter) Allow(key string) bool { return l.Check(key).Allowed }
+
+// Check consumes a token for key and reports the resulting budget.
+//
+// It is the single implementation behind Allow; the extra return values exist
+// so a handler can say how much of the budget is left and when to come back,
+// which is the difference between a client that backs off and one that retries
+// immediately and is throttled again.
+func (l *Limiter) Check(key string) Decision {
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -62,10 +84,14 @@ func (l *Limiter) Allow(key string) bool {
 	b.lastFill = now
 
 	if b.tokens < 1 {
-		return false
+		return Decision{
+			Allowed:    false,
+			Remaining:  0,
+			RetryAfter: time.Duration((1 - b.tokens) / l.rate * float64(time.Second)),
+		}
 	}
 	b.tokens--
-	return true
+	return Decision{Allowed: true, Remaining: int(b.tokens)}
 }
 
 // RetryAfter estimates the wait until one token is available.
