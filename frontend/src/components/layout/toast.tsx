@@ -85,25 +85,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((item) => (
           <div
             key={item.id}
-            className={cx(
-              "pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-[var(--radius-card)]",
-              "border bg-surface px-3.5 py-3 shadow-[var(--shadow-raised)]",
-              item.tone === "error" ? "border-danger/40" : "border-border",
-            )}
+            className="toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-inverse px-4 py-3 text-inverse-fg shadow-[var(--shadow-lifted)]"
           >
-            <span
-              className={cx(
-                "mt-px shrink-0",
-                item.tone === "error" ? "text-danger" : "text-accent",
-              )}
-            >
+            <span className={cx("shrink-0", item.tone === "error" ? "text-danger" : "text-success")}>
               {item.tone === "error" ? <CloseIcon size={16} /> : <CheckIcon size={16} />}
             </span>
-            <p className="flex-1 text-[13px] leading-relaxed">{item.message}</p>
+            <p className="flex-1 text-[13px] leading-snug">{item.message}</p>
             <button
               type="button"
               onClick={() => dismiss(item.id)}
-              className="-m-1 shrink-0 rounded p-1 text-fg-subtle transition-colors hover:text-fg"
+              className="-m-1 shrink-0 rounded-full p-1 opacity-60 transition-opacity hover:opacity-100"
               aria-label="Dismiss"
             >
               <CloseIcon size={14} />
