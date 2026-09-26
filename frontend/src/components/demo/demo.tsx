@@ -5,8 +5,6 @@ import { cx } from "@/lib/format";
 import { buttonClass } from "../ui/button";
 import { ArrowRightIcon } from "../ui/icons";
 
-export { DemoNote, DemoTag } from "./tag";
-
 export async function DemoBanner() {
   const viewer = await getViewer();
   if (!viewer.demo) return null;
