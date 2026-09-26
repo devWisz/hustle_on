@@ -240,6 +240,10 @@ X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 41
 ```
 
+(HTTP field names are case-insensitive, and Go's canonical form is
+`X-Ratelimit-Limit` on the wire. Read them case-insensitively, as the spec
+requires, and nothing here is surprising.)
+
 and a refusal adds `Retry-After` in seconds. A `429` body is the usual error
 envelope with `code: "rate_limited"` and a message naming the budget.
 
