@@ -123,6 +123,30 @@ func TestCORSOnlyAnswersAllowedOrigins(t *testing.T) {
 	}
 }
 
+// The methods named in the preflight response are the set the browser will
+// actually send. A verb the route table uses but this list omits is refused by
+// the browser before the request leaves it, which looks like a broken feature
+// rather than a missing header — so the two have to be kept in step.
+func TestCORSAllowsEveryMethodTheRoutesUse(t *testing.T) {
+	s := testServer()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/v1/me/bookmarks/thing", nil)
+	req.Header.Set("Origin", "https://sardhana.com")
+	s.cors(http.HandlerFunc(ok)).ServeHTTP(rec, req)
+
+	allowed := rec.Header().Get("Access-Control-Allow-Methods")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("preflight got %d, want 204", rec.Code)
+	}
+	// PUT is the one that was missing: saving a bookmark is a PUT, and so is a
+	// local upload.
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(allowed, method) {
+			t.Errorf("Access-Control-Allow-Methods %q does not allow %s", allowed, method)
+		}
+	}
+}
+
 func TestRateLimitRejectsAFlood(t *testing.T) {
 	s := testServer()
 	s.limiter = ratelimit.New(4) // burst of 1
