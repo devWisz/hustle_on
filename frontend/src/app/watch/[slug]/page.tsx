@@ -1,32 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { apiServer } from "@/lib/api";
-import type { Donation, Note, Page, SelfUser, Timelapse } from "@/lib/types";
-import { isGuestPreview } from "@/lib/guest-server";
-import {
-  SAMPLE_TIMELAPSES,
-  findSampleTimelapse,
-  isSampleSlug,
-  sampleDonations,
-  sampleNotes,
-} from "@/lib/sample";
-import { formatCount, formatDate, formatSession, formatSol } from "@/lib/format";
-import { TimelapsePlayer } from "@/components/timelapse-player";
-import { PlayerSeekProvider } from "@/components/player-seek";
-import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/donate-panel";
-import { ShareButton } from "@/components/share-button";
-import { BookmarkButton } from "@/components/bookmark-button";
-import { SessionInspector } from "@/components/session-inspector";
-import { DiscussionPanel } from "@/components/discussion-panel";
-import { SampleNote, SampleTag } from "@/components/guest";
-import { ThumbArtwork } from "@/components/thumb";
+import { getWatch } from "@/lib/data";
+import { isSampleSlug } from "@/lib/demo/content";
+import { formatCount, formatDate, formatDuration, formatSession, formatSol } from "@/lib/format";
+import { DemoNote, DemoTag } from "@/components/demo/tag";
+import { Reveal } from "@/components/motion/reveal";
+import { BookmarkButton } from "@/components/timelapse/bookmark-button";
+import { compression } from "@/components/timelapse/card";
+import { TimelapsePlayer } from "@/components/timelapse/player";
+import { PlayerSeekProvider } from "@/components/timelapse/player-seek";
+import { ShareButton } from "@/components/timelapse/share-button";
+import { DiscussionPanel } from "@/components/watch/discussion-panel";
+import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/watch/donate-panel";
+import { SessionInspector } from "@/components/watch/session-inspector";
+import { UpNext } from "@/components/watch/up-next";
 import { Avatar, Card, Container } from "@/components/ui";
-import { ClockIcon, EyeIcon, GitHubIcon, XIcon } from "@/components/icons";
+import { ArrowLeftIcon, ExternalIcon, GitHubIcon, XIcon } from "@/components/ui/icons";
 
-export const revalidate = 30;
-
-/** Used to build the share and embed links a creator can copy. */
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
 interface Props {
@@ -35,13 +26,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const t = (await apiServer<Timelapse>(`/v1/timelapses/${slug}`)) ?? findSampleTimelapse(slug);
-  if (!t) return { title: "Timelapse" };
-  // A sample page is a preview surface, never something a search engine should
-  // be offering as a real record of somebody's work.
-  if (isSampleSlug(slug)) {
-    return { title: `${t.title} (sample)`, robots: { index: false, follow: false } };
-  }
+  const data = await getWatch(slug);
+  if (!data) return { title: "Session" };
+  const t = data.timelapse;
+  if (isSampleSlug(slug)) return { title: `${t.title} (demo)`, robots: { index: false, follow: false } };
   return {
     title: t.title,
     description: t.summary.slice(0, 160),
@@ -51,291 +39,180 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WatchPage({ params }: Props) {
   const { slug } = await params;
-  const live = await apiServer<Timelapse>(`/v1/timelapses/${slug}`);
+  const data = await getWatch(slug);
+  if (!data) notFound();
 
-  // Demo records resolve inside a preview, and while the API is unreachable —
-  // the front page shows the demo library during an outage, so its links must
-  // lead somewhere. Otherwise a sample slug is just a slug the API does not
-  // know, which is a 404 like any other.
-  const sample =
-    !live && isSampleSlug(slug) && ((await isGuestPreview()) || (await apiUnreachable()))
-      ? findSampleTimelapse(slug)
-      : undefined;
-
-  const timelapse = live ?? sample;
-  if (!timelapse) notFound();
-
-  const isSample = !live;
-  const upNext = isSample
-    ? SAMPLE_TIMELAPSES.filter((t) => t.slug !== slug).slice(0, 4)
-    : ((await apiServer<Page<Timelapse>>("/v1/timelapses?limit=5"))?.items ?? [])
-        .filter((t) => t.slug !== slug)
-        .slice(0, 4);
-
-  const [creator, donations, notes, me] = isSample
-    ? [
-        undefined,
-        { items: sampleDonations(slug) } as { items: Donation[] },
-        { items: sampleNotes(slug) } as { items: Note[] },
-        null,
-      ]
-    : await Promise.all([
-        apiServer<{ payoutAddress?: string }>(`/v1/creators/${timelapse.creator.handle}`, 120),
-        apiServer<{ items: Donation[] }>(`/v1/timelapses/${slug}/donations`),
-        // Not cached: a note the reader has just posted must be there when the
-        // page comes back, and a thread is the one part of this page that
-        // changes because of something the reader did a second ago.
-        apiServer<{ items: Note[] }>(`/v1/timelapses/${slug}/notes`, 0),
-        apiServer<SelfUser>("/v1/me", 0),
-      ]);
+  const { timelapse: t, demo } = data;
+  const ratio = compression(t);
+  const facts = [
+    { label: "Work session", value: t.sessionMinutes > 0 ? formatSession(t.sessionMinutes).replace(" of work", "") : "Not given" },
+    { label: "Playback", value: formatDuration(t.durationSeconds) },
+    { label: "Speed-up", value: ratio ? `${ratio}x` : "Real time" },
+    { label: "Views", value: formatCount(t.viewCount) },
+  ];
 
   return (
     <PlayerSeekProvider>
-      <Container width="wide" className="py-10">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="animate-fade-in-up min-w-0">
-            <TimelapsePlayer timelapse={timelapse} />
-            {isSample ? (
-              <SampleNote className="mt-3">
-                A demo session, generated so the page has something real to play. Nobody is behind
-                it, so supporting and discussing are switched off.
-              </SampleNote>
+      <Container width="wide" className="pt-6 sm:pt-8">
+        <Link
+          href="/#feed"
+          className="group inline-flex items-center gap-2 text-[13px] text-fg-muted transition-colors hover:text-fg"
+        >
+          <ArrowLeftIcon size={15} className="transition-transform group-hover:-translate-x-0.5" />
+          Back to the feed
+        </Link>
+
+        <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+          <div className="min-w-0">
+            <Reveal immediate y={16}>
+              <TimelapsePlayer timelapse={t} />
+            </Reveal>
+            {demo ? (
+              <DemoNote className="mt-4">
+                A generated demo session, so the page has something real to play. Sponsoring and
+                discussion are switched off here.
+              </DemoNote>
             ) : null}
 
-            <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-              {timelapse.title}
-            </h1>
+            <Reveal immediate delay={0.1} className="mt-8">
+              <div className="flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
+                {t.publishedAt ? <time dateTime={t.publishedAt}>Published {formatDate(t.publishedAt)}</time> : null}
+                {demo ? <DemoTag /> : null}
+              </div>
+              <h1 className="text-title mt-3 max-w-3xl">{t.title}</h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-muted">
-              {timelapse.sessionMinutes > 0 ? (
-                <span className="flex items-center gap-1.5">
-                  <ClockIcon size={14} />
-                  {formatSession(timelapse.sessionMinutes)}
-                </span>
-              ) : null}
-              <span className="flex items-center gap-1.5 tabular-nums">
-                <EyeIcon size={14} />
-                {formatCount(timelapse.viewCount)} views
-              </span>
-              {timelapse.publishedAt ? (
-                <time dateTime={timelapse.publishedAt}>{formatDate(timelapse.publishedAt)}</time>
-              ) : null}
-              {isSample ? null : (
-                <>
-                  <ShareButton
-                    title={timelapse.title}
-                    text={timelapse.summary.slice(0, 120)}
-                    path={`/watch/${timelapse.slug}`}
-                  />
-                  <BookmarkButton timelapse={timelapse} variant="inline" />
-                </>
-              )}
-            </div>
+              <div className="mt-6 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
+                <CreatorLine creator={t.creator} linkable={!demo || isSampleSlug(t.slug)} />
+                {demo ? null : (
+                  <div className="flex items-center gap-2">
+                    <ShareButton title={t.title} text={t.summary.slice(0, 120)} path={`/watch/${t.slug}`} />
+                    <BookmarkButton timelapse={t} variant="inline" />
+                  </div>
+                )}
+              </div>
 
-            <CreatorLine timelapse={timelapse} linkable={!isSample} />
+              <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
+                {facts.map((f) => (
+                  <div key={f.label} className="bg-surface px-4 py-3.5">
+                    <dt className="text-[12px] text-fg-subtle">{f.label}</dt>
+                    <dd className="mt-1 font-mono text-[15px] tabular-nums text-fg">{f.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Reveal>
 
-            {/* The write-up is the substance of a submission, so it gets the
-                width and the leading of something meant to be read. */}
-            <section className="mt-8">
+            <Reveal as="section" className="mt-10">
               <h2 className="text-eyebrow">What I did</h2>
-              <div className="mt-4 max-w-[68ch] whitespace-pre-wrap text-[15px] leading-[1.7] text-fg">
-                {timelapse.summary}
+              <div className="mt-4 max-w-[68ch] whitespace-pre-wrap text-[16px] leading-[1.75] text-fg">
+                {t.summary}
               </div>
-            </section>
+              <WorkLinks githubUrl={t.githubUrl} xUrl={t.xUrl} />
+            </Reveal>
 
-            <WorkLinks timelapse={timelapse} />
-          </div>
-
-          <aside
-            className="animate-slide-in-right space-y-6 lg:sticky lg:top-20 lg:self-start"
-            style={{ animationDelay: "200ms" }}
-          >
-            {isSample ? (
-              <Card className="p-5">
-                <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-                  Support this work
-                  <SampleTag />
-                </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-                  On a real timelapse this is where the amount goes. Your wallet shows exactly where
-                  the SOL is going before you approve anything, it never passes through Sardhana, and
-                  the transfer is checked on-chain before it is credited.
-                </p>
-                <p className="mt-3 text-[13px] text-fg-subtle">
-                  Disabled here — there is no creator behind an invented record.
-                </p>
-              </Card>
-            ) : creator?.payoutAddress ? (
-              <DonatePanel timelapse={timelapse} />
-            ) : (
-              <DonationsUnavailable handle={timelapse.creator.displayName} />
-            )}
-
-            <Card className="p-5">
-              <h2 className="text-[15px] font-semibold">
-                Supporters
-                {timelapse.donationTotalLamports > 0 ? (
-                  <span className="ml-2 font-normal tabular-nums text-accent">
-                    {formatSol(timelapse.donationTotalLamports)}
-                  </span>
-                ) : null}
-              </h2>
-              <div className="mt-2">
-                <SupporterList donations={donations?.items ?? []} />
-              </div>
-            </Card>
-
-            {/* Nothing to inspect on an invented record, and embedding a page
-                that does not exist would hand out a broken snippet. */}
-            {isSample ? null : <SessionInspector timelapse={timelapse} siteUrl={SITE_URL} />}
-
-            {upNext.length > 0 ? <UpNext items={upNext} sample={isSample} /> : null}
-          </aside>
-        </div>
-
-        {/* The thread sits below both columns rather than at the end of the
-            first one. On a phone that ordering matters: a long discussion above
-            the donate panel would bury the one action this page exists to
-            offer. The empty second cell keeps it aligned with the write-up on a
-            wide screen instead of stretching across the sidebar too. */}
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0">
             <DiscussionPanel
-              slug={timelapse.slug}
-              title={timelapse.title}
-              initialNotes={notes?.items ?? []}
-              signedIn={Boolean(me)}
-              sample={isSample}
+              slug={t.slug}
+              title={t.title}
+              initialNotes={data.notes}
+              signedIn={data.signedIn}
+              demo={demo}
             />
           </div>
-          <div aria-hidden className="hidden lg:block" />
+
+          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            <Reveal immediate delay={0.15}>
+              {demo ? (
+                <Card className="p-5 sm:p-6">
+                  <h2 className="flex items-center gap-2 text-[16px] font-semibold">
+                    Sponsor this work
+                    <DemoTag />
+                  </h2>
+                  <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
+                    On a real session this is where you choose an amount. Your wallet shows the
+                    recipient before you approve, the SOL never passes through Sardhana, and the
+                    transfer is verified on-chain before it is counted.
+                  </p>
+                </Card>
+              ) : data.payoutAddress ? (
+                <DonatePanel timelapse={t} payoutAddress={data.payoutAddress} />
+              ) : (
+                <DonationsUnavailable name={t.creator.displayName} />
+              )}
+            </Reveal>
+
+            <Reveal delay={0.2}>
+              <Card className="p-5 sm:p-6">
+                <h2 className="flex items-baseline justify-between gap-2 text-[15px] font-semibold">
+                  Sponsors
+                  {t.donationTotalLamports > 0 ? (
+                    <span className="font-mono text-[13px] font-normal tabular-nums text-fg-muted">
+                      {formatSol(t.donationTotalLamports)}
+                    </span>
+                  ) : null}
+                </h2>
+                <div className="mt-2">
+                  <SupporterList donations={data.donations} />
+                </div>
+              </Card>
+            </Reveal>
+
+            {demo ? null : <SessionInspector timelapse={t} siteUrl={SITE_URL} />}
+
+            <Reveal delay={0.25}>
+              <UpNext items={data.upNext} demo={demo} />
+            </Reveal>
+          </aside>
         </div>
       </Container>
     </PlayerSeekProvider>
   );
 }
 
-/**
- * Whether the API is down, as opposed to merely not knowing a slug. Cheap: the
- * stats endpoint is small and cached.
- */
-async function apiUnreachable(): Promise<boolean> {
-  return (await apiServer<unknown>("/v1/stats", 60)) === null;
-}
-
-/** What to watch after this one: compact rows, poster first. */
-function UpNext({ items, sample }: { items: Timelapse[]; sample: boolean }) {
-  return (
-    <section aria-labelledby="up-next-heading">
-      <h2 id="up-next-heading" className="flex items-center gap-2 text-[15px] font-semibold">
-        Up next
-        {sample ? <SampleTag>Demo</SampleTag> : null}
-      </h2>
-      <ul className="mt-3 space-y-1">
-        {items.map((t) => (
-          <li key={t.id}>
-            <Link
-              href={`/watch/${t.slug}`}
-              className="group -mx-2 flex gap-3 rounded-[var(--radius-control)] p-2 transition-colors hover:bg-surface-raised"
-            >
-              <span className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md border border-border bg-surface-raised">
-                {t.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={t.thumbnailUrl}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <ThumbArtwork seed={t.slug} title={t.title} creator={t.creator.displayName} />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="line-clamp-2 text-[13px] font-medium leading-snug group-hover:text-accent">
-                  {t.title}
-                </span>
-                <span className="mt-1 block truncate text-[12px] text-fg-subtle">
-                  {t.creator.displayName}
-                  {t.sessionMinutes > 0 ? ` · ${formatSession(t.sessionMinutes)}` : ""}
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function CreatorLine({ timelapse, linkable }: { timelapse: Timelapse; linkable: boolean }) {
+function CreatorLine({
+  creator,
+  linkable,
+}: {
+  creator: { handle: string; displayName: string; avatarUrl?: string };
+  linkable: boolean;
+}) {
   const inner = (
     <>
-      <Avatar name={timelapse.creator.displayName} src={timelapse.creator.avatarUrl} size={36} />
-      <span>
-        <span className="block text-sm font-medium">{timelapse.creator.displayName}</span>
-        <span className="block text-[13px] text-fg-muted">@{timelapse.creator.handle}</span>
+      <Avatar name={creator.displayName} src={creator.avatarUrl} size={40} />
+      <span className="min-w-0">
+        <span className="block truncate text-[14.5px] font-semibold">{creator.displayName}</span>
+        <span className="block text-[13px] text-fg-muted">@{creator.handle}</span>
       </span>
     </>
   );
-
-  if (!linkable) {
-    return (
-      <div className="mt-5 flex items-center gap-3 border-y border-border py-4">{inner}</div>
-    );
-  }
-
+  if (!linkable) return <div className="flex items-center gap-3">{inner}</div>;
   return (
-    <Link
-      href={`/creator/${timelapse.creator.handle}`}
-      className="-mx-3 mt-5 flex items-center gap-3 rounded-[var(--radius-control)] border-y border-border
-                 px-3 py-4 transition-all duration-200 hover:bg-surface-raised/50 hover:text-accent"
-    >
+    <Link href={`/creator/${creator.handle}`} className="flex items-center gap-3 transition-opacity hover:opacity-80">
       {inner}
     </Link>
   );
 }
 
-/**
- * Where the work can be checked.
- *
- * Both links are optional, so the section disappears entirely rather than
- * leaving two disabled buttons behind.
- */
-function WorkLinks({ timelapse }: { timelapse: Timelapse }) {
-  if (!timelapse.githubUrl && !timelapse.xUrl) return null;
-  return (
-    <section className="mt-8">
-      <h2 className="text-eyebrow">Where this work lives</h2>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {timelapse.githubUrl ? (
-          <WorkLink href={timelapse.githubUrl} icon={<GitHubIcon size={15} />} label="GitHub" />
-        ) : null}
-        {timelapse.xUrl ? (
-          <WorkLink href={timelapse.xUrl} icon={<XIcon size={14} />} label="X" />
-        ) : null}
-      </div>
-    </section>
-  );
-}
+function WorkLinks({ githubUrl, xUrl }: { githubUrl?: string; xUrl?: string }) {
+  if (!githubUrl && !xUrl) return null;
+  const links = [
+    githubUrl ? { href: githubUrl, icon: <GitHubIcon size={15} />, label: githubUrl.replace(/^https:\/\/(www\.)?github\.com\//, "") } : null,
+    xUrl ? { href: xUrl, icon: <XIcon size={13} />, label: xUrl.replace(/^https:\/\/(x|twitter)\.com\//, "@") } : null,
+  ].filter((l): l is { href: string; icon: React.ReactElement; label: string } => l !== null);
 
-function WorkLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      // noopener is what stops the opened page from reaching back into this
-      // one through window.opener; noreferrer keeps our URL out of its logs.
-      rel="noopener noreferrer nofollow"
-      className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border
-                 px-3 text-[13px] text-fg-muted transition-all duration-200
-                 hover:border-border-strong hover:text-fg"
-    >
-      {icon}
-      {label}
-      <span className="max-w-[22ch] truncate text-fg-subtle">
-        {href.replace(/^https:\/\/(www\.)?/, "")}
-      </span>
-    </a>
+    <div className="mt-8 flex flex-wrap gap-2">
+      {links.map((l) => (
+        <a
+          key={l.href}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="press inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface px-4 text-[13px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+        >
+          {l.icon}
+          <span className="max-w-[26ch] truncate">{l.label}</span>
+          <ExternalIcon size={13} className="text-fg-subtle" />
+        </a>
+      ))}
+    </div>
   );
 }
