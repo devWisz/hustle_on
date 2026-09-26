@@ -46,27 +46,26 @@ func viewerID(r *http.Request) string {
 
 // --- peer notes -----------------------------------------------------------
 
-// handleTimelapseNotes lists the notes on a published timelapse.
+// handleTimelapseNotes lists the notes on a published timelapse, newest first.
 func (s *Server) handleTimelapseNotes(w http.ResponseWriter, r *http.Request) error {
 	t, err := s.publishedTimelapse(r, r.PathValue("slug"))
 	if err != nil {
 		return err
 	}
-	notes, err := s.store.TimelapseNotes(r.Context(), t.ID, viewerID(r),
-		queryInt(r, "limit", 100, 1, 200))
+	page, err := s.store.TimelapseNotes(r.Context(), t.ID, viewerID(r), pageQuery(r, 50, 100))
 	if err != nil {
-		return storeErr(err, "Note")
+		return listErr(err, "Note")
 	}
 
 	// Who may remove a note is decided here, once, rather than being inferred by
 	// each client from an author id it would otherwise have to be trusted with.
 	u, signedIn := currentUser(r)
 	isAdmin := signedIn && u.Role == roleAdmin
-	for i := range notes {
-		notes[i].ViewerCanDelete = isAdmin || (signedIn && notes[i].Author.ID == u.ID)
+	for i := range page.Items {
+		page.Items[i].ViewerCanDelete = isAdmin || (signedIn && page.Items[i].Author.ID == u.ID)
 	}
 
-	return writeJSON(w, http.StatusOK, map[string]any{"items": notes})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 type noteBody struct {
@@ -186,17 +185,17 @@ func (s *Server) handleDeleteNote(w http.ResponseWriter, r *http.Request) error 
 
 // --- bookmarks ------------------------------------------------------------
 
-// handleMyBookmarks lists the caller's saved work.
+// handleMyBookmarks lists the caller's saved work, most recently saved first.
 func (s *Server) handleMyBookmarks(w http.ResponseWriter, r *http.Request) error {
 	u, err := requireUser(r)
 	if err != nil {
 		return err
 	}
-	items, err := s.store.Bookmarks(r.Context(), u.ID, queryInt(r, "limit", 100, 1, 200))
+	page, err := s.store.Bookmarks(r.Context(), u.ID, pageQuery(r, 50, 100))
 	if err != nil {
-		return storeErr(err, "Bookmark")
+		return listErr(err, "Bookmark")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 // handleAddBookmark saves a published timelapse to the caller's list.

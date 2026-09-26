@@ -19,11 +19,11 @@ func (s *Server) handleReviewQueue(w http.ResponseWriter, r *http.Request) error
 	if _, err := requireAdmin(r); err != nil {
 		return err
 	}
-	items, err := s.store.ReviewQueue(r.Context(), queryInt(r, "limit", 50, 1, 100))
+	page, err := s.store.ReviewQueue(r.Context(), pageQuery(r, 50, 100))
 	if err != nil {
-		return storeErr(err, "Queue")
+		return listErr(err, "Queue")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 // handleApprove publishes a submission.
