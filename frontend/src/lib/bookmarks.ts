@@ -68,7 +68,7 @@ function cacheLocally(items: SavedTimelapse[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   } catch {
-    // Storage quota or disabled. The in-memory list is unaffected.
+    return;
   }
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }

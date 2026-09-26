@@ -166,7 +166,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         await document.exitFullscreen();
       }
     } catch {
-      // Fullscreen failed
+      return;
     }
   }, []);
 
@@ -256,7 +256,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         await v.requestPictureInPicture();
       }
     } catch {
-      // PiP not supported or rejected
+      return;
     }
   }
 

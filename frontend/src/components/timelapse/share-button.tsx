@@ -31,7 +31,6 @@ export function ShareButton({
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        // Any other failure falls through to the clipboard path below.
       }
     }
 
