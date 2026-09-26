@@ -72,7 +72,7 @@ export function HeroShowcase({
 
   return (
     <figure className="relative mx-auto w-full max-w-xl lg:max-w-none">
-      <div className="showcase-frame overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-raised)]">
+      <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-raised)]">
         {/* Segment rail: one bar per session, filling as it plays. */}
         <div className="flex gap-1.5 px-3 pt-3" role="tablist" aria-label="Featured sessions">
           {reel.map((t, i) => (
