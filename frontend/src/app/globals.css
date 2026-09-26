@@ -22,6 +22,8 @@
   --color-warning-soft: var(--warning-soft);
   --color-inverse: var(--inverse);
   --color-inverse-fg: var(--inverse-fg);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
 
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
@@ -67,6 +69,8 @@
   --shadow-2: 0 12px 32px -12px rgb(17 17 16 / 0.16), 0 2px 6px -2px rgb(17 17 16 / 0.06);
   --shadow-3: 0 24px 48px -20px rgb(17 17 16 / 0.22), 0 6px 14px -6px rgb(17 17 16 / 0.08);
   --grid-line: rgb(17 17 16 / 0.05);
+  --chart-1: #2f45e8;
+  --chart-2: #d9822b;
 
   color-scheme: light;
 }
@@ -97,6 +101,8 @@
     --shadow-2: 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
     --shadow-3: 0 24px 48px -20px rgb(0 0 0 / 0.8), 0 6px 14px -6px rgb(0 0 0 / 0.5);
     --grid-line: rgb(242 242 239 / 0.045);
+    --chart-1: #6b7cf2;
+    --chart-2: #c9792b;
     color-scheme: dark;
   }
 }
@@ -126,6 +132,8 @@
   --shadow-2: 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
   --shadow-3: 0 24px 48px -20px rgb(0 0 0 / 0.8), 0 6px 14px -6px rgb(0 0 0 / 0.5);
   --grid-line: rgb(242 242 239 / 0.045);
+  --chart-1: #6b7cf2;
+  --chart-2: #c9792b;
   color-scheme: dark;
 }
 

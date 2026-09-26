@@ -17,6 +17,7 @@ import {
 } from "./demo/content";
 import {
   DEMO_ACTIVITY,
+  DEMO_ADMIN,
   DEMO_AUDIT,
   DEMO_LEDGER,
   DEMO_MEMBERS,
@@ -188,7 +189,7 @@ export interface AdminData {
   demo: boolean;
 }
 
-export async function getAdmin(): Promise<AdminData | "signin" | "forbidden"> {
+export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidden"> => {
   const viewer = await getViewer();
 
   if (viewer.user?.role === "admin") {
@@ -215,7 +216,7 @@ export async function getAdmin(): Promise<AdminData | "signin" | "forbidden"> {
   if (!viewer.demo) return "signin";
 
   return {
-    operator: { displayName: "Rae Osei", handle: "reviewer" },
+    operator: DEMO_ADMIN,
     queue: DEMO_QUEUE,
     queueFailed: false,
     library: SAMPLE_TIMELAPSES,
@@ -226,4 +227,4 @@ export async function getAdmin(): Promise<AdminData | "signin" | "forbidden"> {
     stats: SAMPLE_STATS,
     demo: true,
   };
-}
+});
