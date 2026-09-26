@@ -39,7 +39,11 @@ export default async function CreatorPage({ params }: Props) {
 
   // A sample profile exists only for the creators in the preview feed, and
   // only while a preview is running.
-  const sample = !live && (await isGuestPreview()) ? findSampleCreator(handle) : undefined;
+  // As on the watch page, demo creators resolve during a preview and while the
+  // API is down, because the front page links to them in both cases.
+  const apiDown = !live && (await apiServer<unknown>("/v1/stats", 60)) === null;
+  const sample =
+    !live && ((await isGuestPreview()) || apiDown) ? findSampleCreator(handle) : undefined;
   const creator = live ?? sample;
   if (!creator) notFound();
 
