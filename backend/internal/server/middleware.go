@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"log/slog"
@@ -281,6 +282,9 @@ func (s *Server) checkCSRF(r *http.Request) error {
 // by the client and can be forged, which is why the leftmost entry is never
 // used.
 func clientIP(r *http.Request) netip.Addr {
+	if addr, ok := internalClientIP(r); ok {
+		return addr
+	}
 	if trustedProxyHops > 0 {
 		if addr, ok := forwardedFor(r.Header.Values("X-Forwarded-For"), trustedProxyHops); ok {
 			return addr
@@ -316,6 +320,36 @@ func forwardedFor(headers []string, hops int) (netip.Addr, bool) {
 	}
 	return addr.Unmap(), true
 }
+
+// internalClientIP reads the visitor address that the web app's own server
+// forwards when it calls the API while rendering a page. It is honoured only
+// with the shared INTERNAL_PROXY_SECRET, compared in constant time; browsers
+// cannot send either header because CORS does not allow them.
+func internalClientIP(r *http.Request) (netip.Addr, bool) {
+	if len(internalProxySecret) == 0 {
+		return netip.Addr{}, false
+	}
+	key := r.Header.Get(internalKeyHeader)
+	if key == "" || subtle.ConstantTimeCompare([]byte(key), internalProxySecret) != 1 {
+		return netip.Addr{}, false
+	}
+	addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(internalIPHeader)))
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
+}
+
+const (
+	internalKeyHeader = "X-Sardhana-Proxy-Key"
+	internalIPHeader  = "X-Sardhana-Client-IP"
+)
+
+var internalProxySecret []byte
+
+// SetInternalProxySecret enables forwarded visitor addresses from the web
+// app's server. An empty secret disables the feature.
+func SetInternalProxySecret(secret string) { internalProxySecret = []byte(secret) }
 
 // trustedProxyHops is set at startup from TRUSTED_PROXY_HOPS (or the older
 // TRUST_PROXY_HEADERS=true, which means one hop). It must match the number of

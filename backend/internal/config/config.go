@@ -24,11 +24,12 @@ type Config struct {
 	DatabaseURL      string
 	DatabaseMaxConns int32
 
-	SessionSecret     []byte
-	SessionCookieName string
-	CookieDomain      string
-	SessionTTL        time.Duration
-	MagicLinkTTL      time.Duration
+	SessionSecret       []byte
+	SessionCookieName   string
+	CookieDomain        string
+	InternalProxySecret string
+	SessionTTL          time.Duration
+	MagicLinkTTL        time.Duration
 
 	ResendAPIKey string
 	EmailFrom    string
@@ -113,11 +114,12 @@ func Load() (Config, error) {
 		DatabaseURL:      os.Getenv("DATABASE_URL"),
 		DatabaseMaxConns: int32(envInt("DATABASE_MAX_CONNS", 10)),
 
-		SessionSecret:     []byte(os.Getenv("SESSION_SECRET")),
-		SessionCookieName: env("SESSION_COOKIE_NAME", "sardhana_session"),
-		CookieDomain:      strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
-		SessionTTL:        time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
-		MagicLinkTTL:      time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
+		SessionSecret:       []byte(os.Getenv("SESSION_SECRET")),
+		SessionCookieName:   env("SESSION_COOKIE_NAME", "sardhana_session"),
+		CookieDomain:        strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
+		InternalProxySecret: os.Getenv("INTERNAL_PROXY_SECRET"),
+		SessionTTL:          time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
+		MagicLinkTTL:        time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
 		ResendAPIKey: os.Getenv("RESEND_API_KEY"),
 		EmailFrom:    env("EMAIL_FROM", "Sardhana <login@localhost>"),
@@ -135,13 +137,13 @@ func Load() (Config, error) {
 		UploadMaxBytes:   int64(envInt("UPLOAD_MAX_BYTES", 2<<30)),
 		UploadURLTTL:     time.Duration(envInt("UPLOAD_URL_TTL_MINUTES", 15)) * time.Minute,
 
-		RateLimitAnon: envInt("RATE_LIMIT_ANON", 60),
+		RateLimitAnon: envInt("RATE_LIMIT_ANON", 300),
 		// Sign-in attempts get their own, far tighter budget than page traffic.
 		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
 		// Ten times the per-caller budget: an office or a shared connection
 		// should not be throttled as if it were one person, but a single
 		// address still cannot make unbounded work.
-		RateLimitIPCeiling: envInt("RATE_LIMIT_IP_CEILING", 600),
+		RateLimitIPCeiling: envInt("RATE_LIMIT_IP_CEILING", 1200),
 	}
 
 	origins := env("CORS_ALLOWED_ORIGINS", c.WebURL+","+c.AdminURL)
@@ -165,6 +167,9 @@ func (c Config) validate() error {
 	}
 	if len(c.AllowedOrigins) == 0 {
 		problems = append(problems, "CORS_ALLOWED_ORIGINS must list at least one origin")
+	}
+	if c.InternalProxySecret != "" && len(c.InternalProxySecret) < 32 {
+		problems = append(problems, "INTERNAL_PROXY_SECRET must be at least 32 bytes")
 	}
 	if c.CookieDomain != "" {
 		host := strings.TrimPrefix(strings.TrimPrefix(c.WebURL, "https://"), "http://")

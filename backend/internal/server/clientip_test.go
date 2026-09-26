@@ -48,3 +48,35 @@ func TestClientIPFallsBackWhenHeaderIsShortOrInvalid(t *testing.T) {
 		t.Fatalf("got %s, want the TCP peer", got)
 	}
 }
+
+func TestInternalClientIPNeedsTheSecret(t *testing.T) {
+	SetInternalProxySecret("0123456789abcdef0123456789abcdef")
+	defer SetInternalProxySecret("")
+
+	forged := httptest.NewRequest("GET", "/", nil)
+	forged.RemoteAddr = "10.0.0.5:4000"
+	forged.Header.Set("X-Sardhana-Client-IP", "9.9.9.9")
+	forged.Header.Set("X-Sardhana-Proxy-Key", "wrong")
+	if got := clientIP(forged).String(); got != "10.0.0.5" {
+		t.Fatalf("a wrong key must be ignored, got %s", got)
+	}
+
+	trusted := httptest.NewRequest("GET", "/", nil)
+	trusted.RemoteAddr = "10.0.0.5:4000"
+	trusted.Header.Set("X-Sardhana-Client-IP", "203.0.113.20")
+	trusted.Header.Set("X-Sardhana-Proxy-Key", "0123456789abcdef0123456789abcdef")
+	if got := clientIP(trusted).String(); got != "203.0.113.20" {
+		t.Fatalf("got %s, want the forwarded visitor address", got)
+	}
+}
+
+func TestInternalClientIPDisabledWithoutSecret(t *testing.T) {
+	SetInternalProxySecret("")
+	r := httptest.NewRequest("GET", "/", nil)
+	r.RemoteAddr = "10.0.0.5:4000"
+	r.Header.Set("X-Sardhana-Client-IP", "9.9.9.9")
+	r.Header.Set("X-Sardhana-Proxy-Key", "")
+	if got := clientIP(r).String(); got != "10.0.0.5" {
+		t.Fatalf("got %s", got)
+	}
+}
