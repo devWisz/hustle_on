@@ -58,7 +58,7 @@ export default async function HomePage({
         sample={preview}
       />
       {figures ? <StatBand stats={figures} sample={preview} /> : null}
-      <Container>
+      <Container width="wide">
         <Feed items={items} sort={sort} apiDown={apiDown} sample={preview} />
         <HowItWorks />
         <Principles />
@@ -171,7 +171,7 @@ function StatBand({ stats, sample }: { stats: Stats; sample: boolean }) {
   const hours = Math.round(stats.sessionMinutesRecorded / 60);
   return (
     <div className="border-b border-border bg-surface">
-      <Container className="py-8 sm:py-10">
+      <Container width="wide" className="py-8 sm:py-10">
         <Reveal>
           <div className="mb-6 flex items-center gap-3">
             <span className="text-eyebrow">By the numbers</span>

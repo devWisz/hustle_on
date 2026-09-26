@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiServer } from "@/lib/api";
-import type { Donation, Note, SelfUser, Timelapse } from "@/lib/types";
+import type { Donation, Note, Page, SelfUser, Timelapse } from "@/lib/types";
 import { isGuestPreview } from "@/lib/guest-server";
 import {
+  SAMPLE_TIMELAPSES,
   findSampleTimelapse,
   isSampleSlug,
   sampleDonations,
@@ -21,7 +22,7 @@ import { DiscussionPanel } from "@/components/discussion-panel";
 import { SampleNote, SampleTag } from "@/components/guest";
 import { ThumbArtwork } from "@/components/thumb";
 import { Avatar, Card, Container } from "@/components/ui";
-import { ClockIcon, EyeIcon, GitHubIcon, PlayIcon, XIcon } from "@/components/icons";
+import { ClockIcon, EyeIcon, GitHubIcon, XIcon } from "@/components/icons";
 
 export const revalidate = 30;
 
@@ -52,16 +53,25 @@ export default async function WatchPage({ params }: Props) {
   const { slug } = await params;
   const live = await apiServer<Timelapse>(`/v1/timelapses/${slug}`);
 
-  // Sample records resolve only inside a preview. Outside one the slug is just
-  // a slug the API does not know, which is a 404 like any other.
-  const sample = !live && isSampleSlug(slug) && (await isGuestPreview())
-    ? findSampleTimelapse(slug)
-    : undefined;
+  // Demo records resolve inside a preview, and while the API is unreachable —
+  // the front page shows the demo library during an outage, so its links must
+  // lead somewhere. Otherwise a sample slug is just a slug the API does not
+  // know, which is a 404 like any other.
+  const sample =
+    !live && isSampleSlug(slug) && ((await isGuestPreview()) || (await apiUnreachable()))
+      ? findSampleTimelapse(slug)
+      : undefined;
 
   const timelapse = live ?? sample;
   if (!timelapse) notFound();
 
   const isSample = !live;
+  const upNext = isSample
+    ? SAMPLE_TIMELAPSES.filter((t) => t.slug !== slug).slice(0, 4)
+    : ((await apiServer<Page<Timelapse>>("/v1/timelapses?limit=5"))?.items ?? [])
+        .filter((t) => t.slug !== slug)
+        .slice(0, 4);
+
   const [creator, donations, notes, me] = isSample
     ? [
         undefined,
@@ -84,11 +94,13 @@ export default async function WatchPage({ params }: Props) {
       <Container width="wide" className="py-10">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="animate-fade-in-up min-w-0">
+            <TimelapsePlayer timelapse={timelapse} />
             {isSample ? (
-              <SamplePlayer timelapse={timelapse} />
-            ) : (
-              <TimelapsePlayer timelapse={timelapse} />
-            )}
+              <SampleNote className="mt-3">
+                A demo session, generated so the page has something real to play. Nobody is behind
+                it, so supporting and discussing are switched off.
+              </SampleNote>
+            ) : null}
 
             <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
               {timelapse.title}
@@ -176,6 +188,8 @@ export default async function WatchPage({ params }: Props) {
             {/* Nothing to inspect on an invented record, and embedding a page
                 that does not exist would hand out a broken snippet. */}
             {isSample ? null : <SessionInspector timelapse={timelapse} siteUrl={SITE_URL} />}
+
+            {upNext.length > 0 ? <UpNext items={upNext} sample={isSample} /> : null}
           </aside>
         </div>
 
@@ -202,33 +216,55 @@ export default async function WatchPage({ params }: Props) {
 }
 
 /**
- * The frame a sample timelapse gets in place of a player.
- *
- * There is no file behind an invented record, and a dead `<video>` element
- * with a broken source is a worse answer than saying so plainly.
+ * Whether the API is down, as opposed to merely not knowing a slug. Cheap: the
+ * stats endpoint is small and cached.
  */
-function SamplePlayer({ timelapse }: { timelapse: Timelapse }) {
+async function apiUnreachable(): Promise<boolean> {
+  return (await apiServer<unknown>("/v1/stats", 60)) === null;
+}
+
+/** What to watch after this one: compact rows, poster first. */
+function UpNext({ items, sample }: { items: Timelapse[]; sample: boolean }) {
   return (
-    <div>
-      <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-border">
-        <div className="aspect-video w-full">
-          <ThumbArtwork
-            seed={timelapse.slug}
-            title={timelapse.title}
-            creator={timelapse.creator.displayName}
-          />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface text-fg-subtle shadow-[var(--shadow-raised)]">
-            <PlayIcon size={20} />
-          </span>
-        </div>
-      </div>
-      <SampleNote className="mt-3">
-        An invented session, shown so the page has something on it. There is no video behind it —
-        a real submission plays here.
-      </SampleNote>
-    </div>
+    <section aria-labelledby="up-next-heading">
+      <h2 id="up-next-heading" className="flex items-center gap-2 text-[15px] font-semibold">
+        Up next
+        {sample ? <SampleTag>Demo</SampleTag> : null}
+      </h2>
+      <ul className="mt-3 space-y-1">
+        {items.map((t) => (
+          <li key={t.id}>
+            <Link
+              href={`/watch/${t.slug}`}
+              className="group -mx-2 flex gap-3 rounded-[var(--radius-control)] p-2 transition-colors hover:bg-surface-raised"
+            >
+              <span className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md border border-border bg-surface-raised">
+                {t.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={t.thumbnailUrl}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <ThumbArtwork seed={t.slug} title={t.title} creator={t.creator.displayName} />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="line-clamp-2 text-[13px] font-medium leading-snug group-hover:text-accent">
+                  {t.title}
+                </span>
+                <span className="mt-1 block truncate text-[12px] text-fg-subtle">
+                  {t.creator.displayName}
+                  {t.sessionMinutes > 0 ? ` · ${formatSession(t.sessionMinutes)}` : ""}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
