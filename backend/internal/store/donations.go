@@ -194,7 +194,12 @@ func (s *Store) TimelapseDonations(ctx context.Context, timelapseID string, q Pa
 	if err != nil {
 		return domain.Page[domain.Donation]{}, err
 	}
-	return pageOf(items, q.Limit, donationCursor), nil
+	return pageOf(items, q.Limit, func(d domain.Donation) string {
+		if d.ConfirmedAt == nil {
+			return ""
+		}
+		return encodeKeyset(keysetInt(d.Amount), keysetTime(*d.ConfirmedAt), d.ID)
+	}), nil
 }
 
 // CreatorDonations lists what a creator has received across all their work,
@@ -224,8 +229,9 @@ func (s *Store) CreatorDonations(ctx context.Context, creatorID string, q PageQu
 	return pageOf(items, q.Limit, donationCursor), nil
 }
 
-// donationCursor packs the sort key both donation lists above use. They share
-// one order — confirmation time, then id — so they can share the cursor.
+// donationCursor packs the sort key of the confirmation-time lists: when the
+// gift was confirmed, then its id to break ties between two confirmed in the
+// same transaction.
 func donationCursor(d domain.Donation) string {
 	if d.ConfirmedAt == nil {
 		return ""
