@@ -1,23 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, ButtonLink, buttonClass } from "./ui";
-import { ThemeToggle } from "./theme-toggle";
-import { SearchBar } from "./search-bar";
+import { useEffect, useRef, useState } from "react";
 import { cx } from "@/lib/format";
-import { CloseIcon, EyeIcon, MenuIcon } from "./icons";
-
-/**
- * The client half of the site header.
- *
- * It handles the mobile drawer and the active-route marking. The server
- * wrapper (site-header.tsx) resolves the session and the preview state and
- * passes both here, so the header is already correct on first paint — a header
- * that flashes "Sign in" and then swaps to an avatar is the single most
- * noticeable way an app looks unfinished.
- */
+import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
+import { Avatar } from "../ui/avatar";
+import { buttonClass } from "../ui/button";
+import { CloseIcon, LogoMark, MenuIcon, SearchIcon } from "../ui/icons";
+import { ThemeToggle } from "./theme-toggle";
+import { openCommandSearch } from "./command-search";
 
 interface HeaderUser {
   handle: string;
@@ -26,22 +18,30 @@ interface HeaderUser {
   role: "member" | "admin";
 }
 
-export function SiteHeaderClient({ user, guest = false }: { user?: HeaderUser; guest?: boolean }) {
+interface NavItem {
+  href: string;
+  label: string;
+  match: (path: string) => boolean;
+}
+
+export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean }) {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const bar = useRef<HTMLElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
 
-  // The drawer is a modal layer: it closes on Escape, it closes when the route
-  // underneath it changes, and the page behind it does not scroll while it is
-  // open. Leaving any one of those out is what makes a drawer feel homemade.
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  const nav: NavItem[] = [
+    { href: "/#feed", label: "Explore", match: (p) => p === "/" || p.startsWith("/watch") },
+    { href: "/about", label: "How it works", match: (p) => p === "/about" },
+  ];
+  if (user || demo) nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
+  if (user?.role === "admin" || demo) nav.push({ href: "/admin", label: "Admin", match: (p) => p.startsWith("/admin") });
+
+  useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
-    };
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
@@ -49,250 +49,190 @@ export function SiteHeaderClient({ user, guest = false }: { user?: HeaderUser; g
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [mobileOpen]);
+  }, [open]);
 
-  const close = () => setMobileOpen(false);
+  useGSAP(() => {
+    const el = bar.current;
+    if (!el) return;
+    const mm = gsap.matchMedia();
+    mm.add(MOTION, () => {
+      const hide = gsap.to(el, { yPercent: -100, duration: 0.35, ease: "power2.out", paused: true });
+      const trigger = ScrollTrigger.create({
+        start: 0,
+        end: "max",
+        onUpdate(self) {
+          el.dataset.scrolled = self.scroll() > 8 ? "true" : "false";
+          if (self.scroll() < 120) hide.reverse();
+          else if (self.direction === 1) hide.play();
+          else hide.reverse();
+        },
+      });
+      return () => trigger.kill();
+    });
+  });
+
+  useGSAP(
+    () => {
+      if (!open || !menu.current) return;
+      const mm = gsap.matchMedia();
+      mm.add(MOTION, () => {
+        gsap
+          .timeline()
+          .from(menu.current, { clipPath: "inset(0 0 100% 0)", duration: 0.55, ease: "expo.out" })
+          .from("[data-menu-item]", { yPercent: 120, autoAlpha: 0, stagger: 0.05, duration: 0.6, ease: "expo.out" }, "-=0.3");
+      });
+    },
+    { dependencies: [open], scope: menu },
+  );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-5 px-5 sm:px-6">
-        <Wordmark />
+    <header
+      ref={bar}
+      data-scrolled="false"
+      className="group/header sticky top-0 z-40 border-b border-transparent bg-bg/80 backdrop-blur-xl transition-colors duration-300 data-[scrolled=true]:border-border"
+    >
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5 text-[15px] font-semibold tracking-tight"
+        >
+          <LogoMark />
+          <span>Sardhana</span>
+        </Link>
 
-        <nav aria-label="Main" className="hidden items-center gap-5 text-sm sm:flex">
-          <NavLink href="/" current={pathname === "/"}>
-            Timelapses
-          </NavLink>
-          <NavLink href="/about" current={pathname === "/about"}>
-            About
-          </NavLink>
-          {user ? (
-            <NavLink href="/dashboard" current={pathname.startsWith("/dashboard")}>
-              Dashboard
-            </NavLink>
-          ) : null}
-          {user?.role === "admin" ? (
-            <NavLink href="/admin" current={pathname.startsWith("/admin")}>
-              Review
-            </NavLink>
-          ) : null}
+        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+          {nav.map((item) => {
+            const current = item.match(pathname);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={current ? "page" : undefined}
+                className={cx(
+                  "rounded-full px-3.5 py-1.5 text-[14px] transition-colors",
+                  current ? "bg-surface-raised text-fg" : "text-fg-muted hover:text-fg",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <SearchBar />
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={openCommandSearch}
+            className="press hidden h-9 items-center gap-2 rounded-full border border-border bg-surface pl-3 pr-1.5 text-[13px] text-fg-subtle transition-colors hover:border-border-strong hover:text-fg-muted sm:flex"
+          >
+            <SearchIcon size={14} />
+            <span className="pr-6">Search</span>
+            <span className="kbd">/</span>
+          </button>
+          <button
+            type="button"
+            onClick={openCommandSearch}
+            aria-label="Search"
+            className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg sm:hidden"
+          >
+            <SearchIcon size={17} />
+          </button>
           <ThemeToggle />
 
           {user ? (
             <>
-              <ButtonLink href="/upload" size="sm" className="hidden sm:inline-flex">
+              <Link href="/upload" className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}>
                 Upload
-              </ButtonLink>
+              </Link>
               <Link
                 href={`/creator/${user.handle}`}
-                className="rounded-full ring-offset-2 ring-offset-bg transition-all duration-200
-                           hover:ring-2 hover:ring-border-strong"
                 aria-label={`Your profile, ${user.displayName}`}
+                className="rounded-full ring-offset-2 ring-offset-bg transition hover:ring-2 hover:ring-border-strong"
               >
-                <Avatar name={user.displayName} src={user.avatarUrl} size={30} />
+                <Avatar name={user.displayName} src={user.avatarUrl} size={32} />
               </Link>
             </>
           ) : (
-            <>
-              {guest ? (
-                <span
-                  className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-raised
-                             px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-fg-muted sm:inline-flex"
-                >
-                  <EyeIcon size={11} />
-                  Guest
-                </span>
-              ) : null}
-              <Link href="/login" className={buttonClass(guest ? "primary" : "secondary", "sm")}>
-                {guest ? "Create an account" : "Sign in"}
-              </Link>
-            </>
+            <Link href="/login" className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}>
+              Sign in
+            </Link>
           )}
 
           <button
             type="button"
-            onClick={() => setMobileOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)]
-                       text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg sm:hidden"
+            onClick={() => setOpen(true)}
             aria-label="Open menu"
-            aria-expanded={mobileOpen}
+            aria-expanded={open}
+            className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"
           >
             <MenuIcon size={18} />
           </button>
         </div>
       </div>
 
-      {mobileOpen && (
-        <>
-          <div
-            className="drawer-overlay fixed inset-0 z-50 bg-black/40 sm:hidden"
-            onClick={close}
-            aria-hidden
-          />
-          <nav
-            aria-label="Menu"
-            className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border
-                       bg-bg p-6 shadow-[var(--shadow-raised)] sm:hidden"
-            style={{ animation: "slideInLeft 0.25s var(--ease-out-quint) forwards" }}
-          >
-            <div className="mb-8 flex items-center justify-between">
-              <Wordmark />
-              <button
-                type="button"
-                onClick={close}
-                className="rounded-[var(--radius-control)] p-1.5 text-fg-subtle hover:bg-surface-raised hover:text-fg"
-                aria-label="Close menu"
-              >
-                <CloseIcon size={18} />
-              </button>
-            </div>
+      {open ? (
+        <div
+          ref={menu}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          className="fixed inset-0 z-50 flex h-dvh flex-col bg-bg px-4 pb-8 sm:px-6 md:hidden"
+        >
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold" onClick={() => setOpen(false)}>
+              <LogoMark />
+              Sardhana
+            </Link>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close menu"
+              className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg"
+            >
+              <CloseIcon size={18} />
+            </button>
+          </div>
 
-            <div className="space-y-1">
-              <MobileNavLink href="/" current={pathname === "/"} onClick={close}>
-                Timelapses
-              </MobileNavLink>
-              <MobileNavLink href="/about" current={pathname === "/about"} onClick={close}>
-                About
-              </MobileNavLink>
-              {user ? (
-                <MobileNavLink
-                  href="/dashboard"
-                  current={pathname.startsWith("/dashboard")}
-                  onClick={close}
+          <nav aria-label="Menu" className="mt-8 flex flex-col">
+            {[
+              ...nav,
+              ...(user || demo
+                ? [
+                    { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
+                    { href: "/settings", label: "Settings", match: (p: string) => p === "/settings" },
+                  ]
+                : []),
+            ].map((item) => (
+              <div key={item.href} className="overflow-hidden border-b border-border">
+                <Link
+                  data-menu-item
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={item.match(pathname) ? "page" : undefined}
+                  className={cx(
+                    "block py-4 text-[2rem] font-semibold tracking-tight",
+                    item.match(pathname) ? "text-fg" : "text-fg-muted",
+                  )}
                 >
-                  Dashboard
-                </MobileNavLink>
-              ) : null}
-              {user?.role === "admin" ? (
-                <MobileNavLink href="/admin" current={pathname.startsWith("/admin")} onClick={close}>
-                  Review
-                </MobileNavLink>
-              ) : null}
-
-              <div className="mt-4 border-t border-border pt-4">
-                {user ? (
-                  <>
-                    <MobileNavLink href="/upload" current={pathname === "/upload"} onClick={close}>
-                      Upload a timelapse
-                    </MobileNavLink>
-                    <MobileNavLink
-                      href="/settings"
-                      current={pathname === "/settings"}
-                      onClick={close}
-                    >
-                      Settings
-                    </MobileNavLink>
-                    <MobileNavLink href={`/creator/${user.handle}`} current={false} onClick={close}>
-                      Your profile
-                    </MobileNavLink>
-                  </>
-                ) : guest ? (
-                  <>
-                    <MobileNavLink
-                      href="/dashboard"
-                      current={pathname.startsWith("/dashboard")}
-                      onClick={close}
-                    >
-                      Dashboard preview
-                    </MobileNavLink>
-                    <MobileNavLink href="/upload" current={pathname === "/upload"} onClick={close}>
-                      Submission form
-                    </MobileNavLink>
-                    <MobileNavLink href="/login" current={false} onClick={close}>
-                      Create an account
-                    </MobileNavLink>
-                  </>
-                ) : (
-                  <MobileNavLink href="/login" current={false} onClick={close}>
-                    Sign in
-                  </MobileNavLink>
-                )}
+                  {item.label}
+                </Link>
               </div>
-            </div>
-
-            <p className="mt-auto pt-8 text-[12px] text-fg-subtle">
-              Press{" "}
-              <kbd className="rounded border border-border bg-surface-raised px-1 py-0.5 font-mono text-[10px]">
-                ?
-              </kbd>{" "}
-              for shortcuts
-            </p>
+            ))}
           </nav>
-        </>
-      )}
+
+          <div className="mt-auto flex flex-col gap-3" data-menu-item>
+            {user ? (
+              <Link href={`/creator/${user.handle}`} className={buttonClass("secondary", "lg", "w-full")}>
+                Your profile
+              </Link>
+            ) : (
+              <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : null}
     </header>
-  );
-}
-
-function Wordmark() {
-  return (
-    <Link
-      href="/"
-      className="shrink-0 text-[15px] font-semibold tracking-tight transition-colors hover:text-accent"
-    >
-      Sardhana
-    </Link>
-  );
-}
-
-/**
- * A top-level navigation link.
- *
- * The current page keeps its underline permanently rather than only on hover,
- * so the header answers "where am I" without being asked.
- */
-function NavLink({
-  href,
-  current,
-  children,
-}: {
-  href: string;
-  current: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={current ? "page" : undefined}
-      className={cx(
-        "relative transition-colors",
-        "after:absolute after:bottom-[-18px] after:left-0 after:right-0 after:h-[2px]",
-        "after:origin-left after:bg-accent after:transition-transform hover:after:scale-x-100",
-        current ? "text-fg after:scale-x-100" : "text-fg-muted hover:text-fg after:scale-x-0",
-      )}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function MobileNavLink({
-  href,
-  current,
-  children,
-  onClick,
-}: {
-  href: string;
-  current: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      aria-current={current ? "page" : undefined}
-      className={cx(
-        "flex items-center rounded-[var(--radius-control)] px-3 py-2.5 text-sm transition-colors",
-        current
-          ? "bg-surface-raised font-medium text-fg"
-          : "text-fg-muted hover:bg-surface-raised hover:text-fg",
-      )}
-    >
-      {children}
-    </Link>
   );
 }
