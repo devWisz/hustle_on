@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiError, api } from "@/lib/api/client";
 import { formatSol, timeAgo } from "@/lib/format";
 import type { AdminMember } from "@/lib/types";
 import { useToast } from "../layout/toast";
@@ -11,6 +13,7 @@ import { DataTable, type Column } from "./data-table";
 
 export function Members({ initial, demo }: { initial: AdminMember[]; demo: boolean }) {
   const toast = useToast();
+  const router = useRouter();
   const [members, setMembers] = useState(initial);
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState("all");

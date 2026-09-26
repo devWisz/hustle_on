@@ -92,7 +92,7 @@ export default async function AdminOverview() {
               <ActivityChart days={data.activity} />
             ) : (
               <p className="text-[13.5px] text-fg-muted">
-                The API does not publish daily activity yet.
+                Activity could not be loaded. Reload to try again.
               </p>
             )}
           </div>

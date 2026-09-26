@@ -21,8 +21,8 @@ export default async function MembersPage() {
         ) : (
           <EmptyState
             icon={<UsersIcon size={18} />}
-            title="Member management is not in the API yet"
-            description="Once the API exposes an admin members endpoint, accounts appear here with suspend and reinstate controls."
+            title="No members to show"
+            description="Accounts appear here as people sign up. If you expected some, the API may not have answered; reload to try again."
           />
         )}
       </div>

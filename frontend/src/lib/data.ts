@@ -193,10 +193,13 @@ export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidde
   const viewer = await getViewer();
 
   if (viewer.user?.role === "admin") {
-    const [queue, audit, library, stats] = await Promise.all([
+    const [queue, audit, library, members, ledger, activity, stats] = await Promise.all([
       apiServer<Page<Timelapse>>("/v1/admin/queue", 0),
       apiServer<Page<AuditEntry>>("/v1/admin/audit?limit=100", 0),
       apiServer<Page<Timelapse>>("/v1/timelapses?limit=100", 0),
+      apiServer<Page<AdminMember>>("/v1/admin/members?limit=500", 0),
+      apiServer<Page<LedgerEntry>>("/v1/admin/ledger?limit=500", 0),
+      apiServer<Page<ActivityDay>>("/v1/admin/activity?days=30", 0),
       liveStats(),
     ]);
     return {
@@ -205,10 +208,10 @@ export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidde
       queueFailed: queue === null,
       library: library?.items ?? [],
       audit: audit?.items ?? [],
-      members: [],
-      ledger: [],
-      activity: [],
-      stats: stats ?? SAMPLE_STATS,
+      members: members?.items ?? [],
+      ledger: ledger?.items ?? [],
+      activity: activity?.items ?? [],
+      stats: stats ?? { creators: 0, publishedTimelapses: 0, sessionMinutesRecorded: 0, confirmedDonations: 0, donationTotalLamports: 0 },
       demo: false,
     };
   }

@@ -61,8 +61,8 @@ export default async function LedgerPage() {
         <EmptyState
           className="mt-6"
           icon={<CoinsIcon size={18} />}
-          title="The ledger is not in the API yet"
-          description="Sponsorships are verified per session today. A platform-wide ledger appears here once the API exposes one."
+          title="No sponsorships yet"
+          description="Every sponsorship appears here once a viewer starts one, with its on-chain status."
         />
       )}
     </div>
