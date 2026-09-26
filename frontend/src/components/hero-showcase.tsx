@@ -30,8 +30,9 @@ export function HeroShowcase({
 }) {
   const playable = items.filter((t) => t.playbackUrl);
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
-  const usingFallback = playable.length === 0 || playable.every((t) => failed.has(t.id));
-  const reel = (usingFallback ? fallback : playable).slice(0, 5);
+  const working = playable.filter((t) => !failed.has(t.id));
+  const usingFallback = working.length === 0;
+  const reel = (usingFallback ? fallback : working).slice(0, 5);
   const isDemo = sample || usingFallback;
 
   const [index, setIndex] = useState(0);
@@ -113,8 +114,11 @@ export function HeroShowcase({
             }}
             onEnded={() => go(index + 1)}
             onError={() => {
+              // Dropping the record shifts the next one into this slot, so the
+              // index stays where it is. Demo files are ours and are not dropped.
+              if (usingFallback) return;
+              setProgress(0);
               setFailed((prev) => new Set(prev).add(current.id));
-              if (reel.length > 1) go(index + 1);
             }}
             className="h-full w-full object-cover"
           >
