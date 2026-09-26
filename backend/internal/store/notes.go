@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/sardhana/backend/internal/domain"
@@ -204,24 +205,62 @@ func (s *Store) RemoveBookmark(ctx context.Context, userID, slug string) error {
 	return normalize(err)
 }
 
+// savedTimelapse is a saved list row: the work as it stands now, plus when this
+// reader saved it. The timestamp is not part of the payload — it is only the
+// sort key, so it never reaches the client except inside the cursor.
+type savedTimelapse struct {
+	domain.Timelapse
+	savedAt time.Time
+}
+
 // Bookmarks lists a reader's saved work, most recently saved first.
 //
 // The join reads the timelapse as it stands now rather than as it stood when it
 // was saved, and skips anything no longer published, so a saved list can never
 // offer a link to something that has been taken down.
-func (s *Store) Bookmarks(ctx context.Context, userID string, limit int) ([]domain.Timelapse, error) {
+//
+// Paging is on the bookmark's own created_at, not the work's: the list is
+// "things I saved", and it should page in the order it is displayed.
+func (s *Store) Bookmarks(ctx context.Context, userID string, q PageQuery) (domain.Page[domain.Timelapse], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT `+timelapseColumns+`
+		SELECT `+timelapseColumns+`, b.created_at
 		FROM bookmarks b
 		JOIN timelapses t ON t.id = b.timelapse_id
 		JOIN users u ON u.id = t.user_id
 		WHERE b.user_id = $1 AND t.status = 'published'
-		ORDER BY b.created_at DESC
-		LIMIT $2`, userID, limit)
+		  AND ($2::timestamptz IS NULL OR (b.created_at, t.id) < ($2, $3::uuid))
+		ORDER BY b.created_at DESC, t.id DESC
+		LIMIT $4`, userID, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
-	return collectTimelapses(rows)
+	defer rows.Close()
+
+	saved := []savedTimelapse{}
+	for rows.Next() {
+		var row savedTimelapse
+		targets := append(timelapseScanTargets(&row.Timelapse), &row.savedAt)
+		if err := rows.Scan(targets...); err != nil {
+			return domain.Page[domain.Timelapse]{}, normalize(err)
+		}
+		saved = append(saved, row)
+	}
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.Timelapse]{}, normalize(err)
+	}
+
+	page := pageOf(saved, q.Limit, func(r savedTimelapse) string {
+		return encodeKeyset(keysetTime(r.savedAt), r.ID)
+	})
+	items := make([]domain.Timelapse, len(page.Items))
+	for i, r := range page.Items {
+		items[i] = r.Timelapse
+	}
+	return domain.Page[domain.Timelapse]{Items: items, NextCursor: page.NextCursor}, nil
 }
 
 // --- audit trail ----------------------------------------------------------
@@ -230,17 +269,38 @@ func (s *Store) Bookmarks(ctx context.Context, userID string, limit int) ([]doma
 //
 // This is the review panel's own record of itself. It is read only by an admin
 // and is never part of a public payload.
-func (s *Store) RecentAudit(ctx context.Context, limit int) ([]domain.AuditEntry, error) {
+//
+// The cursor's second field is the row id, which is a bigint rather than a UUID
+// here: audit lines are appended, never rewritten, so a monotonic id is the
+// natural tiebreaker for two decisions taken in the same transaction.
+func (s *Store) RecentAudit(ctx context.Context, q PageQuery) (domain.Page[domain.AuditEntry], error) {
+	var before *time.Time
+	var beforeID *int64
+	if parts, err := decodeKeyset(q.Cursor, 2); err != nil {
+		return domain.Page[domain.AuditEntry]{}, err
+	} else if parts != nil {
+		at, err := parseKeysetTime(parts[0])
+		if err != nil {
+			return domain.Page[domain.AuditEntry]{}, err
+		}
+		id, err := parseKeysetInt(parts[1])
+		if err != nil {
+			return domain.Page[domain.AuditEntry]{}, err
+		}
+		before, beforeID = &at, &id
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id, a.action, a.subject_type, COALESCE(a.subject_id, ''),
 		       a.metadata, a.created_at,
 		       u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, '')
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.actor_id
+		WHERE ($1::timestamptz IS NULL OR (a.created_at, a.id) < ($1, $2::bigint))
 		ORDER BY a.created_at DESC, a.id DESC
-		LIMIT $1`, limit)
+		LIMIT $3`, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.AuditEntry]{}, normalize(err)
 	}
 	defer rows.Close()
 
@@ -253,7 +313,7 @@ func (s *Store) RecentAudit(ctx context.Context, limit int) ([]domain.AuditEntry
 		if err := rows.Scan(&e.ID, &e.Action, &e.SubjectType, &e.SubjectID,
 			&e.Metadata, &e.CreatedAt,
 			&actorID, &handle, &name, &avatarURL); err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.AuditEntry]{}, normalize(err)
 		}
 		// A deleted account leaves the decision standing but unattributed.
 		if actorID != nil {
@@ -266,5 +326,10 @@ func (s *Store) RecentAudit(ctx context.Context, limit int) ([]domain.AuditEntry
 		}
 		out = append(out, e)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.AuditEntry]{}, normalize(err)
+	}
+	return pageOf(out, q.Limit, func(e domain.AuditEntry) string {
+		return encodeKeyset(keysetTime(e.CreatedAt), keysetInt(e.ID))
+	}), nil
 }
