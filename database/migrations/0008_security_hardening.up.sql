@@ -60,9 +60,13 @@ REVOKE DELETE ON TABLE users, timelapses, donations FROM sardhana_app;
 -- 6. The audit log is append-only for the API. Decisions may be added; they may
 --    not be edited or erased, which is what makes the trail worth trusting when
 --    it is read back during a dispute.
+--
+--    Nothing else loses a privilege it uses. Consuming a sign-in link UPDATEs
+--    magic_link_tokens, consuming a wallet challenge UPDATEs wallet_challenges,
+--    and withdrawing a "helpful" mark DELETEs from note_votes — all three are
+--    narrow, intended writes, and revoking them would break sign-in and voting
+--    rather than harden anything.
 REVOKE UPDATE, DELETE ON TABLE audit_log FROM sardhana_app;
-REVOKE UPDATE, DELETE ON TABLE note_votes FROM sardhana_app;
-REVOKE UPDATE ON TABLE magic_link_tokens, wallet_challenges FROM sardhana_app;
 
 -- 7. The counter-repair and purge functions are run by an operator on purpose.
 --    PUBLIC has EXECUTE on every function by default, so this has to be said
@@ -109,5 +113,6 @@ CREATE TRIGGER audit_log_append_only
     BEFORE UPDATE OR DELETE ON audit_log
     FOR EACH ROW EXECUTE FUNCTION audit_log_is_append_only();
 
--- Trigger functions are not called by clients, so no role needs EXECUTE.
-REVOKE EXECUTE ON FUNCTION audit_log_is_append_only() FROM PUBLIC;
+-- No REVOKE of EXECUTE on the trigger function above: a trigger function cannot
+-- be called directly at all, and revoking a privilege that the trigger machinery
+-- might consult would risk breaking every audit insert for no gain.
