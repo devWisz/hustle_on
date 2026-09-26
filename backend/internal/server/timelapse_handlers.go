@@ -31,10 +31,7 @@ func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		Sort:   store.ParseFeedSort(queryString(r, "sort", 16)),
 	})
 	if err != nil {
-		if errors.Is(err, store.ErrBadCursor) {
-			return apierr.BadRequest("That page cursor is not valid.")
-		}
-		return storeErr(err, "Feed")
+		return listErr(err, "Feed")
 	}
 	for i := range page.Items {
 		redactForPublic(&page.Items[i])
@@ -75,17 +72,18 @@ func redactForPublic(t *domain.Timelapse) {
 	t.SubmittedAt = nil
 }
 
-// handleTimelapseDonations lists the supporters under a published timelapse.
+// handleTimelapseDonations lists the supporters under a published timelapse,
+// largest gift first.
 func (s *Server) handleTimelapseDonations(w http.ResponseWriter, r *http.Request) error {
 	t, err := s.publishedBySlug(r)
 	if err != nil {
 		return err
 	}
-	donations, err := s.store.TimelapseDonations(r.Context(), t.ID, queryInt(r, "limit", 20, 1, 100))
+	page, err := s.store.TimelapseDonations(r.Context(), t.ID, pageQuery(r, 20, 100))
 	if err != nil {
-		return storeErr(err, "Donations")
+		return listErr(err, "Donations")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": donations})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 // handleRecordView counts a viewer, at most once per day.
@@ -130,17 +128,17 @@ func (s *Server) handleCreator(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, profile)
 }
 
-// handleCreatorTimelapses lists a creator's published work.
+// handleCreatorTimelapses lists a creator's published work, newest first.
 func (s *Server) handleCreatorTimelapses(w http.ResponseWriter, r *http.Request) error {
 	handle := strings.ToLower(r.PathValue("handle"))
-	items, err := s.store.CreatorTimelapses(r.Context(), handle, queryInt(r, "limit", 24, 1, 50))
+	page, err := s.store.CreatorTimelapses(r.Context(), handle, pageQuery(r, 24, 50))
 	if err != nil {
-		return storeErr(err, "Creator")
+		return listErr(err, "Creator")
 	}
-	for i := range items {
-		redactForPublic(&items[i])
+	for i := range page.Items {
+		redactForPublic(&page.Items[i])
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) error {

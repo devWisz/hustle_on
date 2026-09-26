@@ -155,6 +155,28 @@ func queryString(r *http.Request, name string, maxLen int) string {
 	return v
 }
 
+// pageQuery reads the paging parameters every list endpoint accepts.
+//
+// It exists so the parameter names, the default and the cap are decided here
+// rather than repeated per endpoint — an endpoint that forgot the cap would let
+// one request ask for the whole table.
+func pageQuery(r *http.Request, fallback, max int) store.PageQuery {
+	return store.PageQuery{
+		Cursor: queryString(r, "cursor", 200),
+		Limit:  queryInt(r, "limit", fallback, 1, max),
+	}
+}
+
+// listErr converts a list query's error into an HTTP one. A cursor is
+// client-supplied, so one that is not ours is a bad request rather than a 404 or
+// a quiet restart from the first page.
+func listErr(err error, what string) error {
+	if errors.Is(err, store.ErrBadCursor) {
+		return apierr.BadRequest("That page cursor is not valid.")
+	}
+	return storeErr(err, what)
+}
+
 // queryList splits a comma-separated parameter, keeping values that pass the
 // supplied test.
 func queryList(r *http.Request, name string, max int, ok func(string) bool) []string {
