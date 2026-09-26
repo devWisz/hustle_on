@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { Timelapse } from "@/lib/types";
 import { formatDuration, formatSession } from "@/lib/format";
-import { Card } from "./ui";
-import { useToast } from "./toast";
+import { Card } from "../ui";
+import { useToast } from "../layout/toast";
 import {
   CopyIcon,
   ExternalIcon,
@@ -12,26 +12,14 @@ import {
   LinkIcon,
   XIcon,
   ZapIcon,
-} from "./icons";
+} from "../ui/icons";
 
 interface SessionInspectorProps {
   timelapse: Timelapse;
-  /**
-   * The public origin, used to build absolute links. Required rather than
-   * defaulted: a snippet built from a guessed origin is a snippet that silently
-   * points somewhere wrong once it is pasted into a README.
-   */
+
   siteUrl: string;
 }
 
-/**
- * The technical summary of a session, and the ways to point at it.
- *
- * The share snippets are deliberately limited to what the deployment can
- * actually serve. An `<iframe>` embed is not offered, because the site sends
- * `frame-ancestors 'none'` — handing somebody markup that their own browser
- * will refuse to render is worse than not offering it.
- */
 export function SessionInspector({ timelapse, siteUrl }: SessionInspectorProps) {
   const { success } = useToast();
   const [activeTab, setActiveTab] = useState<"overview" | "share">("overview");
@@ -46,8 +34,7 @@ export function SessionInspector({ timelapse, siteUrl }: SessionInspectorProps) 
     : 0;
 
   const watchUrl = `${siteUrl}/watch/${timelapse.slug}`;
-  // A Markdown badge needs an image. Without a thumbnail the honest snippet is
-  // a plain link, not a broken image.
+
   const markdownSnippet = timelapse.thumbnailUrl
     ? `[![Timelapse: ${timelapse.title}](${timelapse.thumbnailUrl})](${watchUrl})`
     : `[${timelapse.title}](${watchUrl})`;
@@ -59,7 +46,7 @@ export function SessionInspector({ timelapse, siteUrl }: SessionInspectorProps) 
       await navigator.clipboard.writeText(text);
       setCopied(label);
       success(`Copied ${label}`);
-      // Reset so the same control can announce itself again next time.
+
       setTimeout(() => setCopied(null), 2000);
     } catch {
       // Clipboard access can be refused; the field is selectable either way.
@@ -228,8 +215,7 @@ function Snippet({
         rows={rows}
         value={value}
         aria-label={`${label} to copy`}
-        // Selecting the whole value on focus is the point of a read-only
-        // snippet field; a caret placed mid-URL helps nobody.
+
         onFocus={(e) => e.currentTarget.select()}
         className="mt-1.5 w-full resize-none rounded-[var(--radius-control)] border border-border bg-surface-raised px-2.5 py-1.5 font-mono text-[11px] text-fg-muted outline-none transition-colors focus:border-accent"
       />

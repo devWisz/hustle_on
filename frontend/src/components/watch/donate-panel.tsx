@@ -1,27 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api/client";
 import { formatSol, solToLamports } from "@/lib/format";
 import { sendSol, walletAvailable, WalletError } from "@/lib/wallet";
 import type { DonationIntent, Timelapse } from "@/lib/types";
-import { Button, Card, Field, Input, Textarea } from "./ui";
-import { CopyIcon, QrCodeIcon, SolanaIcon, WalletIcon } from "./icons";
-import { useToast } from "./toast";
+import { Button, Card, Field, Input, Textarea } from "../ui";
+import { CopyIcon, QrCodeIcon, SolanaIcon, WalletIcon } from "../ui/icons";
+import { useToast } from "../layout/toast";
 
 const PRESETS = [0.05, 0.1, 0.5, 1];
 
 type Phase = "idle" | "signing" | "confirming" | "done";
 type Mode = "wallet" | "direct";
 
-/**
- * Sends SOL to the creator of a timelapse.
- *
- * The transfer is wallet to wallet: the site never holds the money and never
- * sees a key. What it does is record the intent first — so the amount and the
- * recipient are fixed by the server — then hand back the signature so the API
- * can check the chain before crediting anything.
- */
 export function DonatePanel({
   timelapse,
   payoutAddress,
@@ -53,8 +45,7 @@ export function DonatePanel({
 
     setPhase("signing");
     try {
-      // The intent comes first. The server decides the recipient from the
-      // creator's verified address, so a tampered page cannot redirect it.
+
       const intent = await api<DonationIntent>("/v1/donations", {
         body: {
           slug: timelapse.slug,
@@ -68,8 +59,6 @@ export function DonatePanel({
       setSignature(sent.signature);
       setPhase("confirming");
 
-      // Confirmation can lag finalization by a few seconds, so a "not yet"
-      // answer is retried rather than surfaced as a failure.
       await confirmWithRetry(intent.id, sent.signature);
       setPhase("done");
     } catch (err) {
@@ -229,7 +218,7 @@ export function DonatePanel({
 
           <div className="rounded-lg border border-border/70 bg-surface-raised/40 p-4 text-center">
             <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-lg border border-border bg-surface p-2 shadow-xs">
-              {/* QR Code Icon / Visual */}
+
               <div className="flex flex-col items-center justify-center gap-1.5 text-fg-muted">
                 <QrCodeIcon size={56} />
                 <span className="font-mono text-[9px] tracking-tight text-fg-subtle">Scan with Mobile Wallet</span>
@@ -254,15 +243,11 @@ export function DonatePanel({
   );
 }
 
-/** Connects the wallet if needed and returns the address that will pay. */
 async function currentAddress(): Promise<string> {
   const { connectWallet } = await import("@/lib/wallet");
   return connectWallet();
 }
 
-/**
- * Confirms the donation, retrying while the transaction is still settling.
- */
 async function confirmWithRetry(id: string, signature: string): Promise<void> {
   for (let attempt = 0; attempt < 8; attempt++) {
     const result = await api<{ status: string }>(`/v1/donations/${id}/confirm`, {
@@ -286,7 +271,6 @@ function readableError(err: unknown): string {
   return "Something went wrong. Try again.";
 }
 
-/** The supporter list under a timelapse. */
 export function SupporterList({
   donations,
 }: {
@@ -317,7 +301,6 @@ export function SupporterList({
   );
 }
 
-/** Shown in place of the panel when a creator has no wallet on file. */
 export function DonationsUnavailable({ handle }: { handle: string }) {
   return (
     <Card className="p-5">

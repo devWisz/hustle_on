@@ -293,7 +293,7 @@ function Closing({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
               href={signedIn || demo ? "/dashboard" : "/login"}
               size="lg"
               variant="ghost"
-              className="w-full text-inverse-fg/70 hover:bg-white/10 hover:text-inverse-fg sm:w-auto"
+              className="w-full text-inverse-fg/70 hover:bg-inverse-fg/10 hover:text-inverse-fg sm:w-auto"
             >
               {signedIn ? "Open your dashboard" : demo ? "See the creator dashboard" : "Sign in"}
             </ButtonLink>

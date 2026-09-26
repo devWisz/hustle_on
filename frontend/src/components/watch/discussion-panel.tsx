@@ -2,40 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api/client";
 import type { Note } from "@/lib/types";
 import { formatDuration, timeAgo } from "@/lib/format";
-import { Avatar, Button, Textarea } from "./ui";
-import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "./icons";
-import { useToast } from "./toast";
-import { usePlayerSeek } from "./player-seek";
-import { SampleNote, SampleTag } from "./guest";
-
-/**
- * The peer notes under a timelapse.
- *
- * Every note here is either a real record read from the API or, inside a guest
- * preview, an invented one behind a sample badge — there is no third case, and
- * in particular no hard-coded thread that appears on a real page. A very
- * believable fake discussion is worse than an empty one, because it is the part
- * of the page a reader is most likely to take at face value.
- */
+import { Avatar, Button, Textarea } from "../ui";
+import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "../ui/icons";
+import { useToast } from "../layout/toast";
+import { usePlayerSeek } from "../timelapse/player-seek";
+import { DemoNote, DemoTag } from "../demo/tag";
 
 export function DiscussionPanel({
   slug,
   title,
   initialNotes,
   signedIn,
-  sample = false,
+  demo = false,
 }: {
   slug: string;
   title: string;
-  /** Server-rendered first paint, so the thread is there without JavaScript. */
+
   initialNotes: Note[];
-  /** Whether the visitor has an account to write a note with. */
+
   signedIn: boolean;
-  /** Preview mode: the thread is shown but nothing on it can be written. */
-  sample?: boolean;
+
+  demo?: boolean;
 }) {
   const { success, error } = useToast();
   const seek = usePlayerSeek();
@@ -46,13 +36,10 @@ export function DiscussionPanel({
   const [posting, setPosting] = useState(false);
   const [busyNote, setBusyNote] = useState<string | null>(null);
 
-  // A client-side navigation between two watch pages reuses this component, so
-  // the server's fresh list has to be adopted rather than kept from before.
   useEffect(() => {
     setNotes(initialNotes);
   }, [initialNotes]);
 
-  /** Parses "1:30", "90" or "1:02:30" into seconds; null when unparseable. */
   function parseTimestamp(raw: string): number | null {
     const value = raw.trim();
     if (!value) return null;
@@ -97,7 +84,7 @@ export function DiscussionPanel({
 
   async function handleVote(note: Note) {
     setBusyNote(note.id);
-    // Optimistic: the mark is one bit and the server's answer replaces it.
+
     const next = !note.viewerHasVoted;
     setNotes((current) =>
       current.map((n) =>
@@ -115,7 +102,7 @@ export function DiscussionPanel({
         current.map((n) => (n.id === note.id ? { ...n, ...result } : n)),
       );
     } catch (err) {
-      // Put the note back exactly as the server last described it.
+
       setNotes((current) => current.map((n) => (n.id === note.id ? note : n)));
       error(err instanceof ApiError ? err.message : "That vote did not register.");
     } finally {
@@ -148,7 +135,7 @@ export function DiscussionPanel({
           <span className="text-[13px] font-normal tabular-nums text-fg-subtle">
             ({notes.length})
           </span>
-          {sample ? <SampleTag /> : null}
+          {demo ? <DemoTag /> : null}
         </h2>
       </div>
 
@@ -158,11 +145,11 @@ export function DiscussionPanel({
         to it.
       </p>
 
-      {sample ? (
-        <SampleNote className="mt-5">
+      {demo ? (
+        <DemoNote className="mt-5">
           An invented thread, shown so the page is not empty. Nothing here can be posted, voted on
           or deleted.
-        </SampleNote>
+        </DemoNote>
       ) : signedIn ? (
         <form onSubmit={handleSubmit} className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4">
           <Textarea
