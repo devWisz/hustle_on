@@ -19,23 +19,52 @@ for that request, so a reported failure can be matched to the exact line.
 | Code | Status | Meaning |
 | --- | --- | --- |
 | `validation_failed` | 422 | Per-field messages in `fields` |
+| `bad_request` | 400 | Malformed body, or a page cursor that is not ours |
 | `unauthorized` | 401 | Sign in |
 | `forbidden` | 403 | Signed in, not allowed — or a CSRF check failed |
 | `not_found` | 404 | Also returned instead of 403 where existence itself is private |
 | `conflict` | 409 | Uniqueness, or a state transition that no longer applies |
-| `rate_limited` | 429 | See `Retry-After` |
+| `payload_too_large` | 413 | Body over 1 MiB, or a file over `UPLOAD_MAX_BYTES` |
+| `rate_limited` | 429 | See `Retry-After` and `X-RateLimit-*` |
 
-**Every state-changing request needs both** an allowlisted `Origin` and the
-`X-Sardhana-CSRF` header, whose value is the `sardhana_session_csrf` cookie.
-Missing either is a 403. Send cookies with `credentials: "include"`.
+**Every state-changing request needs both** an allowlisted `Origin` and, when a
+session cookie is present, the `X-Sardhana-CSRF` header whose value is the
+`sardhana_session_csrf` cookie. Missing either is a 403. Send cookies with
+`credentials: "include"`.
+
+The check runs in one middleware for the whole API, before any handler, so it
+cannot be forgotten on a new endpoint. A request with no session — requesting a
+sign-in link — is protected by the origin check alone, because there is no
+session for a token to be bound to.
 
 Request bodies reject unknown fields, and the error names the field that was not
 recognised — a typo or a stale client becomes a fixable message rather than a
 value silently ignored.
 
-List endpoints return `{ "items": [...] }`. The feed adds an opaque
-`nextCursor`; pass it back as `?cursor=`. Paging is keyset, so a donation
-landing between two page loads cannot shuffle a row from page two onto page one.
+## Paging
+
+**Every list endpoint returns the same envelope, and every one of them pages:**
+
+```json
+{ "items": [ … ], "nextCursor": "MjAyNi0wOS0yNVQxNToyNjow…" }
+```
+
+Pass `nextCursor` back as `?cursor=` for the next page. An absent or empty
+`nextCursor` means that was the last page. Cursors are opaque — base64 so they
+read as tokens rather than as something to construct — and a cursor that was not
+issued by the endpoint you send it to is a `400`, never a silent restart from
+page one.
+
+Paging is keyset, not `OFFSET`: the cursor names the last row seen, so the cost
+of page fifty is the cost of page one, a row inserted between two page loads
+cannot shuffle an already-seen row onto a later page, and no request can make the
+database walk a million rows to throw them away. Each query orders by its sort
+column *and* the row id, so two rows sharing a timestamp still have a defined
+order and a page boundary between them neither repeats nor skips either.
+
+`?limit=` bounds one page. Defaults and maxima per endpoint are listed with each
+one below; a value outside the range is clamped rather than rejected, so a stale
+client still gets a usable page.
 
 ---
 
