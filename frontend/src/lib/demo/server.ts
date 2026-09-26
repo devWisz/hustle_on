@@ -1,13 +1,7 @@
-import { GUEST_COOKIE } from "./guest";
+import "server-only";
+import { cookies } from "next/headers";
+import { DEMO_COOKIE } from "./cookie";
 
-/**
- * Whether this request is a guest preview.
- *
- * Server-only: it reads the request's cookies. It is kept apart from
- * `lib/guest.ts` so the edge middleware can import the constants there without
- * dragging `next/headers` into a runtime that has no such thing.
- */
-export async function isGuestPreview(): Promise<boolean> {
-  const { cookies } = await import("next/headers");
-  return (await cookies()).has(GUEST_COOKIE);
+export async function hasDemoCookie(): Promise<boolean> {
+  return (await cookies()).has(DEMO_COOKIE);
 }
