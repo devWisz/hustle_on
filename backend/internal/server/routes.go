@@ -1,87 +1,95 @@
 package server
 
-import "net/http"
-
 // routes registers every endpoint.
 //
 // The list is the API's access-control map, so it is written to be read that
 // way: public routes first, then routes that need a session, then the two that
 // need the admin role. Anything not listed here does not exist.
+//
+// The second argument of every entry is the rate limit budget the route is
+// charged against (see budgets.go). It is a required argument rather than a
+// defaulted one on purpose: adding an endpoint means deciding what it may cost,
+// and a route cannot be added without a budget by accident. Authentication and
+// authorisation are checked by the handler itself, since only it knows whether
+// the caller must be a member or an admin.
 func (s *Server) routes() {
-	m := s.mux
-
 	// --- operational -----------------------------------------------------
-	m.HandleFunc("GET /health", s.wrap(s.handleHealth))
-	m.HandleFunc("GET /health/ready", s.wrap(s.handleReady))
+	s.route("GET /health", budgetRead, s.handleHealth)
+	s.route("GET /health/ready", budgetRead, s.handleReady)
 
 	// --- public reads ----------------------------------------------------
-	m.HandleFunc("GET /v1/timelapses", s.wrap(s.handleFeed))
-	m.HandleFunc("GET /v1/timelapses/{slug}", s.wrap(s.handleTimelapse))
-	m.HandleFunc("GET /v1/timelapses/{slug}/donations", s.wrap(s.handleTimelapseDonations))
-	m.HandleFunc("GET /v1/timelapses/{slug}/notes", s.wrap(s.handleTimelapseNotes))
-	m.HandleFunc("POST /v1/timelapses/{slug}/views", s.wrap(s.handleRecordView))
-	m.HandleFunc("GET /v1/creators/{handle}", s.wrap(s.handleCreator))
-	m.HandleFunc("GET /v1/creators/{handle}/timelapses", s.wrap(s.handleCreatorTimelapses))
-	m.HandleFunc("GET /v1/stats", s.wrap(s.handleStats))
+	s.route("GET /v1/timelapses", budgetRead, s.handleFeed)
+	s.route("GET /v1/timelapses/{slug}", budgetRead, s.handleTimelapse)
+	s.route("GET /v1/timelapses/{slug}/donations", budgetRead, s.handleTimelapseDonations)
+	s.route("GET /v1/timelapses/{slug}/notes", budgetRead, s.handleTimelapseNotes)
+	s.route("POST /v1/timelapses/{slug}/views", budgetEngage, s.handleRecordView)
+	s.route("GET /v1/creators/{handle}", budgetRead, s.handleCreator)
+	s.route("GET /v1/creators/{handle}/timelapses", budgetRead, s.handleCreatorTimelapses)
+	s.route("GET /v1/stats", budgetRead, s.handleStats)
 
 	// --- authentication --------------------------------------------------
-	m.HandleFunc("POST /v1/auth/request-link", s.wrap(s.handleRequestLink))
-	m.HandleFunc("POST /v1/auth/verify", s.wrap(s.handleVerifyLink))
-	m.HandleFunc("POST /v1/auth/logout", s.wrap(s.handleLogout))
-	m.HandleFunc("GET /v1/auth/session", s.wrap(s.handleSession))
+	// Sign-in gets its own tight budgets, charged by address rather than by
+	// account: these are the two endpoints that send mail and consume secrets.
+	s.route("POST /v1/auth/request-link", budgetAuth, s.handleRequestLink)
+	s.route("POST /v1/auth/verify", budgetVerify, s.handleVerifyLink)
+	s.route("POST /v1/auth/logout", budgetEngage, s.handleLogout)
+	s.route("GET /v1/auth/session", budgetRead, s.handleSession)
 
 	// --- the signed-in account -------------------------------------------
-	m.HandleFunc("GET /v1/me", s.wrap(s.handleMe))
-	m.HandleFunc("PATCH /v1/me", s.wrap(s.handleUpdateMe))
-	m.HandleFunc("GET /v1/me/timelapses", s.wrap(s.handleMyTimelapses))
-	m.HandleFunc("GET /v1/me/donations", s.wrap(s.handleMyDonations))
-	m.HandleFunc("POST /v1/me/wallet/challenge", s.wrap(s.handleWalletChallenge))
-	m.HandleFunc("POST /v1/me/wallet/verify", s.wrap(s.handleWalletVerify))
-	m.HandleFunc("GET /v1/me/bookmarks", s.wrap(s.handleMyBookmarks))
-	m.HandleFunc("PUT /v1/me/bookmarks/{slug}", s.wrap(s.handleAddBookmark))
-	m.HandleFunc("DELETE /v1/me/bookmarks/{slug}", s.wrap(s.handleRemoveBookmark))
+	s.route("GET /v1/me", budgetRead, s.handleMe)
+	s.route("PATCH /v1/me", budgetWrite, s.handleUpdateMe)
+	s.route("GET /v1/me/timelapses", budgetRead, s.handleMyTimelapses)
+	s.route("GET /v1/me/donations", budgetRead, s.handleMyDonations)
+	s.route("POST /v1/me/wallet/challenge", budgetEngage, s.handleWalletChallenge)
+	s.route("POST /v1/me/wallet/verify", budgetEngage, s.handleWalletVerify)
+	s.route("GET /v1/me/bookmarks", budgetRead, s.handleMyBookmarks)
+	s.route("PUT /v1/me/bookmarks/{slug}", budgetEngage, s.handleAddBookmark)
+	s.route("DELETE /v1/me/bookmarks/{slug}", budgetEngage, s.handleRemoveBookmark)
 
 	// --- peer notes ------------------------------------------------------
 	// Reading is public (registered above with the other public reads); these
 	// three require an account, because each one records who said it.
-	m.HandleFunc("POST /v1/timelapses/{slug}/notes", s.wrap(s.handleCreateNote))
-	m.HandleFunc("POST /v1/timelapses/{slug}/notes/{noteId}/vote", s.wrap(s.handleVoteNote))
-	m.HandleFunc("DELETE /v1/timelapses/{slug}/notes/{noteId}", s.wrap(s.handleDeleteNote))
+	s.route("POST /v1/timelapses/{slug}/notes", budgetEngage, s.handleCreateNote)
+	s.route("POST /v1/timelapses/{slug}/notes/{noteId}/vote", budgetEngage, s.handleVoteNote)
+	s.route("DELETE /v1/timelapses/{slug}/notes/{noteId}", budgetEngage, s.handleDeleteNote)
 
 	// --- publishing ------------------------------------------------------
-	m.HandleFunc("POST /v1/uploads", s.wrap(s.handleCreateUpload))
-	m.HandleFunc("POST /v1/timelapses", s.wrap(s.handleCreateTimelapse))
-	m.HandleFunc("POST /v1/timelapses/{id}/uploaded", s.wrap(s.handleMarkUploaded))
-	m.HandleFunc("POST /v1/timelapses/{id}/submit", s.wrap(s.handleSubmitTimelapse))
-	m.HandleFunc("PATCH /v1/timelapses/{id}", s.wrap(s.handleUpdateTimelapse))
-	m.HandleFunc("DELETE /v1/timelapses/{id}", s.wrap(s.handleDeleteTimelapse))
+	// Issuing an upload URL is the most expensive thing a member can ask for,
+	// so it is budgeted apart from the metadata writes that follow it.
+	s.route("POST /v1/uploads", budgetUpload, s.handleCreateUpload)
+	s.route("POST /v1/timelapses", budgetWrite, s.handleCreateTimelapse)
+	s.route("POST /v1/timelapses/{id}/uploaded", budgetWrite, s.handleMarkUploaded)
+	s.route("POST /v1/timelapses/{id}/submit", budgetWrite, s.handleSubmitTimelapse)
+	s.route("PATCH /v1/timelapses/{id}", budgetWrite, s.handleUpdateTimelapse)
+	s.route("DELETE /v1/timelapses/{id}", budgetWrite, s.handleDeleteTimelapse)
 
 	// --- donations -------------------------------------------------------
-	m.HandleFunc("POST /v1/donations", s.wrap(s.handleCreateDonation))
-	m.HandleFunc("POST /v1/donations/{id}/confirm", s.wrap(s.handleConfirmDonation))
+	s.route("POST /v1/donations", budgetDonate, s.handleCreateDonation)
+	s.route("POST /v1/donations/{id}/confirm", budgetDonate, s.handleConfirmDonation)
 
 	// --- review (admin only) ---------------------------------------------
-	m.HandleFunc("GET /v1/admin/queue", s.wrap(s.handleReviewQueue))
-	m.HandleFunc("GET /v1/admin/audit", s.wrap(s.handleAuditLog))
-	m.HandleFunc("POST /v1/admin/timelapses/{id}/approve", s.wrap(s.handleApprove))
-	m.HandleFunc("POST /v1/admin/timelapses/{id}/reject", s.wrap(s.handleReject))
-	m.HandleFunc("DELETE /v1/admin/timelapses/{id}", s.wrap(s.handleTakeDown))
-	m.HandleFunc("GET /v1/admin/members", s.wrap(s.handleMembers))
-	m.HandleFunc("POST /v1/admin/members/{id}/suspend", s.wrap(s.handleMemberStatus("suspended")))
-	m.HandleFunc("POST /v1/admin/members/{id}/reinstate", s.wrap(s.handleMemberStatus("active")))
-	m.HandleFunc("GET /v1/admin/ledger", s.wrap(s.handleLedger))
-	m.HandleFunc("GET /v1/admin/activity", s.wrap(s.handleActivity))
+	s.route("GET /v1/admin/queue", budgetAdmin, s.handleReviewQueue)
+	s.route("GET /v1/admin/audit", budgetAdmin, s.handleAuditLog)
+	s.route("POST /v1/admin/timelapses/{id}/approve", budgetAdmin, s.handleApprove)
+	s.route("POST /v1/admin/timelapses/{id}/reject", budgetAdmin, s.handleReject)
+	s.route("DELETE /v1/admin/timelapses/{id}", budgetAdmin, s.handleTakeDown)
+	s.route("GET /v1/admin/members", budgetAdmin, s.handleMembers)
+	s.route("POST /v1/admin/members/{id}/suspend", budgetAdmin, s.handleMemberStatus("suspended"))
+	s.route("POST /v1/admin/members/{id}/reinstate", budgetAdmin, s.handleMemberStatus("active"))
+	s.route("GET /v1/admin/ledger", budgetAdmin, s.handleLedger)
+	s.route("GET /v1/admin/activity", budgetAdmin, s.handleActivity)
 
 	// --- local object storage (development only) -------------------------
 	// Registered only when no real bucket is configured, so a production
 	// deployment does not carry an unauthenticated write endpoint at all.
+	// Reading is cheap; writing a megabyte at a time is not.
 	if s.media.IsLocal() {
-		m.HandleFunc("PUT /v1/uploads/local/{key...}", s.wrap(s.handleLocalUpload))
-		m.HandleFunc("GET /v1/uploads/local/{key...}", s.wrap(s.handleServeLocalUpload))
+		s.route("PUT /v1/uploads/local/{key...}", budgetUpload, s.handleLocalUpload)
+		s.route("GET /v1/uploads/local/{key...}", budgetRead, s.handleServeLocalUpload)
 	}
 
 	// Anything unmatched gets a JSON 404 rather than the default text page.
-	m.HandleFunc("/", s.wrap(s.handleNotFound))
+	s.route("/", budgetRead, s.handleNotFound)
 }
 
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) error {

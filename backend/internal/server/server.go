@@ -26,7 +26,9 @@ type Server struct {
 	media   *media.Storage
 	limiter *ratelimit.Limiter
 	ceil    *ratelimit.Limiter
-	authLim *ratelimit.Limiter
+	// budgets holds the per-endpoint allowances, keyed by budget name. See
+	// budgets.go for why the limit is per class of work rather than per API.
+	budgets map[string]*budget
 	mux     *http.ServeMux
 }
 
@@ -42,7 +44,7 @@ func New(cfg config.Config, log *slog.Logger, st *store.Store, authSvc *auth.Ser
 		media:   storage,
 		limiter: ratelimit.New(cfg.RateLimitAnon),
 		ceil:    ratelimit.New(cfg.RateLimitIPCeiling),
-		authLim: ratelimit.New(cfg.RateLimitAuth),
+		budgets: buildBudgets(cfg),
 		mux:     http.NewServeMux(),
 	}
 	s.routes()
@@ -59,14 +61,20 @@ func (s *Server) Handler() http.Handler {
 	// resolving the session first is one indexed lookup per request, which is
 	// why ipCeiling wraps it: that is the layer that bounds what a single
 	// address can make the process do before it knows who is asking.
+	//
+	// csrfGuard is inside rateLimit so that a flood of forged writes is still
+	// counted, and outside the mux so that no handler can be reached without
+	// having passed it.
 	return s.recoverPanic(
 		s.requestID(
 			s.logRequests(
-				s.securityHeaders(
-					s.cors(
-						s.ipCeiling(
-							s.attachSession(
-								s.rateLimit(s.mux))))))))
+				s.cacheHeaders(
+					s.securityHeaders(
+						s.cors(
+							s.ipCeiling(
+								s.attachSession(
+									s.rateLimit(
+										s.csrfGuard(s.mux))))))))))
 }
 
 // ListenAndServe runs the API until the context is cancelled, then drains.
