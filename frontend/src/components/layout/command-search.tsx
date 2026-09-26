@@ -1,261 +1,287 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { CloseIcon, SearchIcon } from "./icons";
-import { cx } from "@/lib/format";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { API_URL } from "@/lib/api/client";
+import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
+import { cx, formatSession } from "@/lib/format";
+import type { Page, Timelapse } from "@/lib/types";
+import { MOTION, gsap, useGSAP } from "../motion/gsap";
+import {
+  ArrowRightIcon,
+  GridIcon,
+  InboxIcon,
+  PlayIcon,
+  SearchIcon,
+  SettingsIcon,
+  UploadIcon,
+} from "../ui/icons";
 
-/**
- * A command-palette style search bar.
- *
- * Opens with the `/` key, closes with Escape. It searches timelapses by title
- * and shows instant results from the API. Recent searches are remembered in
- * localStorage so the user sees them when reopening.
- */
+const OPEN_EVENT = "sardhana:command";
+const RECENT_KEY = "sardhana-recent-searches";
 
-interface SearchResult {
-  id: string;
-  slug: string;
-  title: string;
-  creator: { displayName: string };
+export function openCommandSearch() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
 }
 
-const MAX_RECENT = 5;
-const STORAGE_KEY = "sardhana-recent-searches";
+interface Item {
+  id: string;
+  label: string;
+  hint?: string;
+  icon: React.ReactNode;
+  run: () => void;
+}
 
-export function SearchBar() {
+function isTyping(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  return Boolean(el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)));
+}
+
+function localSearch(term: string): Timelapse[] {
+  const q = term.toLowerCase();
+  return SAMPLE_TIMELAPSES.filter(
+    (t) =>
+      t.title.toLowerCase().includes(q) ||
+      t.creator.displayName.toLowerCase().includes(q) ||
+      t.summary.toLowerCase().includes(q),
+  ).slice(0, 6);
+}
+
+export function CommandSearch() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<Timelapse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [active, setActive] = useState(0);
   const [recents, setRecents] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Load recent searches from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setRecents(JSON.parse(stored));
-    } catch {
-      // localStorage may be unavailable.
-    }
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery("");
+    setResults([]);
+    setActive(0);
   }, []);
 
-  // Handle keyboard shortcut to open/close
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "/" && !isInputFocused()) {
+    try {
+      setRecents(JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"));
+    } catch {
+      setRecents([]);
+    }
+    const show = () => setOpen(true);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !isTyping())) {
         e.preventDefault();
         setOpen(true);
       }
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-        setQuery("");
-        setResults([]);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+    };
+    window.addEventListener(OPEN_EVENT, show);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener(OPEN_EVENT, show);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
-  // Auto-focus input when opened
   useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => input.current?.focus());
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, [open]);
 
-  const search = useCallback(async (term: string) => {
+  useGSAP(
+    () => {
+      if (!open || !panel.current) return;
+      const mm = gsap.matchMedia();
+      mm.add(MOTION, () => {
+        gsap.from(panel.current, { y: -12, scale: 0.98, autoAlpha: 0, duration: 0.35, ease: "power3.out" });
+      });
+    },
+    { dependencies: [open] },
+  );
+
+  function search(term: string) {
+    clearTimeout(timer.current);
     if (!term.trim()) {
       setResults([]);
       return;
     }
     setLoading(true);
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
-      const res = await fetch(
-        `${baseUrl}/v1/timelapses?q=${encodeURIComponent(term)}&limit=6`,
-        { credentials: "include" },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data.items ?? []);
+    timer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/v1/timelapses?q=${encodeURIComponent(term)}&limit=6`, {
+          credentials: "include",
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as Page<Timelapse>;
+        setResults(data.items.length ? data.items : localSearch(term));
+      } catch {
+        setResults(localSearch(term));
+      } finally {
+        setLoading(false);
+        setActive(0);
       }
-    } catch {
-      // Search failures are not worth surfacing to the user.
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  function handleInput(value: string) {
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(value), 250);
+    }, 180);
   }
 
-  function saveRecent(term: string) {
+  function remember(term: string) {
     const trimmed = term.trim();
     if (!trimmed) return;
-    const updated = [trimmed, ...recents.filter((r) => r !== trimmed)].slice(0, MAX_RECENT);
-    setRecents(updated);
+    const next = [trimmed, ...recents.filter((r) => r !== trimmed)].slice(0, 5);
+    setRecents(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
     } catch {
-      // Silently fail.
+      return;
     }
   }
 
-  function navigateTo(slug: string) {
-    saveRecent(query);
-    setOpen(false);
-    setQuery("");
-    setResults([]);
-    window.location.href = `/watch/${slug}`;
+  const go = useCallback(
+    (href: string) => {
+      close();
+      router.push(href);
+    },
+    [close, router],
+  );
+
+  const items: Item[] = useMemo(() => {
+    if (query.trim()) {
+      return results.map((t) => ({
+        id: t.id,
+        label: t.title,
+        hint: `${t.creator.displayName}${t.sessionMinutes ? ` · ${formatSession(t.sessionMinutes)}` : ""}`,
+        icon: <PlayIcon size={13} />,
+        run: () => {
+          remember(query);
+          go(`/watch/${t.slug}`);
+        },
+      }));
+    }
+    const recent: Item[] = recents.map((term) => ({
+      id: `recent-${term}`,
+      label: term,
+      hint: "Recent search",
+      icon: <SearchIcon size={14} />,
+      run: () => {
+        setQuery(term);
+        search(term);
+      },
+    }));
+    const pages: Item[] = [
+      { id: "feed", label: "Browse the feed", icon: <PlayIcon size={13} />, run: () => go("/#feed") },
+      { id: "upload", label: "Upload a timelapse", icon: <UploadIcon size={15} />, run: () => go("/upload") },
+      { id: "dashboard", label: "Open your dashboard", icon: <GridIcon size={15} />, run: () => go("/dashboard") },
+      { id: "admin", label: "Open the admin console", icon: <InboxIcon size={15} />, run: () => go("/admin") },
+      { id: "settings", label: "Account settings", icon: <SettingsIcon size={15} />, run: () => go("/settings") },
+    ];
+    return [...recent, ...pages];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, results, recents, go]);
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => Math.min(items.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      items[active]?.run();
+    }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="hidden sm:flex h-8 items-center gap-2 rounded-[var(--radius-control)] border border-border
-                   bg-surface px-3 text-[13px] text-fg-subtle transition-colors
-                   hover:border-border-strong hover:text-fg-muted"
-        aria-label="Search timelapses"
-      >
-        <SearchIcon size={14} />
-        <span>Search</span>
-        <kbd className="ml-2 rounded border border-border bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle">
-          /
-        </kbd>
-      </button>
-    );
-  }
+  if (!open) return null;
 
-  return (
-    <>
-      {/* Backdrop */}
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-start justify-center px-3 pt-[12vh] sm:px-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={close} aria-hidden />
       <div
-        className="fixed inset-0 z-50 bg-black/40 drawer-overlay"
-        onClick={() => {
-          setOpen(false);
-          setQuery("");
-          setResults([]);
-        }}
-      />
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
+        onKeyDown={onKeyDown}
+        className="relative w-full max-w-xl overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-lifted)]"
+      >
+        <div className="flex items-center gap-3 border-b border-border px-4">
+          <SearchIcon size={17} className="shrink-0 text-fg-subtle" />
+          <input
+            ref={input}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              search(e.target.value);
+            }}
+            placeholder="Search sessions, creators, or jump to a page"
+            aria-label="Search"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-results"
+            className="h-14 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-fg-subtle sm:text-[15px]"
+          />
+          <span className="kbd">esc</span>
+        </div>
 
-      {/* Search modal */}
-      <div className="fixed inset-x-0 top-0 z-50 flex justify-center pt-[15vh] px-4">
-        <div
-          className={cx(
-            "w-full max-w-lg overflow-hidden rounded-[var(--radius-panel)]",
-            "border border-border bg-surface shadow-[var(--shadow-raised)]",
-            "animate-scale-in",
+        <ul id="command-results" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
+          {loading ? (
+            <li className="px-3 py-8 text-center text-sm text-fg-muted">Searching</li>
+          ) : items.length === 0 ? (
+            <li className="px-3 py-8 text-center text-sm text-fg-muted">
+              Nothing matches &ldquo;{query}&rdquo;
+            </li>
+          ) : (
+            items.map((item, i) => (
+              <li key={item.id} role="option" aria-selected={i === active}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setActive(i)}
+                  onClick={item.run}
+                  className={cx(
+                    "flex w-full items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-left text-sm transition-colors",
+                    i === active ? "bg-surface-raised text-fg" : "text-fg-muted",
+                  )}
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-fg-muted">
+                    {item.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-fg">{item.label}</span>
+                    {item.hint ? <span className="block truncate text-[12px] text-fg-subtle">{item.hint}</span> : null}
+                  </span>
+                  {i === active ? <ArrowRightIcon size={14} className="shrink-0 text-fg-subtle" /> : null}
+                </button>
+              </li>
+            ))
           )}
-        >
-          {/* Input row */}
-          <div className="flex items-center gap-3 border-b border-border px-4">
-            <SearchIcon size={16} className="shrink-0 text-fg-subtle" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => handleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && results.length > 0 && results[0]) {
-                  navigateTo(results[0].slug);
-                }
-              }}
-              placeholder="Search timelapses..."
-              className="flex-1 bg-transparent py-3.5 text-sm text-fg outline-none placeholder:text-fg-subtle"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setResults([]);
-                  inputRef.current?.focus();
-                }}
-                className="text-fg-subtle hover:text-fg"
-              >
-                <CloseIcon size={14} />
-              </button>
-            )}
-            <kbd className="rounded border border-border bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle">
-              esc
-            </kbd>
-          </div>
+        </ul>
 
-          {/* Results */}
-          <div className="max-h-80 overflow-y-auto">
-            {loading && (
-              <div className="px-4 py-6 text-center text-sm text-fg-muted">Searching...</div>
-            )}
-
-            {!loading && results.length > 0 && (
-              <ul className="py-2">
-                {results.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigateTo(r.slug)}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm
-                                 transition-colors hover:bg-surface-raised"
-                    >
-                      <span className="truncate font-medium">{r.title}</span>
-                      <span className="ml-auto shrink-0 text-[12px] text-fg-subtle">
-                        {r.creator.displayName}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {!loading && query && results.length === 0 && (
-              <div className="px-4 py-6 text-center text-sm text-fg-muted">
-                No timelapses found for &ldquo;{query}&rdquo;
-              </div>
-            )}
-
-            {!loading && !query && recents.length > 0 && (
-              <div className="py-2">
-                <p className="px-4 py-1.5 text-[12px] font-medium text-fg-subtle">
-                  Recent searches
-                </p>
-                {recents.map((term) => (
-                  <button
-                    key={term}
-                    type="button"
-                    onClick={() => {
-                      setQuery(term);
-                      search(term);
-                    }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-fg-muted
-                               transition-colors hover:bg-surface-raised hover:text-fg"
-                  >
-                    <SearchIcon size={13} className="shrink-0" />
-                    {term}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!loading && !query && recents.length === 0 && (
-              <div className="px-4 py-6 text-center text-sm text-fg-subtle">
-                Start typing to search timelapses
-              </div>
-            )}
-          </div>
+        <div className="hidden items-center gap-4 border-t border-border px-4 py-2.5 text-[11.5px] text-fg-subtle sm:flex">
+          <span className="flex items-center gap-1.5">
+            <span className="kbd">↑</span>
+            <span className="kbd">↓</span> to move
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="kbd">↵</span> to open
+          </span>
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="kbd">⌘</span>
+            <span className="kbd">K</span> anywhere
+          </span>
         </div>
       </div>
-    </>
+    </div>,
+    document.body,
   );
-}
-
-function isInputFocused(): boolean {
-  const tag = document.activeElement?.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
