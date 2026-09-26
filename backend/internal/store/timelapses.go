@@ -192,45 +192,87 @@ func (s *Store) ByID(ctx context.Context, id string) (domain.Timelapse, error) {
 	return t, normalize(err)
 }
 
-// CreatorTimelapses lists a creator's published work.
-func (s *Store) CreatorTimelapses(ctx context.Context, handle string, limit int) ([]domain.Timelapse, error) {
+// CreatorTimelapses lists a creator's published work, newest first.
+//
+// The cursor is (published_at, id) — the same pair the ORDER BY uses. Paging a
+// public profile on a timestamp alone would be unstable, because two sessions
+// published in the same transaction share one, and a page boundary between them
+// would be arbitrary.
+func (s *Store) CreatorTimelapses(ctx context.Context, handle string, q PageQuery) (domain.Page[domain.Timelapse], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE u.handle = $1 AND t.status = 'published'
-		ORDER BY t.published_at DESC
-		LIMIT $2`, handle, limit)
+		  AND ($2::timestamptz IS NULL OR (t.published_at, t.id) < ($2, $3::uuid))
+		ORDER BY t.published_at DESC, t.id DESC
+		LIMIT $4`, handle, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
-	return collectTimelapses(rows)
+	items, err := collectTimelapses(rows)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
+	return paginate(items, q.Limit), nil
 }
 
 // MyTimelapses lists everything an account has, in any state, so the dashboard
 // can show drafts and rejections alongside published work.
-func (s *Store) MyTimelapses(ctx context.Context, userID string, limit int) ([]domain.Timelapse, error) {
+//
+// Ordered by when the draft was created, which is the only timestamp every row
+// in the list has: a draft has never been published, so published_at is null.
+func (s *Store) MyTimelapses(ctx context.Context, userID string, q PageQuery) (domain.Page[domain.Timelapse], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE t.user_id = $1 AND t.status <> 'removed'
-		ORDER BY t.created_at DESC
-		LIMIT $2`, userID, limit)
+		  AND ($2::timestamptz IS NULL OR (t.created_at, t.id) < ($2, $3::uuid))
+		ORDER BY t.created_at DESC, t.id DESC
+		LIMIT $4`, userID, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
-	return collectTimelapses(rows)
+	items, err := collectTimelapses(rows)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
+	return pageOf(items, q.Limit, func(t domain.Timelapse) string {
+		return encodeTimelapseCursor(t, &t.CreatedAt)
+	}), nil
 }
 
 // ReviewQueue lists submissions awaiting a decision, oldest first: whoever has
 // been waiting longest is next.
-func (s *Store) ReviewQueue(ctx context.Context, limit int) ([]domain.Timelapse, error) {
+//
+// Paging forward runs in the same direction as the order — `>` rather than `<`
+// — so the second page is the *next* oldest, not the newest.
+func (s *Store) ReviewQueue(ctx context.Context, q PageQuery) (domain.Page[domain.Timelapse], error) {
+	after, afterID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE t.status = 'in_review'
-		ORDER BY t.submitted_at ASC
-		LIMIT $1`, limit)
+		  AND ($1::timestamptz IS NULL OR (t.submitted_at, t.id) > ($1, $2::uuid))
+		ORDER BY t.submitted_at ASC, t.id ASC
+		LIMIT $3`, after, afterID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
-	return collectTimelapses(rows)
+	items, err := collectTimelapses(rows)
+	if err != nil {
+		return domain.Page[domain.Timelapse]{}, err
+	}
+	return pageOf(items, q.Limit, func(t domain.Timelapse) string {
+		return encodeTimelapseCursor(t, t.SubmittedAt)
+	}), nil
 }
 
 // NewTimelapse is the input for creating a draft.
