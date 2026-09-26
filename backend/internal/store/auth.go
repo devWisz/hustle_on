@@ -178,3 +178,11 @@ func (s *Store) SetPayoutAddress(ctx context.Context, userID, address string, at
 		userID, address, at)
 	return normalize(err)
 }
+
+// PurgeExpiredAuth removes auth rows that expired more than thirty days ago,
+// through the purge_expired_auth function added in migration 0007.
+func (s *Store) PurgeExpiredAuth(ctx context.Context) (links, challenges, sessions int64, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT links, challenges, sessions FROM purge_expired_auth()`).
+		Scan(&links, &challenges, &sessions)
+	return links, challenges, sessions, normalize(err)
+}

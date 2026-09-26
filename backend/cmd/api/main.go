@@ -92,6 +92,7 @@ func run() error {
 	// Settles donations whose confirmation call never reached us, so a donor
 	// who closed the tab after signing is still credited.
 	go worker.SettleDonations(ctx, log, st, chain)
+	go worker.PurgeExpiredAuth(ctx, log, st)
 
 	api := server.New(cfg, log, st, authSvc, chain, storage)
 	return api.ListenAndServe(ctx)
