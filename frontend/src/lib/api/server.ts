@@ -43,3 +43,42 @@ export async function apiServerResult<T>(path: string, revalidate = 30): Promise
 export async function apiServer<T>(path: string, revalidate = 30): Promise<T | null> {
   return (await apiServerResult<T>(path, revalidate)).data;
 }
+
+/**
+ * Follows `nextCursor` and returns every page as one collection.
+ *
+ * The API bounds every list, which is the point of paging it — but an operator
+ * console is a surface that legitimately needs the whole set (every member, the
+ * whole ledger) and used to ask for it with one enormous `limit`. This walks the
+ * cursor instead, so the bound stays on the server and the console still shows
+ * everything.
+ *
+ * `maxPages` is a stop, not a target: it keeps a runaway dataset from turning one
+ * page render into an unbounded number of API calls. When it is reached the
+ * caller gets what was fetched, and the API remains the record of what exists.
+ *
+ * Returns null only when the first page could not be read at all, so a caller can
+ * still tell "nothing here" from "the API is unreachable".
+ */
+export async function apiServerAllPages<T>(
+  path: string,
+  revalidate = 30,
+  maxPages = 10,
+): Promise<Page<T> | null> {
+  const items: T[] = [];
+  let cursor = "";
+
+  for (let page = 0; page < maxPages; page++) {
+    const separator = path.includes("?") ? "&" : "?";
+    const url = cursor
+      ? `${path}${separator}cursor=${encodeURIComponent(cursor)}`
+      : path;
+    const result = await apiServerResult<Page<T>>(url, revalidate);
+    if (!result.data) return page === 0 ? null : { items };
+
+    items.push(...(result.data.items ?? []));
+    cursor = result.data.nextCursor ?? "";
+    if (!cursor) break;
+  }
+  return { items };
+}
