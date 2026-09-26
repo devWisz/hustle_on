@@ -22,12 +22,28 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
     (m) => (role === "all" || m.role === role) && (status === "all" || m.status === status),
   );
 
-  function toggle(m: AdminMember) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function toggle(m: AdminMember) {
     const next = m.status === "active" ? "suspended" : "active";
-    setMembers((list) => list.map((x) => (x.id === m.id ? { ...x, status: next } : x)));
-    toast.success(
-      `Demo: ${m.displayName} ${next === "active" ? "reinstated" : "suspended"} in this view only.`,
-    );
+    setBusy(m.id);
+    try {
+      if (!demo) {
+        await api(`/v1/admin/members/${m.id}/${next === "active" ? "reinstate" : "suspend"}`, {
+          method: "POST",
+        });
+      }
+      setMembers((list) => list.map((x) => (x.id === m.id ? { ...x, status: next } : x)));
+      const verb = next === "active" ? "reinstated" : "suspended and signed out everywhere";
+      toast.success(
+        demo ? `Demo: ${m.displayName} ${verb} in this view only.` : `${m.displayName} ${verb}.`,
+      );
+      if (!demo) router.refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "That change did not go through.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   const columns: Column<AdminMember>[] = [
@@ -115,10 +131,9 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
         ) : (
           <Button
             size="sm"
-            variant="ghost"
-            onClick={() => toggle(m)}
-            disabled={!demo}
-            title={demo ? undefined : "Not available in the API yet"}
+            variant={m.status === "active" ? "ghost" : "secondary"}
+            loading={busy === m.id}
+            onClick={() => void toggle(m)}
           >
             {m.status === "active" ? "Suspend" : "Reinstate"}
           </Button>
