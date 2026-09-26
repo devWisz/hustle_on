@@ -1,18 +1,7 @@
-/**
- * The icon set.
- *
- * Every icon is inline SVG. The product uses no emoji anywhere — an emoji
- * renders differently on every platform, carries no accessible name, and reads
- * as decoration next to the work people are publishing here.
- *
- * Outline icons inherit `currentColor` at 1.5px on a 24px grid. Brand marks
- * are filled paths at their official proportions.
- */
-
-interface IconProps {
+export interface IconProps {
   className?: string;
   size?: number;
-  /** Supplied only when the icon carries meaning on its own. */
+
   title?: string;
 }
 
@@ -190,23 +179,14 @@ export function SpinnerIcon({ className, size = 20 }: IconProps) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      className={className}
+      className={className ? `animate-spin ${className}` : "animate-spin"}
       aria-hidden
-      style={{ animation: "spin 0.7s linear infinite" }}
     >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.5" />
-      <path
-        d="M21 12a9 9 0 0 0-9-9"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 }
-
-/* --- brand marks ---------------------------------------------------------- */
 
 export function XIcon({ className, size = 18, title = "X" }: IconProps) {
   return (
@@ -359,24 +339,6 @@ export function CopyIcon(props: IconProps) {
   );
 }
 
-export function CodeIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </Svg>
-  );
-}
-
-export function TagIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
-      <circle cx="7" cy="7" r="1" fill="currentColor" />
-    </Svg>
-  );
-}
-
 export function MessageSquareIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -426,15 +388,129 @@ export function VolumeXIcon(props: IconProps) {
   );
 }
 
-export function QrCodeIcon(props: IconProps) {
+
+export function InboxIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <rect width="6" height="6" x="3" y="3" rx="1" />
-      <rect width="6" height="6" x="15" y="3" rx="1" />
-      <rect width="6" height="6" x="3" y="15" rx="1" />
-      <path d="M15 15h2v2h-2z" />
-      <path d="M19 15h2v6h-6v-2h4v-4z" />
-      <path d="M15 19h2v2h-2z" />
+      <path d="M3 13h5l1.5 2.5h5L16 13h5" />
+      <path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z" />
     </Svg>
+  );
+}
+
+export function GridIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </Svg>
+  );
+}
+
+export function FilmIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4" />
+    </Svg>
+  );
+}
+
+export function CoinsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <ellipse cx="9" cy="7" rx="6" ry="3" />
+      <path d="M3 7v5c0 1.66 2.69 3 6 3s6-1.34 6-3V7" />
+      <path d="M9 18c0 1.66 2.69 3 6 3s6-1.34 6-3v-5c0-1.4-1.9-2.57-4.5-2.9" />
+    </Svg>
+  );
+}
+
+export function ListIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.5" cy="6" r="1" />
+      <circle cx="4.5" cy="12" r="1" />
+      <circle cx="4.5" cy="18" r="1" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </Svg>
+  );
+}
+
+export function ArrowLeftIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
+    </Svg>
+  );
+}
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4v12m0 0-4-4m4 4 4-4" />
+      <path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1" />
+    </Svg>
+  );
+}
+
+export function AlertIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 9v4m0 3.5v.01" />
+      <path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    </Svg>
+  );
+}
+
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="8" cy="17" r="2" />
+    </Svg>
+  );
+}
+
+export function KeyboardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9" />
+    </Svg>
+  );
+}
+
+export function LogoMark({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
+      <rect width="32" height="32" rx="9" fill="currentColor" />
+      <path
+        d="M10 21.5c1.4 1.3 3.4 2 5.7 2 3.6 0 6-1.8 6-4.6 0-5.4-10.6-3.3-10.6-7.4 0-1.4 1.4-2.4 3.8-2.4 1.9 0 3.5.6 4.7 1.6"
+        fill="none"
+        stroke="var(--bg)"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
