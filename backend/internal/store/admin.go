@@ -2,27 +2,53 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/sardhana/backend/internal/domain"
 )
 
+// memberActivity is the expression the member list is ordered by: the most
+// recent of the account's own last-seen stamp, its newest session, and its
+// creation. It is a constant because it appears twice — in the ORDER BY and in
+// the keyset predicate — and two copies of it that drifted apart would page
+// incorrectly rather than fail loudly.
+const memberActivity = `GREATEST(u.last_seen_at,
+	(SELECT max(last_used_at) FROM sessions s WHERE s.user_id = u.id),
+	u.created_at)`
+
 // Members lists accounts for the admin console, most recently active first.
-func (s *Store) Members(ctx context.Context, query string, limit int) ([]domain.AdminMember, error) {
+//
+// The activity expression is never null — it falls back to created_at — so it
+// is a usable sort key, and the id beside it makes the order total. Two accounts
+// created in the same transaction otherwise have no defined order, and a page
+// boundary between them would repeat or drop one.
+func (s *Store) Members(ctx context.Context, query string, q PageQuery) (domain.Page[domain.AdminMember], error) {
+	var before *time.Time
+	var beforeID *string
+	if parts, err := decodeKeyset(q.Cursor, 2); err != nil {
+		return domain.Page[domain.AdminMember]{}, err
+	} else if parts != nil {
+		at, err := parseKeysetTime(parts[0])
+		if err != nil {
+			return domain.Page[domain.AdminMember]{}, err
+		}
+		before, beforeID = &at, &parts[1]
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id::text, u.handle::text, u.display_name, COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''),
 		       COALESCE(u.payout_address, ''), u.timelapse_count, u.donation_count, u.donation_total_lamports,
 		       u.created_at, u.email::text, u.role::text, u.status::text, u.payout_verified_at IS NOT NULL,
 		       (SELECT count(*) FROM timelapses t WHERE t.user_id = u.id AND t.status = 'in_review'),
 		       (SELECT count(*) FROM timelapses t WHERE t.user_id = u.id AND t.status = 'rejected'),
-		       GREATEST(u.last_seen_at,
-		                (SELECT max(last_used_at) FROM sessions s WHERE s.user_id = u.id),
-		                u.created_at)
+		       `+memberActivity+`
 		FROM users u
-		WHERE $1::text IS NULL OR u.handle::text ILIKE $1 OR u.display_name ILIKE $1 OR u.email::text ILIKE $1
-		ORDER BY 17 DESC
-		LIMIT $2`, likePattern(query), limit)
+		WHERE ($1::text IS NULL OR u.handle::text ILIKE $1 OR u.display_name ILIKE $1 OR u.email::text ILIKE $1)
+		  AND ($2::timestamptz IS NULL OR (`+memberActivity+`, u.id) < ($2, $3::uuid))
+		ORDER BY `+memberActivity+` DESC, u.id DESC
+		LIMIT $4`, likePattern(query), before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.AdminMember]{}, normalize(err)
 	}
 	defer rows.Close()
 
@@ -33,11 +59,16 @@ func (s *Store) Members(ctx context.Context, query string, limit int) ([]domain.
 			&m.PayoutAddress, &m.TimelapseCount, &m.DonationCount, &m.DonationTotal,
 			&m.JoinedAt, &m.Email, &m.Role, &m.Status, &m.PayoutVerified,
 			&m.InReview, &m.Rejected, &m.LastActiveAt); err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.AdminMember]{}, normalize(err)
 		}
 		out = append(out, m)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.AdminMember]{}, normalize(err)
+	}
+	return pageOf(out, q.Limit, func(m domain.AdminMember) string {
+		return encodeKeyset(keysetTime(m.LastActiveAt), m.ID)
+	}), nil
 }
 
 // SetMemberStatus suspends or reinstates a member. Admin accounts are never
@@ -52,7 +83,15 @@ func (s *Store) SetMemberStatus(ctx context.Context, id, status string) (string,
 }
 
 // Ledger lists sponsorships across the platform, newest first.
-func (s *Store) Ledger(ctx context.Context, status string, limit int) ([]domain.LedgerEntry, error) {
+//
+// The status filter and the cursor travel together, so a client paging a
+// filtered ledger cannot accidentally resume against the unfiltered one: the
+// filter is re-applied on every page.
+func (s *Store) Ledger(ctx context.Context, status string, q PageQuery) (domain.Page[domain.LedgerEntry], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.LedgerEntry]{}, err
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT d.id::text, d.amount_lamports, COALESCE(d.message, ''), d.status::text,
 		       COALESCE(d.signature, ''), d.confirmed_at, d.created_at,
@@ -63,11 +102,12 @@ func (s *Store) Ledger(ctx context.Context, status string, limit int) ([]domain.
 		JOIN timelapses t ON t.id = d.timelapse_id
 		JOIN users c ON c.id = d.creator_id
 		LEFT JOIN users dn ON dn.id = d.donor_id
-		WHERE $1 = '' OR d.status::text = $1
-		ORDER BY d.created_at DESC
-		LIMIT $2`, status, limit)
+		WHERE ($1 = '' OR d.status::text = $1)
+		  AND ($2::timestamptz IS NULL OR (d.created_at, d.id) < ($2, $3::uuid))
+		ORDER BY d.created_at DESC, d.id DESC
+		LIMIT $4`, status, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.LedgerEntry]{}, normalize(err)
 	}
 	defer rows.Close()
 
@@ -82,14 +122,19 @@ func (s *Store) Ledger(ctx context.Context, status string, limit int) ([]domain.
 			&e.TimelapseID, &e.Timelapse.Slug, &e.Timelapse.Title,
 			&e.Recipient.ID, &e.Recipient.Handle, &e.Recipient.DisplayName, &e.Recipient.AvatarURL,
 			&donorID, &donorHandle, &donorName, &donorAv); err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.LedgerEntry]{}, normalize(err)
 		}
 		if donorID != nil {
 			e.Donor = &domain.Creator{ID: *donorID, Handle: deref(donorHandle), DisplayName: deref(donorName), AvatarURL: deref(donorAv)}
 		}
 		out = append(out, e)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.LedgerEntry]{}, normalize(err)
+	}
+	return pageOf(out, q.Limit, func(e domain.LedgerEntry) string {
+		return encodeKeyset(keysetTime(e.CreatedAt), e.ID)
+	}), nil
 }
 
 // Activity returns one row per UTC day for the last `days` days: submissions
