@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { apiServer, apiServerResult } from "./api/server";
+import { apiServer, apiServerAllPages, apiServerResult } from "./api/server";
 import { hasDemoCookie } from "./demo/server";
 import {
   SAMPLE_RECEIVED,
