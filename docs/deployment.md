@@ -49,7 +49,36 @@ address and bypass every per-address limit.
 make build     # backend/bin/api and frontend/.next
 ```
 
-`backend/Dockerfile` builds a static binary on a distroless base.
+The `Dockerfile` at the repository root builds the API and the `migrate` tool
+into a distroless image. The build context is the root, because the backend
+depends on the sibling `auth` module.
+
+## Render
+
+`render.yaml` is a Render blueprint for the API. Create the service from it
+(New, Blueprint), then fill in the variables it marks as unset:
+
+| Variable | Value |
+| --- | --- |
+| `APP_ENV` | `development` until Resend, object storage and mainnet are ready; production refuses to start without them |
+| `DATABASE_URL` | the Neon pooled connection string |
+| `WEB_PUBLIC_URL` | the frontend URL, for example `https://sardhana.vercel.app` |
+| `CORS_ALLOWED_ORIGINS` | the same frontend URL |
+| `API_PUBLIC_URL` | the Render URL of this service |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Resend credentials; without them sign-in links are only logged |
+
+Render sets `PORT`; the API listens on it. Point the frontend at the service by
+setting `NEXT_PUBLIC_API_URL` to the Render URL in the frontend host.
+
+If the service was created by hand instead of from the blueprint, set its
+Dockerfile path to `./Dockerfile` and its build context to `.`.
+
+Migrations are not run by the deploy. Apply them from a machine with the
+direct connection string:
+
+```bash
+DATABASE_URL_DIRECT=… make db-migrate
+```
 
 ## Migrations
 
