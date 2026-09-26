@@ -106,7 +106,7 @@ func TestWriteBudgetIsChargedPerCaller(t *testing.T) {
 // Registering it unlimited would be a silent hole, which is worse than a crash.
 func TestUnknownBudgetPanicsAtRegistration(t *testing.T) {
 	s := testServer()
-	s.mux = newMux()
+	s.mux = http.NewServeMux()
 	defer func() {
 		if recover() == nil {
 			t.Fatal("a route with an unknown budget was registered without complaint")
