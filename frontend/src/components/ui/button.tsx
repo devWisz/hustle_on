@@ -68,6 +68,11 @@ interface ButtonLinkProps extends React.ComponentProps<typeof Link> {
   size?: ButtonSize;
 }
 
-export function ButtonLink({ variant = "primary", size = "md", className, ...rest }: ButtonLinkProps) {
+export function ButtonLink({
+  variant = "primary",
+  size = "md",
+  className,
+  ...rest
+}: ButtonLinkProps) {
   return <Link className={buttonClass(variant, size, className)} {...rest} />;
 }

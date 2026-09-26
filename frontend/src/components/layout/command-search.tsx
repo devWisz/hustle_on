@@ -103,7 +103,13 @@ export function CommandSearch() {
       if (!open || !panel.current) return;
       const mm = gsap.matchMedia();
       mm.add(MOTION, () => {
-        gsap.from(panel.current, { y: -12, scale: 0.98, autoAlpha: 0, duration: 0.35, ease: "power3.out" });
+        gsap.from(panel.current, {
+          y: -12,
+          scale: 0.98,
+          autoAlpha: 0,
+          duration: 0.35,
+          ease: "power3.out",
+        });
       });
     },
     { dependencies: [open] },
@@ -178,11 +184,36 @@ export function CommandSearch() {
       },
     }));
     const pages: Item[] = [
-      { id: "feed", label: "Browse the feed", icon: <PlayIcon size={13} />, run: () => go("/#feed") },
-      { id: "upload", label: "Upload a timelapse", icon: <UploadIcon size={15} />, run: () => go("/upload") },
-      { id: "dashboard", label: "Open your dashboard", icon: <GridIcon size={15} />, run: () => go("/dashboard") },
-      { id: "admin", label: "Open the admin console", icon: <InboxIcon size={15} />, run: () => go("/admin") },
-      { id: "settings", label: "Account settings", icon: <SettingsIcon size={15} />, run: () => go("/settings") },
+      {
+        id: "feed",
+        label: "Browse the feed",
+        icon: <PlayIcon size={13} />,
+        run: () => go("/#feed"),
+      },
+      {
+        id: "upload",
+        label: "Upload a timelapse",
+        icon: <UploadIcon size={15} />,
+        run: () => go("/upload"),
+      },
+      {
+        id: "dashboard",
+        label: "Open your dashboard",
+        icon: <GridIcon size={15} />,
+        run: () => go("/dashboard"),
+      },
+      {
+        id: "admin",
+        label: "Open the admin console",
+        icon: <InboxIcon size={15} />,
+        run: () => go("/admin"),
+      },
+      {
+        id: "settings",
+        label: "Account settings",
+        icon: <SettingsIcon size={15} />,
+        run: () => go("/settings"),
+      },
     ];
     return [...recent, ...pages];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,7 +237,11 @@ export function CommandSearch() {
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-start justify-center px-3 pt-[12vh] sm:px-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={close} aria-hidden />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={close}
+        aria-hidden
+      />
       <div
         ref={panel}
         role="dialog"
@@ -258,9 +293,13 @@ export function CommandSearch() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-fg">{item.label}</span>
-                    {item.hint ? <span className="block truncate text-[12px] text-fg-subtle">{item.hint}</span> : null}
+                    {item.hint ? (
+                      <span className="block truncate text-[12px] text-fg-subtle">{item.hint}</span>
+                    ) : null}
                   </span>
-                  {i === active ? <ArrowRightIcon size={14} className="shrink-0 text-fg-subtle" /> : null}
+                  {i === active ? (
+                    <ArrowRightIcon size={14} className="shrink-0 text-fg-subtle" />
+                  ) : null}
                 </button>
               </li>
             ))

@@ -31,9 +31,13 @@ export function Ledger({ entries }: { entries: LedgerEntry[] }) {
           <Avatar name={e.donor?.displayName ?? "Anonymous"} size={28} />
           <span className="min-w-0">
             <span className="block truncate font-medium">
-              {e.donor?.displayName ?? "Anonymous"} <span className="text-fg-subtle">to</span> {e.recipient.displayName}
+              {e.donor?.displayName ?? "Anonymous"} <span className="text-fg-subtle">to</span>{" "}
+              {e.recipient.displayName}
             </span>
-            <Link href={`/watch/${e.timelapse.slug}`} className="block truncate text-[12px] text-fg-subtle hover:text-fg">
+            <Link
+              href={`/watch/${e.timelapse.slug}`}
+              className="block truncate text-[12px] text-fg-subtle hover:text-fg"
+            >
               {e.timelapse.title}
             </Link>
           </span>
@@ -91,13 +95,23 @@ export function Ledger({ entries }: { entries: LedgerEntry[] }) {
     <DataTable
       rows={rows}
       columns={columns}
-      search={(e) => `${e.donor?.displayName ?? "anonymous"} ${e.recipient.displayName} ${e.timelapse.title} ${e.signature ?? ""}`}
+      search={(e) =>
+        `${e.donor?.displayName ?? "anonymous"} ${e.recipient.displayName} ${e.timelapse.title} ${e.signature ?? ""}`
+      }
       searchLabel="Search people, sessions or signatures"
       filename="sardhana-ledger.csv"
       defaultSort={{ key: "when", dir: "desc" }}
-      empty={{ title: "No transfers match", description: "Try another status.", icon: <CoinsIcon size={18} /> }}
+      empty={{
+        title: "No transfers match",
+        description: "Try another status.",
+        icon: <CoinsIcon size={18} />,
+      }}
       filters={
-        <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+        <Select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          aria-label="Filter by status"
+        >
           <option value="all">Any status</option>
           {Object.entries(STATUS).map(([key, s]) => (
             <option key={key} value={key}>

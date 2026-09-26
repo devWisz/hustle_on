@@ -87,7 +87,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={item.id}
             className="toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-inverse px-4 py-3 text-inverse-fg shadow-[var(--shadow-lifted)]"
           >
-            <span className={cx("shrink-0", item.tone === "error" ? "text-danger" : "text-success")}>
+            <span
+              className={cx("shrink-0", item.tone === "error" ? "text-danger" : "text-success")}
+            >
               {item.tone === "error" ? <CloseIcon size={16} /> : <CheckIcon size={16} />}
             </span>
             <p className="flex-1 text-[13px] leading-snug">{item.message}</p>

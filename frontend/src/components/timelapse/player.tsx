@@ -78,7 +78,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       if (v.duration && !isNaN(v.duration)) setDuration(v.duration);
     };
     const onEnded = () => {
-
       if (!loopRef.current) setPlaying(false);
     };
 
@@ -130,7 +129,10 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
     (seconds: number) => {
       const v = videoRef.current;
       if (!v) return;
-      v.currentTime = Math.max(0, Math.min(v.duration || durationRef.current, v.currentTime + seconds));
+      v.currentTime = Math.max(
+        0,
+        Math.min(v.duration || durationRef.current, v.currentTime + seconds),
+      );
       resetControlsTimer();
     },
     [resetControlsTimer],
@@ -184,7 +186,10 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      if (!containerRef.current?.contains(document.activeElement) && document.activeElement !== document.body) {
+      if (
+        !containerRef.current?.contains(document.activeElement) &&
+        document.activeElement !== document.body
+      ) {
         return;
       }
 
@@ -332,7 +337,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
           showControls || !playing ? "opacity-100" : "opacity-0"
         }`}
       >
-
         <div className="relative mb-2 flex items-center">
           <input
             type="range"
@@ -348,7 +352,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
 
         <div className="flex items-center justify-between gap-2 text-white">
           <div className="flex items-center gap-1.5 sm:gap-2">
-
             <button
               type="button"
               onClick={togglePlay}
@@ -398,7 +401,6 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-
             <div className="relative">
               <button
                 type="button"

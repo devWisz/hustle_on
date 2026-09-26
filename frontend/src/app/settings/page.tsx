@@ -39,7 +39,11 @@ export default async function SettingsPage() {
                 <Field label="Display name" htmlFor="demo-name">
                   <Input id="demo-name" defaultValue={me.displayName} disabled />
                 </Field>
-                <Field label="Handle" htmlFor="demo-handle" hint="Your profile lives at /creator/your-handle.">
+                <Field
+                  label="Handle"
+                  htmlFor="demo-handle"
+                  hint="Your profile lives at /creator/your-handle."
+                >
                   <Input id="demo-handle" defaultValue={me.handle} disabled />
                 </Field>
                 <Field label="Bio" htmlFor="demo-bio">
@@ -54,7 +58,8 @@ export default async function SettingsPage() {
                 moves nothing.
               </p>
               <p className="mt-4 rounded-[var(--radius-control)] border border-dashed border-border-strong px-3.5 py-3 text-[13px] text-fg-subtle">
-                No wallet on file. Connecting one happens in your own wallet extension, after you sign in.
+                No wallet on file. Connecting one happens in your own wallet extension, after you
+                sign in.
               </p>
             </Card>
             <DemoGate
@@ -67,7 +72,10 @@ export default async function SettingsPage() {
           <>
             <ProfileForm user={me} />
             <WalletForm user={me} />
-            <Card as="section" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <Card
+              as="section"
+              className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+            >
               <div>
                 <h2 className="text-[16px] font-semibold">Session</h2>
                 <p className="mt-1 text-[13.5px] text-fg-muted">

@@ -13,17 +13,12 @@ interface BookmarkButtonProps {
   className?: string;
 }
 
-export function BookmarkButton({
-  timelapse,
-  variant = "icon",
-  className,
-}: BookmarkButtonProps) {
+export function BookmarkButton({ timelapse, variant = "icon", className }: BookmarkButtonProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const { success, error } = useToast();
   const saved = isBookmarked(timelapse.slug);
 
   async function handleClick(e: React.MouseEvent) {
-
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -69,9 +64,7 @@ export function BookmarkButton({
         "press flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200",
         saved
           ? "border-accent/40 bg-accent text-accent-fg opacity-100 shadow-sm"
-          :
-
-            "border-border/60 bg-black/60 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
+          : "border-border/60 bg-black/60 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
         className,
       )}
     >

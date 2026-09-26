@@ -51,7 +51,8 @@ export function DataTable<T extends { id: string | number }>({
     return [...matched].sort((a, b) => {
       const x = get(a);
       const y = get(b);
-      const cmp = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+      const cmp =
+        typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
       return sort.dir === "asc" ? cmp : -cmp;
     });
   }, [rows, query, sort, columns, search]);
@@ -61,12 +62,17 @@ export function DataTable<T extends { id: string | number }>({
   const shown = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   function toggleSort(key: string) {
-    setSort((s) => (s?.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
+    setSort((s) =>
+      s?.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" },
+    );
   }
 
   function exportCsv() {
     const exportable = columns.filter((c) => c.csv);
-    downloadCsv(filename, [exportable.map((c) => c.header), ...filtered.map((r) => exportable.map((c) => c.csv!(r)))]);
+    downloadCsv(filename, [
+      exportable.map((c) => c.header),
+      ...filtered.map((r) => exportable.map((c) => c.csv!(r))),
+    ]);
   }
 
   return (
@@ -101,14 +107,23 @@ export function DataTable<T extends { id: string | number }>({
                     <th
                       key={c.key}
                       scope="col"
-                      aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
+                      aria-sort={
+                        sort?.key === c.key
+                          ? sort.dir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
                       className={cx("px-4 py-2.5 font-medium", c.align === "right" && "text-right")}
                     >
                       {c.sort ? (
                         <button
                           type="button"
                           onClick={() => toggleSort(c.key)}
-                          className={cx("inline-flex items-center gap-1 hover:text-fg", sort?.key === c.key && "text-fg")}
+                          className={cx(
+                            "inline-flex items-center gap-1 hover:text-fg",
+                            sort?.key === c.key && "text-fg",
+                          )}
                         >
                           {c.header}
                           <ChevronDownIcon
@@ -131,7 +146,14 @@ export function DataTable<T extends { id: string | number }>({
                 {shown.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-surface-raised/50">
                     {columns.map((c) => (
-                      <td key={c.key} className={cx("px-4 py-3 align-middle", c.align === "right" && "text-right", c.className)}>
+                      <td
+                        key={c.key}
+                        className={cx(
+                          "px-4 py-3 align-middle",
+                          c.align === "right" && "text-right",
+                          c.className,
+                        )}
+                      >
                         {c.cell(row)}
                       </td>
                     ))}
@@ -143,7 +165,10 @@ export function DataTable<T extends { id: string | number }>({
 
           <ul className="mt-5 space-y-3 md:hidden">
             {shown.map((row) => (
-              <li key={row.id} className="rounded-[var(--radius-card)] border border-border bg-surface p-4">
+              <li
+                key={row.id}
+                className="rounded-[var(--radius-card)] border border-border bg-surface p-4"
+              >
                 {columns
                   .filter((c) => c.primary)
                   .map((c) => (
@@ -165,13 +190,24 @@ export function DataTable<T extends { id: string | number }>({
 
           <div className="mt-4 flex items-center justify-between text-[12.5px] text-fg-muted">
             <span>
-              {safePage * PAGE_SIZE + 1} to {Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of {filtered.length}
+              {safePage * PAGE_SIZE + 1} to {Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)}{" "}
+              of {filtered.length}
             </span>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safePage === 0}
+                onClick={() => setPage(safePage - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="secondary" size="sm" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={safePage >= pages - 1}
+                onClick={() => setPage(safePage + 1)}
+              >
                 Next
               </Button>
             </div>

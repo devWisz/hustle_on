@@ -72,7 +72,6 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
     }
 
     try {
-
       setStage("uploading");
       setProgress(0);
       const upload = await api<Upload>("/v1/uploads", {
@@ -141,12 +140,21 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
           }}
           className={cx(
             "mt-5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[var(--radius-card)] border border-dashed px-6 py-10 text-center transition-colors",
-            dragging ? "border-accent bg-accent-soft" : "border-border-strong hover:border-fg-subtle hover:bg-surface-raised",
+            dragging
+              ? "border-accent bg-accent-soft"
+              : "border-border-strong hover:border-fg-subtle hover:bg-surface-raised",
             busy && "pointer-events-none opacity-60",
           )}
         >
           {previewUrl ? (
-            <video src={previewUrl} muted playsInline autoPlay loop className="aspect-video w-full max-w-md rounded-[var(--radius-control)] bg-black object-cover" />
+            <video
+              src={previewUrl}
+              muted
+              playsInline
+              autoPlay
+              loop
+              className="aspect-video w-full max-w-md rounded-[var(--radius-control)] bg-black object-cover"
+            />
           ) : (
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-raised text-fg-muted">
               <UploadIcon size={20} />
@@ -161,7 +169,7 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
               : "MP4, MOV, WebM or MKV. Uploads straight to storage."}
           </span>
         </label>
-        {fieldErrors.contentType ?? fieldErrors.sizeBytes ? (
+        {(fieldErrors.contentType ?? fieldErrors.sizeBytes) ? (
           <p role="alert" className="mt-3 text-[13px] text-danger">
             {fieldErrors.contentType ?? fieldErrors.sizeBytes}
           </p>

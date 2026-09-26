@@ -79,7 +79,6 @@ async function fetchServerBookmarks(): Promise<SavedTimelapse[] | null> {
     const now = new Date().toISOString();
     return page.items.map((t) => toSaved(t, now));
   } catch (err) {
-
     if (err instanceof ApiError && err.status === 401) return null;
     return null;
   }
@@ -93,7 +92,6 @@ export function useBookmarks() {
   const signedInRef = useRef(false);
 
   useEffect(() => {
-
     setBookmarks(getBookmarks());
     setLoaded(true);
 
@@ -126,7 +124,9 @@ export function useBookmarks() {
   const toggleBookmark = useCallback(async (t: Timelapse): Promise<boolean> => {
     const current = getBookmarks();
     const exists = current.some((b) => b.slug === t.slug);
-    const next = exists ? current.filter((b) => b.slug !== t.slug) : [toSaved(t, new Date().toISOString()), ...current];
+    const next = exists
+      ? current.filter((b) => b.slug !== t.slug)
+      : [toSaved(t, new Date().toISOString()), ...current];
 
     cacheLocally(next);
     setBookmarks(next);

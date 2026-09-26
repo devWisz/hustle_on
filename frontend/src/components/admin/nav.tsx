@@ -14,13 +14,18 @@ const ITEMS = [
   { href: "/admin/audit", label: "Audit trail", icon: ListIcon, key: "audit" },
 ] as const;
 
-export function AdminNav({ counts }: { counts: Partial<Record<(typeof ITEMS)[number]["key"], number>> }) {
+export function AdminNav({
+  counts,
+}: {
+  counts: Partial<Record<(typeof ITEMS)[number]["key"], number>>;
+}) {
   const pathname = usePathname();
 
   return (
     <nav aria-label="Admin" className="scroll-x -mx-4 flex gap-1 px-4 lg:mx-0 lg:flex-col lg:px-0">
       {ITEMS.map((item) => {
-        const current = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+        const current =
+          item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         const count = counts[item.key];
         return (
           <Link
@@ -29,7 +34,9 @@ export function AdminNav({ counts }: { counts: Partial<Record<(typeof ITEMS)[num
             aria-current={current ? "page" : undefined}
             className={cx(
               "press flex shrink-0 items-center gap-3 rounded-full px-3.5 py-2 text-[13.5px] transition-colors lg:rounded-[var(--radius-control)]",
-              current ? "bg-inverse text-inverse-fg" : "text-fg-muted hover:bg-surface-raised hover:text-fg",
+              current
+                ? "bg-inverse text-inverse-fg"
+                : "text-fg-muted hover:bg-surface-raised hover:text-fg",
             )}
           >
             <item.icon size={16} />
@@ -38,7 +45,11 @@ export function AdminNav({ counts }: { counts: Partial<Record<(typeof ITEMS)[num
               <span
                 className={cx(
                   "rounded-full px-1.5 font-mono text-[11px] tabular-nums",
-                  current ? "bg-inverse-fg/15" : item.key === "queue" ? "bg-warning-soft text-warning" : "bg-surface-raised",
+                  current
+                    ? "bg-inverse-fg/15"
+                    : item.key === "queue"
+                      ? "bg-warning-soft text-warning"
+                      : "bg-surface-raised",
                 )}
               >
                 {count}

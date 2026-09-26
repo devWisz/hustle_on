@@ -53,7 +53,9 @@ export function ReviewDesk({
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = q
-      ? queue.filter((t) => `${t.title} ${t.creator.displayName} ${t.summary}`.toLowerCase().includes(q))
+      ? queue.filter((t) =>
+          `${t.title} ${t.creator.displayName} ${t.summary}`.toLowerCase().includes(q),
+        )
       : queue;
     return [...filtered].sort((a, b) =>
       sort === "longest"
@@ -111,7 +113,11 @@ export function ReviewDesk({
         const next = visible[index + 1] ?? visible[index - 1];
         setQueue((q) => q.filter((t) => t.id !== current.id));
         setSelectedId(next?.id);
-        setDecided((d) => ({ ...d, [action === "approve" ? "approved" : "rejected"]: d[action === "approve" ? "approved" : "rejected"] + 1 }));
+        setDecided((d) => ({
+          ...d,
+          [action === "approve" ? "approved" : "rejected"]:
+            d[action === "approve" ? "approved" : "rejected"] + 1,
+        }));
         toast.success(
           demo
             ? `Demo: ${action === "approve" ? "approved" : "sent back"} in this view only.`
@@ -189,7 +195,12 @@ export function ReviewDesk({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort" className="w-full">
+            <Select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as Sort)}
+              aria-label="Sort"
+              className="w-full"
+            >
               <option value="oldest">Oldest first</option>
               <option value="newest">Newest first</option>
               <option value="longest">Longest session</option>
@@ -206,14 +217,18 @@ export function ReviewDesk({
                       aria-current={selected ? "true" : undefined}
                       className={cx(
                         "w-full rounded-[var(--radius-card)] border p-3.5 text-left transition-colors",
-                        selected ? "border-fg bg-surface" : "border-border bg-surface hover:border-border-strong",
+                        selected
+                          ? "border-fg bg-surface"
+                          : "border-border bg-surface hover:border-border-strong",
                       )}
                     >
                       <p className="line-clamp-2 text-[14px] font-medium leading-snug">{t.title}</p>
                       <p className="mt-1.5 flex items-center gap-2 text-[12px] text-fg-subtle">
                         <Avatar name={t.creator.displayName} size={18} />
                         <span className="truncate">{t.creator.displayName}</span>
-                        <span className="ml-auto shrink-0 font-mono">{formatWait(waitingMinutes(t))}</span>
+                        <span className="ml-auto shrink-0 font-mono">
+                          {formatWait(waitingMinutes(t))}
+                        </span>
                       </p>
                       {itemFlags.length ? (
                         <p className="mt-2 flex flex-wrap gap-1">
@@ -228,7 +243,9 @@ export function ReviewDesk({
                   </li>
                 );
               })}
-              {visible.length === 0 ? <li className="p-3 text-[13px] text-fg-muted">Nothing matches that search.</li> : null}
+              {visible.length === 0 ? (
+                <li className="p-3 text-[13px] text-fg-muted">Nothing matches that search.</li>
+              ) : null}
             </ul>
           </div>
 
@@ -256,12 +273,17 @@ export function ReviewDesk({
                       className="aspect-video w-full"
                     />
                   ) : (
-                    <div className="flex aspect-video items-center justify-center text-[13px] text-white/60">No video attached</div>
+                    <div className="flex aspect-video items-center justify-center text-[13px] text-white/60">
+                      No video attached
+                    </div>
                   )}
                 </div>
 
                 <div className="p-5 sm:p-6">
-                  <div data-detail className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-muted">
+                  <div
+                    data-detail
+                    className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-muted"
+                  >
                     <Avatar name={current.creator.displayName} size={22} />
                     <span className="font-medium text-fg">{current.creator.displayName}</span>
                     <span>@{current.creator.handle}</span>
@@ -274,7 +296,10 @@ export function ReviewDesk({
                       </>
                     ) : null}
                   </div>
-                  <h2 data-detail className="mt-3 text-[clamp(1.25rem,1.1rem+0.6vw,1.6rem)] font-semibold leading-snug tracking-tight">
+                  <h2
+                    data-detail
+                    className="mt-3 text-[clamp(1.25rem,1.1rem+0.6vw,1.6rem)] font-semibold leading-snug tracking-tight"
+                  >
                     {current.title}
                   </h2>
                   {flags.length ? (
@@ -286,24 +311,43 @@ export function ReviewDesk({
                       ))}
                     </p>
                   ) : null}
-                  <div data-detail className="mt-5 max-h-72 overflow-y-auto whitespace-pre-wrap text-[15px] leading-[1.7]">
+                  <div
+                    data-detail
+                    className="mt-5 max-h-72 overflow-y-auto whitespace-pre-wrap text-[15px] leading-[1.7]"
+                  >
                     {current.summary}
                   </div>
                   <div data-detail className="mt-5 flex flex-wrap gap-2">
-                    {current.githubUrl ? <SourceLink href={current.githubUrl} icon={<GitHubIcon size={14} />} /> : null}
-                    {current.xUrl ? <SourceLink href={current.xUrl} icon={<XIcon size={12} />} /> : null}
-                    {!current.githubUrl && !current.xUrl ? <p className="text-[13px] text-fg-subtle">No links supplied.</p> : null}
+                    {current.githubUrl ? (
+                      <SourceLink href={current.githubUrl} icon={<GitHubIcon size={14} />} />
+                    ) : null}
+                    {current.xUrl ? (
+                      <SourceLink href={current.xUrl} icon={<XIcon size={12} />} />
+                    ) : null}
+                    {!current.githubUrl && !current.xUrl ? (
+                      <p className="text-[13px] text-fg-subtle">No links supplied.</p>
+                    ) : null}
                   </div>
 
-                  <fieldset data-detail className="mt-6 rounded-[var(--radius-control)] border border-border p-4">
-                    <legend className="px-1 text-[12px] font-medium text-fg-muted">Reviewer checklist</legend>
+                  <fieldset
+                    data-detail
+                    className="mt-6 rounded-[var(--radius-control)] border border-border p-4"
+                  >
+                    <legend className="px-1 text-[12px] font-medium text-fg-muted">
+                      Reviewer checklist
+                    </legend>
                     <div className="space-y-2.5">
                       {CHECKS.map((label, i) => (
-                        <label key={label} className="flex cursor-pointer items-start gap-3 text-[13.5px]">
+                        <label
+                          key={label}
+                          className="flex cursor-pointer items-start gap-3 text-[13.5px]"
+                        >
                           <input
                             type="checkbox"
                             checked={checks[i]}
-                            onChange={(e) => setChecks((c) => c.map((v, j) => (j === i ? e.target.checked : v)))}
+                            onChange={(e) =>
+                              setChecks((c) => c.map((v, j) => (j === i ? e.target.checked : v)))
+                            }
                             className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
                           />
                           <span className={checks[i] ? "text-fg" : "text-fg-muted"}>{label}</span>
@@ -338,18 +382,29 @@ export function ReviewDesk({
                         aria-label="Reason for sending back"
                       />
                       <div className="flex flex-wrap items-center gap-2">
-                        <Button variant="danger" loading={busy} disabled={note.trim().length < 10} onClick={() => void decide("reject")}>
+                        <Button
+                          variant="danger"
+                          loading={busy}
+                          disabled={note.trim().length < 10}
+                          onClick={() => void decide("reject")}
+                        >
                           Send back with note
                         </Button>
                         <Button variant="ghost" onClick={() => setRejecting(false)} disabled={busy}>
                           Cancel
                         </Button>
-                        <span className="ml-auto font-mono text-[11.5px] text-fg-subtle">{note.length}/500</span>
+                        <span className="ml-auto font-mono text-[11.5px] text-fg-subtle">
+                          {note.length}/500
+                        </span>
                       </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <Button loading={busy} onClick={() => void decide("approve")} className="w-full sm:w-auto">
+                      <Button
+                        loading={busy}
+                        onClick={() => void decide("approve")}
+                        className="w-full sm:w-auto"
+                      >
                         <CheckIcon size={15} />
                         Approve and publish
                       </Button>

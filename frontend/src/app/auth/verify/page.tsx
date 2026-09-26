@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { VerifyClient } from "@/components/account/verify-client";
 import { Container, Spinner } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Signing you in", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Signing you in",
+  robots: { index: false, follow: false },
+};
 
 export default function VerifyPage() {
   return (

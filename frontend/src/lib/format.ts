@@ -74,7 +74,11 @@ export function cx(...values: (string | false | null | undefined)[]): string {
   return values.filter(Boolean).join(" ");
 }
 
-const STAMP = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+const STAMP = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
 
 export function formatStamp(iso: string): string {
   return `${STAMP.format(new Date(iso))} UTC`;

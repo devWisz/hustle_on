@@ -45,7 +45,6 @@ export function DonatePanel({
 
     setPhase("signing");
     try {
-
       const intent = await api<DonationIntent>("/v1/donations", {
         body: {
           slug: timelapse.slug,
@@ -98,7 +97,11 @@ export function DonatePanel({
           Sponsor this work
         </h2>
         {payoutAddress ? (
-          <div role="tablist" aria-label="Payment method" className="flex rounded-full bg-surface-raised p-1 text-[12px] font-medium">
+          <div
+            role="tablist"
+            aria-label="Payment method"
+            className="flex rounded-full bg-surface-raised p-1 text-[12px] font-medium"
+          >
             {(["wallet", "direct"] as const).map((m) => (
               <button
                 key={m}
@@ -108,7 +111,9 @@ export function DonatePanel({
                 onClick={() => setMode(m)}
                 className={cx(
                   "rounded-full px-3 py-1 transition-colors",
-                  mode === m ? "bg-surface text-fg shadow-[var(--shadow-card)]" : "text-fg-subtle hover:text-fg",
+                  mode === m
+                    ? "bg-surface text-fg shadow-[var(--shadow-card)]"
+                    : "text-fg-subtle hover:text-fg",
                 )}
               >
                 {m === "wallet" ? "Browser" : "Direct"}
@@ -157,7 +162,11 @@ export function DonatePanel({
                 className="font-mono tabular-nums"
               />
             </Field>
-            <Field label="Message" htmlFor="donation-message" hint="Optional. Shown publicly with your donation.">
+            <Field
+              label="Message"
+              htmlFor="donation-message"
+              hint="Optional. Shown publicly with your donation."
+            >
               <Textarea
                 id="donation-message"
                 rows={2}
@@ -188,9 +197,13 @@ export function DonatePanel({
       ) : (
         <div className="mt-5 space-y-3">
           <div className="rounded-[var(--radius-control)] border border-border bg-surface-raised p-3">
-            <span className="text-[11.5px] font-medium text-fg-subtle">Verified payout address</span>
+            <span className="text-[11.5px] font-medium text-fg-subtle">
+              Verified payout address
+            </span>
             <div className="mt-1.5 flex items-center justify-between gap-2">
-              <code className="select-all truncate font-mono text-[12px] text-fg">{payoutAddress}</code>
+              <code className="select-all truncate font-mono text-[12px] text-fg">
+                {payoutAddress}
+              </code>
               <button
                 type="button"
                 onClick={copyAddress}
@@ -265,7 +278,9 @@ export function SupporterList({
           <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
           <div className="min-w-0 flex-1">
             <p className="text-[13.5px] font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
-            {d.message ? <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{d.message}</p> : null}
+            {d.message ? (
+              <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{d.message}</p>
+            ) : null}
           </div>
           <span className="shrink-0 font-mono text-[12.5px] tabular-nums text-fg">
             {formatSol(d.amountLamports)}

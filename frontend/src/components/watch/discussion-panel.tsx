@@ -98,11 +98,8 @@ export function DiscussionPanel({
         `/v1/timelapses/${slug}/notes/${note.id}/vote`,
         { method: "POST", body: { helpful: next } },
       );
-      setNotes((current) =>
-        current.map((n) => (n.id === note.id ? { ...n, ...result } : n)),
-      );
+      setNotes((current) => current.map((n) => (n.id === note.id ? { ...n, ...result } : n)));
     } catch (err) {
-
       setNotes((current) => current.map((n) => (n.id === note.id ? note : n)));
       error(err instanceof ApiError ? err.message : "That vote did not register.");
     } finally {
@@ -141,8 +138,8 @@ export function DiscussionPanel({
 
       <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-fg-muted">
         Observations on the implementation, the architecture or a specific moment in{" "}
-        <span className="font-medium text-fg">{title}</span>. Click a timestamp to jump the video
-        to it.
+        <span className="font-medium text-fg">{title}</span>. Click a timestamp to jump the video to
+        it.
       </p>
 
       {demo ? (
@@ -151,7 +148,10 @@ export function DiscussionPanel({
           or deleted.
         </DemoNote>
       ) : signedIn ? (
-        <form onSubmit={handleSubmit} className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4"
+        >
           <Textarea
             rows={3}
             placeholder="Share an observation on the implementation, architecture or technique…"
@@ -163,7 +163,10 @@ export function DiscussionPanel({
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="sm:w-44">
-              <label htmlFor="note-timestamp" className="block text-[12px] font-medium text-fg-muted">
+              <label
+                htmlFor="note-timestamp"
+                className="block text-[12px] font-medium text-fg-muted"
+              >
                 Timestamp <span className="font-normal text-fg-subtle">(optional)</span>
               </label>
               <input
@@ -184,7 +187,12 @@ export function DiscussionPanel({
               ) : null}
             </div>
 
-            <Button type="submit" size="sm" loading={posting} disabled={!body.trim() || timestampInvalid}>
+            <Button
+              type="submit"
+              size="sm"
+              loading={posting}
+              disabled={!body.trim() || timestampInvalid}
+            >
               Post note
             </Button>
           </div>

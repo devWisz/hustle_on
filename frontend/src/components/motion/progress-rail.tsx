@@ -29,10 +29,7 @@ export function ProgressRail({ className }: { className?: string }) {
   );
 
   return (
-    <span
-      aria-hidden
-      className={cx("pointer-events-none absolute w-px bg-border", className)}
-    >
+    <span aria-hidden className={cx("pointer-events-none absolute w-px bg-border", className)}>
       <span ref={ref} className="block h-full w-full origin-top bg-accent" />
     </span>
   );

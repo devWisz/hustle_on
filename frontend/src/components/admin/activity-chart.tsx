@@ -11,7 +11,12 @@ const SERIES = [
 ] as const;
 
 function dayLabel(iso: string, long = false) {
-  return new Intl.DateTimeFormat("en", long ? { weekday: "short", month: "short", day: "numeric" } : { month: "short", day: "numeric" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(
+    "en",
+    long
+      ? { weekday: "short", month: "short", day: "numeric" }
+      : { month: "short", day: "numeric" },
+  ).format(new Date(iso));
 }
 
 export function ActivityChart({ days }: { days: ActivityDay[] }) {
@@ -49,12 +54,20 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
         <ul className="flex items-center gap-4 text-[12.5px] text-fg-muted" aria-label="Legend">
           {SERIES.map((s) => (
             <li key={s.key} className="flex items-center gap-2">
-              <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.color }} />
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 rounded-[3px]"
+                style={{ background: s.color }}
+              />
               {s.label}
             </li>
           ))}
         </ul>
-        <div role="tablist" aria-label="Chart view" className="flex rounded-full bg-surface-raised p-1 text-[12px] font-medium">
+        <div
+          role="tablist"
+          aria-label="Chart view"
+          className="flex rounded-full bg-surface-raised p-1 text-[12px] font-medium"
+        >
           {(["chart", "table"] as const).map((v) => (
             <button
               key={v}
@@ -64,7 +77,9 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
               onClick={() => setView(v)}
               className={cx(
                 "rounded-full px-3 py-1 capitalize transition-colors",
-                view === v ? "bg-surface text-fg shadow-[var(--shadow-card)]" : "text-fg-subtle hover:text-fg",
+                view === v
+                  ? "bg-surface text-fg shadow-[var(--shadow-card)]"
+                  : "text-fg-subtle hover:text-fg",
               )}
             >
               {v}
@@ -82,11 +97,16 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
                 className="absolute inset-x-0 border-t border-border"
                 style={{ bottom: `${(t / top) * 100}%` }}
               >
-                <span className="absolute -left-8 -translate-y-1/2 font-mono text-[10.5px] text-fg-subtle">{t}</span>
+                <span className="absolute -left-8 -translate-y-1/2 font-mono text-[10.5px] text-fg-subtle">
+                  {t}
+                </span>
               </div>
             ))}
 
-            <div className="absolute inset-0 flex items-end gap-[2px]" onPointerLeave={() => setActive(null)}>
+            <div
+              className="absolute inset-0 flex items-end gap-[2px]"
+              onPointerLeave={() => setActive(null)}
+            >
               {days.map((d, i) => {
                 const total = d.approved + d.rejected;
                 return (
@@ -101,7 +121,10 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
                   >
                     <span
                       data-bar
-                      className={cx("flex w-full flex-col gap-[2px] transition-opacity", active !== null && active !== i && "opacity-40")}
+                      className={cx(
+                        "flex w-full flex-col gap-[2px] transition-opacity",
+                        active !== null && active !== i && "opacity-40",
+                      )}
                       style={{ height: `${(total / top) * 100}%` }}
                     >
                       {d.rejected > 0 ? (
@@ -126,16 +149,27 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
               <div
                 role="status"
                 className="pointer-events-none absolute bottom-full z-10 mb-2 w-44 -translate-x-1/2 rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2.5 shadow-[var(--shadow-raised)]"
-                style={{ left: `clamp(88px, ${((active + 0.5) / days.length) * 100}%, calc(100% - 88px))` }}
+                style={{
+                  left: `clamp(88px, ${((active + 0.5) / days.length) * 100}%, calc(100% - 88px))`,
+                }}
               >
                 <p className="text-[11.5px] text-fg-subtle">{dayLabel(hovered.date, true)}</p>
                 {SERIES.map((s) => (
-                  <p key={s.key} className="mt-1.5 flex items-center justify-between gap-3 text-[12px] text-fg-muted">
+                  <p
+                    key={s.key}
+                    className="mt-1.5 flex items-center justify-between gap-3 text-[12px] text-fg-muted"
+                  >
                     <span className="flex items-center gap-2">
-                      <span aria-hidden className="h-0.5 w-3 rounded-full" style={{ background: s.color }} />
+                      <span
+                        aria-hidden
+                        className="h-0.5 w-3 rounded-full"
+                        style={{ background: s.color }}
+                      />
                       {s.label}
                     </span>
-                    <span className="font-mono text-[13px] font-semibold text-fg">{hovered[s.key]}</span>
+                    <span className="font-mono text-[13px] font-semibold text-fg">
+                      {hovered[s.key]}
+                    </span>
                   </p>
                 ))}
               </div>
@@ -143,7 +177,11 @@ export function ActivityChart({ days }: { days: ActivityDay[] }) {
           </div>
           <div className="mt-2 flex justify-between font-mono text-[10.5px] text-fg-subtle">
             <span>{days[0] ? dayLabel(days[0].date) : ""}</span>
-            <span>{days[Math.floor(days.length / 2)] ? dayLabel(days[Math.floor(days.length / 2)]!.date) : ""}</span>
+            <span>
+              {days[Math.floor(days.length / 2)]
+                ? dayLabel(days[Math.floor(days.length / 2)]!.date)
+                : ""}
+            </span>
             <span>Today</span>
           </div>
         </div>

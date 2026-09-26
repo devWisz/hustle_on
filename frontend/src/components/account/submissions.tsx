@@ -20,9 +20,14 @@ export function Submissions({ items, linkable }: { items: Timelapse[]; linkable:
 
   return (
     <div>
-      <div role="tablist" aria-label="Filter submissions" className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0">
+      <div
+        role="tablist"
+        aria-label="Filter submissions"
+        className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0"
+      >
         {FILTERS.map((f) => {
-          const count = f.id === "all" ? items.length : items.filter((t) => t.status === f.id).length;
+          const count =
+            f.id === "all" ? items.length : items.filter((t) => t.status === f.id).length;
           return (
             <button
               key={f.id}
@@ -32,7 +37,9 @@ export function Submissions({ items, linkable }: { items: Timelapse[]; linkable:
               onClick={() => setFilter(f.id)}
               className={cx(
                 "press shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
-                filter === f.id ? "bg-inverse text-inverse-fg" : "text-fg-muted hover:bg-surface-raised hover:text-fg",
+                filter === f.id
+                  ? "bg-inverse text-inverse-fg"
+                  : "text-fg-muted hover:bg-surface-raised hover:text-fg",
               )}
             >
               {f.label}
@@ -59,7 +66,12 @@ export function Submissions({ items, linkable }: { items: Timelapse[]; linkable:
                   <span className="relative hidden aspect-video w-32 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-raised sm:block">
                     {t.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={t.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      <img
+                        src={t.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
                     ) : null}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -80,14 +92,18 @@ export function Submissions({ items, linkable }: { items: Timelapse[]; linkable:
                         t.sessionMinutes > 0 ? formatSession(t.sessionMinutes) : null,
                         `submitted ${timeAgo(t.submittedAt ?? t.createdAt)}`,
                         t.status === "published" ? `${formatCount(t.viewCount)} views` : null,
-                        t.donationTotalLamports > 0 ? `${formatSol(t.donationTotalLamports)} raised` : null,
+                        t.donationTotalLamports > 0
+                          ? `${formatSol(t.donationTotalLamports)} raised`
+                          : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                     {t.status === "rejected" && t.reviewNote ? (
                       <div className="mt-3 rounded-[var(--radius-control)] border border-danger/20 bg-danger-soft px-3.5 py-3">
-                        <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-danger">Reviewer note</p>
+                        <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-danger">
+                          Reviewer note
+                        </p>
                         <p className="mt-1 text-[13.5px] leading-relaxed text-fg">{t.reviewNote}</p>
                       </div>
                     ) : null}

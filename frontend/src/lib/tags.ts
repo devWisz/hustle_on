@@ -7,15 +7,38 @@ interface Category {
 export const CATEGORIES: Category[] = [
   { id: "all", label: "All topics", keywords: [] },
   { id: "rust", label: "Rust", keywords: ["rust", "borrow-checker", "lifetime", "cargo", "tokio"] },
-  { id: "compilers", label: "Compilers", keywords: ["compiler", "pass", "parsing", "cfg", "dominator", "ast", "lexer", "tree-diff"] },
-  { id: "audio", label: "Audio / DSP", keywords: ["synth", "oscillator", "audio", "polyphony", "wavetable", "dsp", "buffer", "sample"] },
-  { id: "systems", label: "Systems", keywords: ["kernel", "memory", "allocator", "network", "protocol", "concurrency", "systems"] },
+  {
+    id: "compilers",
+    label: "Compilers",
+    keywords: ["compiler", "pass", "parsing", "cfg", "dominator", "ast", "lexer", "tree-diff"],
+  },
+  {
+    id: "audio",
+    label: "Audio / DSP",
+    keywords: ["synth", "oscillator", "audio", "polyphony", "wavetable", "dsp", "buffer", "sample"],
+  },
+  {
+    id: "systems",
+    label: "Systems",
+    keywords: ["kernel", "memory", "allocator", "network", "protocol", "concurrency", "systems"],
+  },
   { id: "go", label: "Go", keywords: ["golang", "go ", "goroutine", "channel"] },
-  { id: "frontend", label: "UI & Web", keywords: ["react", "ui", "css", "next.js", "frontend", "animation", "layout", "web"] },
-  { id: "algorithms", label: "Algorithms", keywords: ["algorithm", "data structure", "inference", "optimization", "graph", "tree"] },
+  {
+    id: "frontend",
+    label: "UI & Web",
+    keywords: ["react", "ui", "css", "next.js", "frontend", "animation", "layout", "web"],
+  },
+  {
+    id: "algorithms",
+    label: "Algorithms",
+    keywords: ["algorithm", "data structure", "inference", "optimization", "graph", "tree"],
+  },
 ];
 
-export function matchesCategory(t: { title: string; summary: string }, categoryId: string): boolean {
+export function matchesCategory(
+  t: { title: string; summary: string },
+  categoryId: string,
+): boolean {
   if (!categoryId || categoryId === "all") return true;
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   if (!cat) return true;

@@ -35,8 +35,10 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
     { href: "/#feed", label: "Explore", match: (p) => p === "/" || p.startsWith("/watch") },
     { href: "/about", label: "How it works", match: (p) => p === "/about" },
   ];
-  if (user || demo) nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
-  if (user?.role === "admin" || demo) nav.push({ href: "/admin", label: "Admin", match: (p) => p.startsWith("/admin") });
+  if (user || demo)
+    nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
+  if (user?.role === "admin" || demo)
+    nav.push({ href: "/admin", label: "Admin", match: (p) => p.startsWith("/admin") });
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -57,7 +59,12 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
     if (!el) return;
     const mm = gsap.matchMedia();
     mm.add(MOTION, () => {
-      const hide = gsap.to(el, { yPercent: -100, duration: 0.35, ease: "power2.out", paused: true });
+      const hide = gsap.to(el, {
+        yPercent: -100,
+        duration: 0.35,
+        ease: "power2.out",
+        paused: true,
+      });
       const trigger = ScrollTrigger.create({
         start: 0,
         end: "max",
@@ -80,7 +87,11 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
         gsap
           .timeline()
           .from(menu.current, { clipPath: "inset(0 0 100% 0)", duration: 0.55, ease: "expo.out" })
-          .from("[data-menu-item]", { yPercent: 120, autoAlpha: 0, stagger: 0.05, duration: 0.6, ease: "expo.out" }, "-=0.3");
+          .from(
+            "[data-menu-item]",
+            { yPercent: 120, autoAlpha: 0, stagger: 0.05, duration: 0.6, ease: "expo.out" },
+            "-=0.3",
+          );
       });
     },
     { dependencies: [open], scope: menu },
@@ -142,7 +153,10 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
 
           {user ? (
             <>
-              <Link href="/upload" className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}>
+              <Link
+                href="/upload"
+                className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}
+              >
                 Upload
               </Link>
               <Link
@@ -173,67 +187,78 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
 
       {open
         ? createPortal(
-        <div
-          ref={menu}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu"
-          className="fixed inset-0 z-50 flex h-dvh flex-col bg-bg px-4 pb-8 sm:px-6 md:hidden"
-        >
-          <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold" onClick={() => setOpen(false)}>
-              <LogoMark />
-              Sardhana
-            </Link>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close menu"
-              className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg"
+            <div
+              ref={menu}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              className="fixed inset-0 z-50 flex h-dvh flex-col bg-bg px-4 pb-8 sm:px-6 md:hidden"
             >
-              <CloseIcon size={18} />
-            </button>
-          </div>
-
-          <nav aria-label="Menu" className="mt-8 flex flex-col">
-            {[
-              ...nav,
-              ...(user || demo
-                ? [
-                    { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
-                    { href: "/settings", label: "Settings", match: (p: string) => p === "/settings" },
-                  ]
-                : []),
-            ].map((item) => (
-              <div key={item.href} className="overflow-hidden border-b border-border">
+              <div className="flex h-16 items-center justify-between">
                 <Link
-                  data-menu-item
-                  href={item.href}
+                  href="/"
+                  className="flex items-center gap-2.5 text-[15px] font-semibold"
                   onClick={() => setOpen(false)}
-                  aria-current={item.match(pathname) ? "page" : undefined}
-                  className={cx(
-                    "block py-4 text-[2rem] font-semibold tracking-tight",
-                    item.match(pathname) ? "text-fg" : "text-fg-muted",
-                  )}
                 >
-                  {item.label}
+                  <LogoMark />
+                  Sardhana
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close menu"
+                  className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg"
+                >
+                  <CloseIcon size={18} />
+                </button>
               </div>
-            ))}
-          </nav>
 
-          <div className="mt-auto flex flex-col gap-3" data-menu-item>
-            {user ? (
-              <Link href={`/creator/${user.handle}`} className={buttonClass("secondary", "lg", "w-full")}>
-                Your profile
-              </Link>
-            ) : (
-              <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
-                Sign in
-              </Link>
-            )}
-          </div>
-        </div>,
+              <nav aria-label="Menu" className="mt-8 flex flex-col">
+                {[
+                  ...nav,
+                  ...(user || demo
+                    ? [
+                        { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
+                        {
+                          href: "/settings",
+                          label: "Settings",
+                          match: (p: string) => p === "/settings",
+                        },
+                      ]
+                    : []),
+                ].map((item) => (
+                  <div key={item.href} className="overflow-hidden border-b border-border">
+                    <Link
+                      data-menu-item
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      aria-current={item.match(pathname) ? "page" : undefined}
+                      className={cx(
+                        "block py-4 text-[2rem] font-semibold tracking-tight",
+                        item.match(pathname) ? "text-fg" : "text-fg-muted",
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  </div>
+                ))}
+              </nav>
+
+              <div className="mt-auto flex flex-col gap-3" data-menu-item>
+                {user ? (
+                  <Link
+                    href={`/creator/${user.handle}`}
+                    className={buttonClass("secondary", "lg", "w-full")}
+                  >
+                    Your profile
+                  </Link>
+                ) : (
+                  <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
+                    Sign in
+                  </Link>
+                )}
+              </div>
+            </div>,
             document.body,
           )
         : null}

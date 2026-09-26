@@ -1,6 +1,12 @@
 import { cx } from "@/lib/format";
 
-export function DemoTag({ className, children = "Demo" }: { className?: string; children?: React.ReactNode }) {
+export function DemoTag({
+  className,
+  children = "Demo",
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <span
       className={cx(
@@ -14,7 +20,13 @@ export function DemoTag({ className, children = "Demo" }: { className?: string; 
   );
 }
 
-export function DemoNote({ children, className }: { children: React.ReactNode; className?: string }) {
+export function DemoNote({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <p
       className={cx(

@@ -13,7 +13,10 @@ export function TimelapseGrid({
   className?: string;
 }) {
   return (
-    <Reveal stagger={0.08} className={cx("grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3", className)}>
+    <Reveal
+      stagger={0.08}
+      className={cx("grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3", className)}
+    >
       {items.map((t) => (
         <TimelapseCard key={t.id} timelapse={t} demo={demo} />
       ))}

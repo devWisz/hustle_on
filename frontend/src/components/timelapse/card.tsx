@@ -7,13 +7,21 @@ import { EyeIcon } from "../ui/icons";
 import { BookmarkButton } from "./bookmark-button";
 import { CardPreview } from "./preview";
 
-export function compression(t: Pick<Timelapse, "sessionMinutes" | "durationSeconds">): number | null {
+export function compression(
+  t: Pick<Timelapse, "sessionMinutes" | "durationSeconds">,
+): number | null {
   if (t.sessionMinutes <= 0 || t.durationSeconds <= 0) return null;
   const ratio = Math.round((t.sessionMinutes * 60) / t.durationSeconds);
   return ratio > 1 ? ratio : null;
 }
 
-export function TimelapseCard({ timelapse: t, demo = false }: { timelapse: Timelapse; demo?: boolean }) {
+export function TimelapseCard({
+  timelapse: t,
+  demo = false,
+}: {
+  timelapse: Timelapse;
+  demo?: boolean;
+}) {
   const ratio = compression(t);
 
   return (
@@ -38,7 +46,9 @@ export function TimelapseCard({ timelapse: t, demo = false }: { timelapse: Timel
           <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 font-mono text-[11px] text-white">
             <span className="rounded-md bg-black/55 px-1.5 py-0.5 backdrop-blur-sm">
               {ratio ? `${ratio}x` : "Real time"}
-              {t.sessionMinutes > 0 ? ` · ${formatSession(t.sessionMinutes).replace(" of work", "")}` : ""}
+              {t.sessionMinutes > 0
+                ? ` · ${formatSession(t.sessionMinutes).replace(" of work", "")}`
+                : ""}
             </span>
             {t.durationSeconds > 0 ? (
               <span className="rounded-md bg-black/55 px-1.5 py-0.5 tabular-nums backdrop-blur-sm">
@@ -46,7 +56,9 @@ export function TimelapseCard({ timelapse: t, demo = false }: { timelapse: Timel
               </span>
             ) : null}
           </span>
-          {demo ? <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90" /> : null}
+          {demo ? (
+            <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90" />
+          ) : null}
         </Link>
         {demo ? null : (
           <div className="absolute right-3 top-3 z-10">
@@ -89,7 +101,8 @@ export function TimelapseCard({ timelapse: t, demo = false }: { timelapse: Timel
           </span>
           {t.donationTotalLamports > 0 ? (
             <span className="tabular-nums text-fg-muted">
-              <span className="font-medium text-fg">{formatSol(t.donationTotalLamports)}</span> raised
+              <span className="font-medium text-fg">{formatSol(t.donationTotalLamports)}</span>{" "}
+              raised
             </span>
           ) : null}
         </div>

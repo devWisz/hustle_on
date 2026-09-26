@@ -20,7 +20,10 @@ export function HeaderFallback() {
   return (
     <header className="sticky top-0 z-40 border-b border-transparent bg-bg/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight"
+        >
           <LogoMark />
           Sardhana
         </Link>

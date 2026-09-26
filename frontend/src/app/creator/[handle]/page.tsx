@@ -19,8 +19,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const result = await getCreator(handle);
   if (!result) return { title: "Creator" };
   const { creator } = result.data;
-  if (result.demo) return { title: `${creator.displayName} (demo)`, robots: { index: false, follow: false } };
-  return { title: creator.displayName, description: creator.bio ?? `Sessions published by ${creator.displayName}.` };
+  if (result.demo)
+    return { title: `${creator.displayName} (demo)`, robots: { index: false, follow: false } };
+  return {
+    title: creator.displayName,
+    description: creator.bio ?? `Sessions published by ${creator.displayName}.`,
+  };
 }
 
 export default async function CreatorPage({ params }: Props) {
@@ -50,15 +54,30 @@ export default async function CreatorPage({ params }: Props) {
             ) : null}
           </Reveal>
 
-          <Reveal as="dl" stagger={0.08} className="mt-10 grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4">
+          <Reveal
+            as="dl"
+            stagger={0.08}
+            className="mt-10 grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4"
+          >
             {[
-              { label: "Sessions", value: <CountUp value={creator.timelapseCount} format="plain" /> },
+              {
+                label: "Sessions",
+                value: <CountUp value={creator.timelapseCount} format="plain" />,
+              },
               { label: "Hours recorded", value: <CountUp value={hours} format="plain" /> },
-              { label: "Sponsorships", value: <CountUp value={creator.donationCount} format="plain" /> },
-              { label: "Raised", value: <CountUp value={creator.donationTotalLamports} format="sol" /> },
+              {
+                label: "Sponsorships",
+                value: <CountUp value={creator.donationCount} format="plain" />,
+              },
+              {
+                label: "Raised",
+                value: <CountUp value={creator.donationTotalLamports} format="sol" />,
+              },
             ].map((f) => (
               <div key={f.label} className="border-l border-border pl-4">
-                <dd className="tnum text-[clamp(1.4rem,1.1rem+1.2vw,2rem)] font-semibold leading-none tracking-tight">{f.value}</dd>
+                <dd className="tnum text-[clamp(1.4rem,1.1rem+1.2vw,2rem)] font-semibold leading-none tracking-tight">
+                  {f.value}
+                </dd>
                 <dt className="mt-2 text-[12.5px] text-fg-muted">{f.label}</dt>
               </div>
             ))}
@@ -68,7 +87,9 @@ export default async function CreatorPage({ params }: Props) {
 
       <Container width="wide" className="pt-12 sm:pt-16">
         {result.demo ? (
-          <DemoNote className="mb-10">A demo creator from the sample library. Real profiles look exactly like this.</DemoNote>
+          <DemoNote className="mb-10">
+            A demo creator from the sample library. Real profiles look exactly like this.
+          </DemoNote>
         ) : null}
         <h2 className="text-title">Sessions</h2>
         <div className="mt-8">

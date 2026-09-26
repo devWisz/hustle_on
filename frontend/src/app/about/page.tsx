@@ -65,7 +65,9 @@ export default function AboutPage() {
                 {String(i + 1).padStart(2, "0")}
               </span>
               <div className="pt-2">
-                <h2 className="text-[clamp(1.35rem,1.1rem+1vw,1.9rem)] font-semibold tracking-tight">{step.title}</h2>
+                <h2 className="text-[clamp(1.35rem,1.1rem+1vw,1.9rem)] font-semibold tracking-tight">
+                  {step.title}
+                </h2>
                 <p className="mt-3 text-[16px] leading-relaxed text-fg-muted">{step.body}</p>
               </div>
             </Reveal>
@@ -80,7 +82,10 @@ export default function AboutPage() {
             <SplitHeading className="text-title mt-4">What Sardhana will never do</SplitHeading>
             <Reveal as="ul" stagger={0.08} className="mt-10 grid gap-4 sm:grid-cols-2">
               {NEVER.map((line) => (
-                <li key={line} className="flex gap-4 rounded-[var(--radius-card)] border border-border p-5">
+                <li
+                  key={line}
+                  className="flex gap-4 rounded-[var(--radius-card)] border border-border p-5"
+                >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
                     <CloseIcon size={14} />
                   </span>

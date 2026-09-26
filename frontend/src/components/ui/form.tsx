@@ -11,10 +11,7 @@ export function Input({ className, ...rest }: React.ComponentProps<"input">) {
   return <input className={cx(control, "h-11 px-3.5", className)} {...rest} />;
 }
 
-export function Textarea({
-  className,
-  ...rest
-}: React.ComponentProps<"textarea">) {
+export function Textarea({ className, ...rest }: React.ComponentProps<"textarea">) {
   return (
     <textarea
       className={cx(control, "min-h-24 resize-y px-3.5 py-3 leading-relaxed", className)}
@@ -23,11 +20,7 @@ export function Textarea({
   );
 }
 
-export function Select({
-  className,
-  children,
-  ...rest
-}: React.ComponentProps<"select">) {
+export function Select({ className, children, ...rest }: React.ComponentProps<"select">) {
   return (
     <span className={cx("relative inline-block", className)}>
       <select className={cx(control, "h-10 appearance-none pl-3.5 pr-9")} {...rest}>
@@ -41,10 +34,7 @@ export function Select({
   );
 }
 
-export function SearchField({
-  className,
-  ...rest
-}: React.ComponentProps<"input">) {
+export function SearchField({ className, ...rest }: React.ComponentProps<"input">) {
   return (
     <label className={cx("relative block", className)}>
       <span className="sr-only">{rest["aria-label"] ?? "Search"}</span>

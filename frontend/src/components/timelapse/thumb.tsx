@@ -54,14 +54,7 @@ export function ThumbArtwork({
           patternUnits="userSpaceOnUse"
           patternTransform={`rotate(${angle})`}
         >
-          <line
-            x1="0"
-            y1="0"
-            x2="0"
-            y2={spacing}
-            stroke="var(--border-strong)"
-            strokeWidth="1"
-          />
+          <line x1="0" y1="0" x2="0" y2={spacing} stroke="var(--border-strong)" strokeWidth="1" />
         </pattern>
       </defs>
 

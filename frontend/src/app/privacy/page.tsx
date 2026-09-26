@@ -40,7 +40,10 @@ export default function PrivacyPage() {
       footer={
         <p>
           Questions about your data go to{" "}
-          <a href="mailto:privacy@sardhana.com" className="font-medium text-fg underline underline-offset-4">
+          <a
+            href="mailto:privacy@sardhana.com"
+            className="font-medium text-fg underline underline-offset-4"
+          >
             privacy@sardhana.com
           </a>
           .

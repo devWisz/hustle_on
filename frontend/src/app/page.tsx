@@ -31,7 +31,11 @@ export default async function HomePage({
 
       <Container width="wide" className="-mt-2 sm:mt-0">
         <ScrollScale>
-          <Showcase items={feed.demo ? [] : feed.data} fallback={SAMPLE_TIMELAPSES} demo={feed.demo} />
+          <Showcase
+            items={feed.demo ? [] : feed.data}
+            fallback={SAMPLE_TIMELAPSES}
+            demo={feed.demo}
+          />
         </ScrollScale>
       </Container>
 
@@ -44,7 +48,9 @@ export default async function HomePage({
           <Reveal>
             <SectionHeader
               eyebrow={feed.demo ? "The feed · demo library" : "The feed"}
-              title={<span id="feed-heading">Real sessions, read by a person before they went up</span>}
+              title={
+                <span id="feed-heading">Real sessions, read by a person before they went up</span>
+              }
               description="Hover a session to preview it. Filter by topic, or sort by what people funded and watched most."
             />
           </Reveal>
@@ -95,7 +101,12 @@ function Hero({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
                 </ButtonLink>
               </Magnetic>
               {signedIn || demo ? (
-                <ButtonLink href="/#feed" variant="secondary" size="lg" className="w-full sm:w-auto">
+                <ButtonLink
+                  href="/#feed"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
                   Browse sessions
                 </ButtonLink>
               ) : (
@@ -124,7 +135,10 @@ function Claims() {
     <div className="mt-16 border-y border-border py-6 sm:mt-24">
       <Marquee speed={45}>
         {CLAIMS.map((claim) => (
-          <span key={claim} className="flex items-center gap-8 pr-8 text-[clamp(1.1rem,0.9rem+1vw,1.6rem)] font-medium tracking-tight text-fg-muted">
+          <span
+            key={claim}
+            className="flex items-center gap-8 pr-8 text-[clamp(1.1rem,0.9rem+1vw,1.6rem)] font-medium tracking-tight text-fg-muted"
+          >
             {claim}
             <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-border-strong" />
           </span>
@@ -136,10 +150,19 @@ function Claims() {
 
 function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
   const figures = [
-    { label: "Hours of work recorded", value: <CountUp value={Math.round(stats.sessionMinutesRecorded / 60)} format="plain" /> },
-    { label: "Sessions published", value: <CountUp value={stats.publishedTimelapses} format="plain" /> },
+    {
+      label: "Hours of work recorded",
+      value: <CountUp value={Math.round(stats.sessionMinutesRecorded / 60)} format="plain" />,
+    },
+    {
+      label: "Sessions published",
+      value: <CountUp value={stats.publishedTimelapses} format="plain" />,
+    },
     { label: "Creators", value: <CountUp value={stats.creators} format="plain" /> },
-    { label: "Sent straight to creators", value: <CountUp value={stats.donationTotalLamports} format="sol" /> },
+    {
+      label: "Sent straight to creators",
+      value: <CountUp value={stats.donationTotalLamports} format="sol" />,
+    },
   ];
 
   return (
@@ -149,7 +172,11 @@ function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
           <p className="text-eyebrow">By the numbers</p>
           {demo ? <DemoTag /> : null}
         </div>
-        <Reveal as="dl" stagger={0.1} className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border lg:grid-cols-4">
+        <Reveal
+          as="dl"
+          stagger={0.1}
+          className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border lg:grid-cols-4"
+        >
           {figures.map((f) => (
             <div key={f.label} className="bg-surface p-5 sm:p-8">
               <dd className="tnum text-[clamp(1.75rem,1.2rem+2.4vw,3.25rem)] font-semibold leading-none tracking-tight">
@@ -215,8 +242,12 @@ function HowItWorks() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <div className="pt-1.5">
-                  <h3 className="text-[clamp(1.2rem,1rem+0.8vw,1.6rem)] font-semibold tracking-tight">{step.title}</h3>
-                  <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-fg-muted">{step.body}</p>
+                  <h3 className="text-[clamp(1.2rem,1rem+0.8vw,1.6rem)] font-semibold tracking-tight">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-fg-muted">
+                    {step.body}
+                  </p>
                 </div>
               </Reveal>
             ))}
@@ -231,17 +262,20 @@ const PRINCIPLES = [
   {
     icon: ShieldIcon,
     claim: "Nothing publishes itself",
-    detail: "Publishing happens behind the admin role, and every decision is written to an append-only audit trail.",
+    detail:
+      "Publishing happens behind the admin role, and every decision is written to an append-only audit trail.",
   },
   {
     icon: ZapIcon,
     claim: "Rejections carry a reason",
-    detail: "The API refuses a decline with no note, and so does the database. Creators read the reason on their dashboard.",
+    detail:
+      "The API refuses a decline with no note, and so does the database. Creators read the reason on their dashboard.",
   },
   {
     icon: WalletIcon,
     claim: "Donations never touch us",
-    detail: "SOL moves wallet to wallet. We hold no key, take no cut, and verify the transfer on-chain before crediting it.",
+    detail:
+      "SOL moves wallet to wallet. We hold no key, take no cut, and verify the transfer on-chain before crediting it.",
   },
 ];
 
@@ -252,12 +286,17 @@ function Principles() {
         <Reveal>
           <SectionHeader
             eyebrow="What holds it together"
-            title={<span id="principles-heading">Three promises, each with something enforcing it</span>}
+            title={
+              <span id="principles-heading">Three promises, each with something enforcing it</span>
+            }
           />
         </Reveal>
         <Reveal stagger={0.12} className="mt-12 grid gap-4 md:grid-cols-3">
           {PRINCIPLES.map((p) => (
-            <article key={p.claim} className="lift flex flex-col rounded-[var(--radius-card)] border border-border bg-surface p-6 sm:p-8">
+            <article
+              key={p.claim}
+              className="lift flex flex-col rounded-[var(--radius-card)] border border-border bg-surface p-6 sm:p-8"
+            >
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
                 <p.icon size={19} />
               </span>

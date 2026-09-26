@@ -44,17 +44,29 @@ export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compac
           <Badge tone={m.tone} className="h-5 px-2 text-[11px]">
             {m.label}
           </Badge>
-          {title && !compact ? <span className="min-w-0 truncate text-fg-muted">{title}</span> : null}
+          {title && !compact ? (
+            <span className="min-w-0 truncate text-fg-muted">{title}</span>
+          ) : null}
         </p>
-        {compact && title ? <p className="mt-0.5 truncate text-[12.5px] text-fg-muted">{title}</p> : null}
-        {note ? <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-fg-muted">&ldquo;{note}&rdquo;</p> : null}
+        {compact && title ? (
+          <p className="mt-0.5 truncate text-[12.5px] text-fg-muted">{title}</p>
+        ) : null}
+        {note ? (
+          <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-fg-muted">
+            &ldquo;{note}&rdquo;
+          </p>
+        ) : null}
         {!compact ? (
           <p className="mt-1 font-mono text-[11px] text-fg-subtle">
             {entry.subjectType} · {entry.subjectId?.slice(0, 10) ?? "none"}
           </p>
         ) : null}
       </div>
-      <time dateTime={entry.createdAt} title={formatStamp(entry.createdAt)} className="shrink-0 text-[12px] text-fg-subtle">
+      <time
+        dateTime={entry.createdAt}
+        title={formatStamp(entry.createdAt)}
+        className="shrink-0 text-[12px] text-fg-subtle"
+      >
         {timeAgo(entry.createdAt)}
       </time>
     </li>
@@ -69,14 +81,23 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
   const visible = entries.filter((e) => {
     if (action !== "all" && e.action !== action) return false;
     if (!query.trim()) return true;
-    const hay = [e.actor?.displayName, text(e, "title"), text(e, "note"), e.subjectId].join(" ").toLowerCase();
+    const hay = [e.actor?.displayName, text(e, "title"), text(e, "note"), e.subjectId]
+      .join(" ")
+      .toLowerCase();
     return hay.includes(query.toLowerCase());
   });
 
   function exportCsv() {
     downloadCsv("sardhana-audit.csv", [
       ["time", "actor", "action", "subject", "title", "note"],
-      ...visible.map((e) => [e.createdAt, e.actor?.displayName, e.action, `${e.subjectType}:${e.subjectId ?? ""}`, text(e, "title") ?? "", text(e, "note") ?? ""]),
+      ...visible.map((e) => [
+        e.createdAt,
+        e.actor?.displayName,
+        e.action,
+        `${e.subjectType}:${e.subjectId ?? ""}`,
+        text(e, "title") ?? "",
+        text(e, "note") ?? "",
+      ]),
     ]);
   }
 
@@ -99,7 +120,9 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
               aria-pressed={action === a}
               className={cx(
                 "press shrink-0 rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
-                action === a ? "border-fg text-fg" : "border-border text-fg-muted hover:border-border-strong",
+                action === a
+                  ? "border-fg text-fg"
+                  : "border-border text-fg-muted hover:border-border-strong",
               )}
             >
               {a === "all" ? "Everything" : meta(a).label}
@@ -113,7 +136,12 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState className="mt-5" icon={<ListIcon size={18} />} title="No matching entries" description="Every approval, rejection and takedown is recorded here." />
+        <EmptyState
+          className="mt-5"
+          icon={<ListIcon size={18} />}
+          title="No matching entries"
+          description="Every approval, rejection and takedown is recorded here."
+        />
       ) : (
         <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
           {visible.map((entry) => (

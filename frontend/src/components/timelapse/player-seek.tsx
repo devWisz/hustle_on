@@ -12,7 +12,6 @@ interface PlayerSeekValue {
 const PlayerSeekContext = createContext<PlayerSeekValue | null>(null);
 
 export function PlayerSeekProvider({ children }: { children: React.ReactNode }) {
-
   const handler = useRef<SeekHandler | null>(null);
 
   const value = useMemo<PlayerSeekValue>(

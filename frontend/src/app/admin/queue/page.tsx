@@ -5,7 +5,11 @@ import { Card } from "@/components/ui";
 
 export const metadata = { title: "Review desk" };
 
-export default async function QueuePage({ searchParams }: { searchParams: Promise<{ item?: string }> }) {
+export default async function QueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ item?: string }>;
+}) {
   const [data, { item }] = await Promise.all([getAdmin(), searchParams]);
   if (typeof data === "string") return null;
 

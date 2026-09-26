@@ -21,7 +21,11 @@ const DEMO_INCLUDES = [
   "The full admin console: review desk, members, ledger and audit trail",
 ];
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const { next } = await searchParams;
   const destination = safeNext(next);
   const viewer = await getViewer();
@@ -62,7 +66,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </Reveal>
         </div>
 
-        <Reveal immediate delay={0.3} className="rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:p-10">
+        <Reveal
+          immediate
+          delay={0.3}
+          className="rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:p-10"
+        >
           <p className="text-eyebrow">Or look around first</p>
           <h2 className="text-title mt-4">Explore the whole product without an account</h2>
           <p className="mt-3 text-[15px] leading-relaxed text-fg-muted">
@@ -85,7 +93,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <ButtonLink href="/dashboard" size="lg" className="w-full sm:w-auto">
                   Open the dashboard
                 </ButtonLink>
-                <ButtonLink href="/admin" variant="secondary" size="lg" className="w-full sm:w-auto">
+                <ButtonLink
+                  href="/admin"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
                   Open the admin console
                 </ButtonLink>
               </div>
@@ -100,7 +113,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           {viewer.demo ? (
             <p className="mt-5 text-[13px] text-fg-subtle">
-              You are already in demo mode. <Link href="/" className="link-underline text-fg-muted">Back to the feed</Link>
+              You are already in demo mode.{" "}
+              <Link href="/" className="link-underline text-fg-muted">
+                Back to the feed
+              </Link>
             </p>
           ) : null}
         </Reveal>

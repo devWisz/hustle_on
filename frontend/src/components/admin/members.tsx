@@ -15,12 +15,16 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState("all");
 
-  const rows = members.filter((m) => (role === "all" || m.role === role) && (status === "all" || m.status === status));
+  const rows = members.filter(
+    (m) => (role === "all" || m.role === role) && (status === "all" || m.status === status),
+  );
 
   function toggle(m: AdminMember) {
     const next = m.status === "active" ? "suspended" : "active";
     setMembers((list) => list.map((x) => (x.id === m.id ? { ...x, status: next } : x)));
-    toast.success(`Demo: ${m.displayName} ${next === "active" ? "reinstated" : "suspended"} in this view only.`);
+    toast.success(
+      `Demo: ${m.displayName} ${next === "active" ? "reinstated" : "suspended"} in this view only.`,
+    );
   }
 
   const columns: Column<AdminMember>[] = [
@@ -31,7 +35,10 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
       sort: (m) => m.displayName,
       csv: (m) => m.displayName,
       cell: (m) => (
-        <Link href={`/creator/${m.handle}`} className="flex min-w-0 items-center gap-3 hover:opacity-80">
+        <Link
+          href={`/creator/${m.handle}`}
+          className="flex min-w-0 items-center gap-3 hover:opacity-80"
+        >
           <Avatar name={m.displayName} size={32} />
           <span className="min-w-0">
             <span className="block truncate font-medium">{m.displayName}</span>
@@ -45,7 +52,11 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
       header: "Role",
       sort: (m) => m.role,
       csv: (m) => m.role,
-      cell: (m) => <Badge tone={m.role === "admin" ? "accent" : "neutral"}>{m.role === "admin" ? "Admin" : "Member"}</Badge>,
+      cell: (m) => (
+        <Badge tone={m.role === "admin" ? "accent" : "neutral"}>
+          {m.role === "admin" ? "Admin" : "Member"}
+        </Badge>
+      ),
     },
     {
       key: "status",
@@ -99,7 +110,13 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
         m.role === "admin" ? (
           <span className="text-[12px] text-fg-subtle">Operator</span>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => toggle(m)} disabled={!demo} title={demo ? undefined : "Not available in the API yet"}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => toggle(m)}
+            disabled={!demo}
+            title={demo ? undefined : "Not available in the API yet"}
+          >
             {m.status === "active" ? "Suspend" : "Reinstate"}
           </Button>
         ),
@@ -114,15 +131,27 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
       searchLabel="Search by name, handle or email"
       filename="sardhana-members.csv"
       defaultSort={{ key: "active", dir: "desc" }}
-      empty={{ title: "No members match", description: "Try clearing a filter.", icon: <UsersIcon size={18} /> }}
+      empty={{
+        title: "No members match",
+        description: "Try clearing a filter.",
+        icon: <UsersIcon size={18} />,
+      }}
       filters={
         <div className="flex gap-2">
-          <Select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Filter by role">
+          <Select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            aria-label="Filter by role"
+          >
             <option value="all">Any role</option>
             <option value="member">Members</option>
             <option value="admin">Admins</option>
           </Select>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            aria-label="Filter by status"
+          >
             <option value="all">Any status</option>
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>

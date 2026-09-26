@@ -53,7 +53,6 @@ export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.de
 let connection: Connection | null = null;
 
 export function getConnection(): Connection {
-
   connection ??= new Connection(RPC_URL, "confirmed");
   return connection;
 }

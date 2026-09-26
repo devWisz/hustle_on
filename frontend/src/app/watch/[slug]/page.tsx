@@ -29,7 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await getWatch(slug);
   if (!data) return { title: "Session" };
   const t = data.timelapse;
-  if (isSampleSlug(slug)) return { title: `${t.title} (demo)`, robots: { index: false, follow: false } };
+  if (isSampleSlug(slug))
+    return { title: `${t.title} (demo)`, robots: { index: false, follow: false } };
   return {
     title: t.title,
     description: t.summary.slice(0, 160),
@@ -45,7 +46,13 @@ export default async function WatchPage({ params }: Props) {
   const { timelapse: t, demo } = data;
   const ratio = compression(t);
   const facts = [
-    { label: "Work session", value: t.sessionMinutes > 0 ? formatSession(t.sessionMinutes).replace(" of work", "") : "Not given" },
+    {
+      label: "Work session",
+      value:
+        t.sessionMinutes > 0
+          ? formatSession(t.sessionMinutes).replace(" of work", "")
+          : "Not given",
+    },
     { label: "Playback", value: formatDuration(t.durationSeconds) },
     { label: "Speed-up", value: ratio ? `${ratio}x` : "Real time" },
     { label: "Views", value: formatCount(t.viewCount) },
@@ -76,7 +83,9 @@ export default async function WatchPage({ params }: Props) {
 
             <Reveal immediate delay={0.1} className="mt-8">
               <div className="flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
-                {t.publishedAt ? <time dateTime={t.publishedAt}>Published {formatDate(t.publishedAt)}</time> : null}
+                {t.publishedAt ? (
+                  <time dateTime={t.publishedAt}>Published {formatDate(t.publishedAt)}</time>
+                ) : null}
                 {demo ? <DemoTag /> : null}
               </div>
               <h1 className="text-title mt-3 max-w-3xl">{t.title}</h1>
@@ -85,7 +94,11 @@ export default async function WatchPage({ params }: Props) {
                 <CreatorLine creator={t.creator} />
                 {demo ? null : (
                   <div className="flex items-center gap-2">
-                    <ShareButton title={t.title} text={t.summary.slice(0, 120)} path={`/watch/${t.slug}`} />
+                    <ShareButton
+                      title={t.title}
+                      text={t.summary.slice(0, 120)}
+                      path={`/watch/${t.slug}`}
+                    />
                     <BookmarkButton timelapse={t} variant="inline" />
                   </div>
                 )}
@@ -167,7 +180,11 @@ export default async function WatchPage({ params }: Props) {
   );
 }
 
-function CreatorLine({ creator }: { creator: { handle: string; displayName: string; avatarUrl?: string } }) {
+function CreatorLine({
+  creator,
+}: {
+  creator: { handle: string; displayName: string; avatarUrl?: string };
+}) {
   const inner = (
     <>
       <Avatar name={creator.displayName} src={creator.avatarUrl} size={40} />
@@ -178,7 +195,10 @@ function CreatorLine({ creator }: { creator: { handle: string; displayName: stri
     </>
   );
   return (
-    <Link href={`/creator/${creator.handle}`} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+    <Link
+      href={`/creator/${creator.handle}`}
+      className="flex items-center gap-3 transition-opacity hover:opacity-80"
+    >
       {inner}
     </Link>
   );
@@ -187,8 +207,20 @@ function CreatorLine({ creator }: { creator: { handle: string; displayName: stri
 function WorkLinks({ githubUrl, xUrl }: { githubUrl?: string; xUrl?: string }) {
   if (!githubUrl && !xUrl) return null;
   const links = [
-    githubUrl ? { href: githubUrl, icon: <GitHubIcon size={15} />, label: githubUrl.replace(/^https:\/\/(www\.)?github\.com\//, "") } : null,
-    xUrl ? { href: xUrl, icon: <XIcon size={13} />, label: xUrl.replace(/^https:\/\/(x|twitter)\.com\//, "@") } : null,
+    githubUrl
+      ? {
+          href: githubUrl,
+          icon: <GitHubIcon size={15} />,
+          label: githubUrl.replace(/^https:\/\/(www\.)?github\.com\//, ""),
+        }
+      : null,
+    xUrl
+      ? {
+          href: xUrl,
+          icon: <XIcon size={13} />,
+          label: xUrl.replace(/^https:\/\/(x|twitter)\.com\//, "@"),
+        }
+      : null,
   ].filter((l): l is { href: string; icon: React.ReactElement; label: string } => l !== null);
 
   return (

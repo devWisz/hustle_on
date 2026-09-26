@@ -19,7 +19,9 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const creators = Array.from(new Map(initial.map((t) => [t.creator.handle, t.creator.displayName])).entries());
+  const creators = Array.from(
+    new Map(initial.map((t) => [t.creator.handle, t.creator.displayName])).entries(),
+  );
   const rows = creator === "all" ? items : items.filter((t) => t.creator.handle === creator);
 
   async function takeDown(t: Timelapse) {
@@ -27,7 +29,9 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
     try {
       if (!demo) await api(`/v1/admin/timelapses/${t.id}`, { method: "DELETE" });
       setItems((list) => list.filter((x) => x.id !== t.id));
-      toast.success(demo ? "Demo: removed from this view only." : "Taken down. It is off the feed.");
+      toast.success(
+        demo ? "Demo: removed from this view only." : "Taken down. It is off the feed.",
+      );
       if (!demo) router.refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "That takedown did not go through.");
@@ -49,7 +53,12 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
           <span className="hidden aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-raised sm:block">
             {t.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={t.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <img
+                src={t.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
             ) : null}
           </span>
           <span className="min-w-0">
@@ -68,7 +77,9 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
       header: "Published",
       sort: (t) => Date.parse(t.publishedAt ?? t.createdAt),
       csv: (t) => t.publishedAt,
-      cell: (t) => <span className="text-fg-muted">{t.publishedAt ? timeAgo(t.publishedAt) : "Not yet"}</span>,
+      cell: (t) => (
+        <span className="text-fg-muted">{t.publishedAt ? timeAgo(t.publishedAt) : "Not yet"}</span>
+      ),
     },
     {
       key: "views",
@@ -84,7 +95,9 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
       align: "right",
       sort: (t) => t.donationTotalLamports,
       csv: (t) => t.donationTotalLamports / 1e9,
-      cell: (t) => <span className="font-mono tabular-nums">{formatSol(t.donationTotalLamports)}</span>,
+      cell: (t) => (
+        <span className="font-mono tabular-nums">{formatSol(t.donationTotalLamports)}</span>
+      ),
     },
     {
       key: "actions",
@@ -93,7 +106,12 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
       cell: (t) =>
         confirming === t.id ? (
           <span className="inline-flex gap-1.5">
-            <Button size="sm" variant="danger" loading={busy === t.id} onClick={() => void takeDown(t)}>
+            <Button
+              size="sm"
+              variant="danger"
+              loading={busy === t.id}
+              onClick={() => void takeDown(t)}
+            >
               Confirm
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
@@ -116,9 +134,17 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
       searchLabel="Search sessions or creators"
       filename="sardhana-library.csv"
       defaultSort={{ key: "published", dir: "desc" }}
-      empty={{ title: "No sessions match", description: "Try another search or creator.", icon: <FilmIcon size={18} /> }}
+      empty={{
+        title: "No sessions match",
+        description: "Try another search or creator.",
+        icon: <FilmIcon size={18} />,
+      }}
       filters={
-        <Select value={creator} onChange={(e) => setCreator(e.target.value)} aria-label="Filter by creator">
+        <Select
+          value={creator}
+          onChange={(e) => setCreator(e.target.value)}
+          aria-label="Filter by creator"
+        >
           <option value="all">All creators</option>
           {creators.map(([handle, name]) => (
             <option key={handle} value={handle}>

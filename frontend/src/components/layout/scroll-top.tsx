@@ -15,7 +15,11 @@ export function ScrollTop() {
       start: 600,
       end: "max",
       onToggle: (self) =>
-        gsap.to(el, { autoAlpha: self.isActive ? 1 : 0, scale: self.isActive ? 1 : 0.8, duration: 0.3 }),
+        gsap.to(el, {
+          autoAlpha: self.isActive ? 1 : 0,
+          scale: self.isActive ? 1 : 0.8,
+          duration: 0.3,
+        }),
     });
     return () => trigger.kill();
   });

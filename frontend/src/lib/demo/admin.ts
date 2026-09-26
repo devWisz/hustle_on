@@ -277,4 +277,8 @@ export const DEMO_AUDIT: AuditEntry[] = [
   },
 ];
 
-export const DEMO_ADMIN = { id: REVIEWER.id, handle: REVIEWER.handle, displayName: REVIEWER.displayName };
+export const DEMO_ADMIN = {
+  id: REVIEWER.id,
+  handle: REVIEWER.handle,
+  displayName: REVIEWER.displayName,
+};

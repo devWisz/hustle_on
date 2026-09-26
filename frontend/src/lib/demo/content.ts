@@ -147,10 +147,7 @@ export const SAMPLE_STATS: Stats = {
   publishedTimelapses: SAMPLE_TIMELAPSES.length,
   sessionMinutesRecorded: SAMPLE_TIMELAPSES.reduce((total, t) => total + t.sessionMinutes, 0),
   confirmedDonations: SAMPLE_TIMELAPSES.reduce((total, t) => total + t.donationCount, 0),
-  donationTotalLamports: SAMPLE_TIMELAPSES.reduce(
-    (total, t) => total + t.donationTotalLamports,
-    0,
-  ),
+  donationTotalLamports: SAMPLE_TIMELAPSES.reduce((total, t) => total + t.donationTotalLamports, 0),
 };
 
 export function sampleFeed(sort: string): Timelapse[] {
@@ -164,7 +161,8 @@ export function sampleFeed(sort: string): Timelapse[] {
       return items.sort((a, b) => b.sessionMinutes - a.sessionMinutes);
     default:
       return items.sort(
-        (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
+        (a, b) =>
+          Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
       );
   }
 }

@@ -30,7 +30,10 @@ export function LegalPage({
           <ol className="sticky top-28 space-y-2 text-[13px]">
             {sections.map((s, i) => (
               <li key={s.title}>
-                <a href={`#s-${i + 1}`} className="flex gap-3 text-fg-muted transition-colors hover:text-fg">
+                <a
+                  href={`#s-${i + 1}`}
+                  className="flex gap-3 text-fg-muted transition-colors hover:text-fg"
+                >
                   <span className="font-mono text-fg-subtle">{String(i + 1).padStart(2, "0")}</span>
                   {s.title}
                 </a>
@@ -42,7 +45,9 @@ export function LegalPage({
           {sections.map((s, i) => (
             <Reveal as="li" key={s.title} className="scroll-mt-24 py-8" y={16}>
               <div id={`s-${i + 1}`}>
-                <p className="font-mono text-[12px] text-fg-subtle">{String(i + 1).padStart(2, "0")}</p>
+                <p className="font-mono text-[12px] text-fg-subtle">
+                  {String(i + 1).padStart(2, "0")}
+                </p>
                 <h2 className="mt-2 text-[20px] font-semibold tracking-tight">{s.title}</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-fg-muted">{s.body}</p>
               </div>
@@ -50,7 +55,9 @@ export function LegalPage({
           ))}
         </ol>
       </div>
-      {footer ? <div className="mt-10 max-w-2xl text-[15px] text-fg-muted lg:ml-[268px]">{footer}</div> : null}
+      {footer ? (
+        <div className="mt-10 max-w-2xl text-[15px] text-fg-muted lg:ml-[268px]">{footer}</div>
+      ) : null}
     </Container>
   );
 }

@@ -28,7 +28,12 @@ export default async function DashboardPage() {
   const views = items.reduce((n, t) => n + t.viewCount, 0);
   const inReview = items.filter((t) => t.status === "in_review").length;
   const tiles = [
-    { label: "Published", value: <CountUp value={items.filter((t) => t.status === "published").length} format="plain" /> },
+    {
+      label: "Published",
+      value: (
+        <CountUp value={items.filter((t) => t.status === "published").length} format="plain" />
+      ),
+    },
     { label: "In review", value: <CountUp value={inReview} format="plain" /> },
     { label: "Total views", value: <CountUp value={views} /> },
     { label: "Raised", value: <CountUp value={me.donationTotalLamports} format="sol" /> },
@@ -63,7 +68,10 @@ export default async function DashboardPage() {
 
       <Reveal as="dl" stagger={0.07} className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-[var(--radius-card)] border border-border bg-surface p-5">
+          <div
+            key={t.label}
+            className="rounded-[var(--radius-card)] border border-border bg-surface p-5"
+          >
             <dt className="text-[12.5px] text-fg-muted">{t.label}</dt>
             <dd className="tnum mt-3 text-[clamp(1.5rem,1.2rem+1.2vw,2.25rem)] font-semibold leading-none tracking-tight">
               {t.value}
@@ -125,18 +133,32 @@ export default async function DashboardPage() {
                 </span>
               </h2>
               {donations.length === 0 ? (
-                <p className="mt-3 text-[13.5px] text-fg-muted">None yet. They appear here the moment they confirm.</p>
+                <p className="mt-3 text-[13.5px] text-fg-muted">
+                  None yet. They appear here the moment they confirm.
+                </p>
               ) : (
                 <ul className="mt-2 divide-y divide-border">
                   {donations.map((d) => (
                     <li key={d.id} className="flex items-start gap-3 py-3">
                       <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13.5px] font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
-                        {d.message ? <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-muted">{d.message}</p> : null}
-                        {d.confirmedAt ? <p className="mt-1 text-[11.5px] text-fg-subtle">{timeAgo(d.confirmedAt)}</p> : null}
+                        <p className="text-[13.5px] font-medium">
+                          {d.donor?.displayName ?? "Anonymous"}
+                        </p>
+                        {d.message ? (
+                          <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-muted">
+                            {d.message}
+                          </p>
+                        ) : null}
+                        {d.confirmedAt ? (
+                          <p className="mt-1 text-[11.5px] text-fg-subtle">
+                            {timeAgo(d.confirmedAt)}
+                          </p>
+                        ) : null}
                       </div>
-                      <span className="shrink-0 font-mono text-[12.5px] tabular-nums">{formatSol(d.amountLamports)}</span>
+                      <span className="shrink-0 font-mono text-[12.5px] tabular-nums">
+                        {formatSol(d.amountLamports)}
+                      </span>
                     </li>
                   ))}
                 </ul>

@@ -12,7 +12,6 @@ export function VerifyClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-
     if (attempted.current) return;
     attempted.current = true;
 

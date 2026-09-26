@@ -65,7 +65,10 @@ export function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="link-underline text-sm text-fg-muted hover:text-fg">
+                    <Link
+                      href={link.href}
+                      className="link-underline text-sm text-fg-muted hover:text-fg"
+                    >
                       {link.label}
                     </Link>
                   </li>

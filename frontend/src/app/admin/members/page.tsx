@@ -11,7 +11,10 @@ export default async function MembersPage() {
   if (typeof data === "string") return null;
   return (
     <div>
-      <AdminHeader title="Members" description="Every account, its standing, and what it has published and raised." />
+      <AdminHeader
+        title="Members"
+        description="Every account, its standing, and what it has published and raised."
+      />
       <div className="mt-6">
         {data.members.length ? (
           <Members initial={data.members} demo={data.demo} />

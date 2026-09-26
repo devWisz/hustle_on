@@ -9,7 +9,10 @@ import { SplitHeading } from "@/components/motion/split-heading";
 import { Container } from "@/components/ui";
 import { CheckIcon } from "@/components/ui/icons";
 
-export const metadata: Metadata = { title: "Upload a timelapse", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Upload a timelapse",
+  robots: { index: false, follow: false },
+};
 export const dynamic = "force-dynamic";
 
 const CHECKLIST = [
@@ -45,8 +48,8 @@ export default async function UploadPage() {
             </DemoNote>
           ) : !me.payoutVerified ? (
             <p className="mt-8 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft px-4 py-3 text-[13.5px] leading-relaxed text-warning">
-              You have no payout wallet yet. You can still submit, but nobody can sponsor you until you
-              verify one in{" "}
+              You have no payout wallet yet. You can still submit, but nobody can sponsor you until
+              you verify one in{" "}
               <Link href="/settings" className="font-medium text-fg underline underline-offset-2">
                 settings
               </Link>
@@ -60,7 +63,11 @@ export default async function UploadPage() {
         </div>
 
         <aside className="lg:pt-24">
-          <Reveal immediate delay={0.35} className="rounded-[var(--radius-card)] border border-border bg-surface p-6 lg:sticky lg:top-24">
+          <Reveal
+            immediate
+            delay={0.35}
+            className="rounded-[var(--radius-card)] border border-border bg-surface p-6 lg:sticky lg:top-24"
+          >
             <p className="text-eyebrow">What reviewers look for</p>
             <ul className="mt-5 space-y-4">
               {CHECKLIST.map((item) => (

@@ -41,7 +41,13 @@ export function ThemeToggle() {
       title={label}
       className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg"
     >
-      {theme === null ? <span className="h-4 w-4" /> : theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+      {theme === null ? (
+        <span className="h-4 w-4" />
+      ) : theme === "dark" ? (
+        <SunIcon size={16} />
+      ) : (
+        <MoonIcon size={16} />
+      )}
     </button>
   );
 }

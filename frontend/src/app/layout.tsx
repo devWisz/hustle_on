@@ -14,7 +14,11 @@ import { HydrationMark } from "@/components/motion/hydration-mark";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], display: "swap", variable: "--font-geist" });
-const geistMono = Geist_Mono({ subsets: ["latin"], display: "swap", variable: "--font-geist-mono" });
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-geist-mono",
+});
 
 const BOOT_SCRIPT = `(function(){var d=document.documentElement;try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){d.setAttribute("data-theme",t);}}catch(e){}d.classList.add("js");setTimeout(function(){if(!d.hasAttribute("data-hydrated")){d.classList.remove("js");}},4000);})();`;
 

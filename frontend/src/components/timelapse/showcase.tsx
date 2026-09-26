@@ -45,7 +45,13 @@ export function Showcase({
     () => {
       const mm = gsap.matchMedia();
       mm.add(MOTION, () => {
-        gsap.from("[data-caption]", { yPercent: 100, autoAlpha: 0, stagger: 0.06, duration: 0.7, ease: "expo.out" });
+        gsap.from("[data-caption]", {
+          yPercent: 100,
+          autoAlpha: 0,
+          stagger: 0.06,
+          duration: 0.7,
+          ease: "expo.out",
+        });
       });
     },
     { dependencies: [current?.id], scope: caption },
@@ -93,7 +99,10 @@ export function Showcase({
 
           <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white/85 sm:left-6 sm:right-6 sm:top-6">
             <span className="flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md">
-              <span aria-hidden className={cx("h-1.5 w-1.5 rounded-full bg-white", playing && "animate-blink")} />
+              <span
+                aria-hidden
+                className={cx("h-1.5 w-1.5 rounded-full bg-white", playing && "animate-blink")}
+              />
               {isDemo ? "Demo reel" : "Now playing"}
             </span>
             {ratio ? (
@@ -147,7 +156,11 @@ export function Showcase({
         </div>
       </div>
 
-      <div role="tablist" aria-label="Featured sessions" className="scroll-x mt-4 grid auto-cols-[minmax(200px,1fr)] grid-flow-col gap-3">
+      <div
+        role="tablist"
+        aria-label="Featured sessions"
+        className="scroll-x mt-4 grid auto-cols-[minmax(200px,1fr)] grid-flow-col gap-3"
+      >
         {reel.map((t, i) => {
           const selected = i === index;
           return (
@@ -177,7 +190,9 @@ export function Showcase({
               <span className="mt-3 block font-mono text-[11px] text-fg-subtle">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span className="mt-1 line-clamp-1 block text-[13.5px] font-medium text-fg">{t.title}</span>
+              <span className="mt-1 line-clamp-1 block text-[13.5px] font-medium text-fg">
+                {t.title}
+              </span>
             </button>
           );
         })}
