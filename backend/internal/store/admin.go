@@ -2,16 +2,9 @@ package store
 
 import (
 	"context"
-	"strings"
 
 	"github.com/sardhana/backend/internal/domain"
 )
-
-// likePattern escapes LIKE wildcards so a search term matches literally.
-func likePattern(q string) string {
-	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return "%" + r.Replace(q) + "%"
-}
 
 // Members lists accounts for the admin console, most recently active first.
 func (s *Store) Members(ctx context.Context, query string, limit int) ([]domain.AdminMember, error) {
@@ -25,9 +18,9 @@ func (s *Store) Members(ctx context.Context, query string, limit int) ([]domain.
 		                (SELECT max(last_used_at) FROM sessions s WHERE s.user_id = u.id),
 		                u.created_at)
 		FROM users u
-		WHERE $1 = '' OR u.handle::text ILIKE $2 OR u.display_name ILIKE $2 OR u.email::text ILIKE $2
+		WHERE $1::text IS NULL OR u.handle::text ILIKE $1 OR u.display_name ILIKE $1 OR u.email::text ILIKE $1
 		ORDER BY 17 DESC
-		LIMIT $3`, query, likePattern(query), limit)
+		LIMIT $2`, likePattern(query), limit)
 	if err != nil {
 		return nil, normalize(err)
 	}
