@@ -1,27 +1,12 @@
 import type { Donation, Note, PublicUser, SelfUser, Stats, Timelapse } from "./types";
 import { LAMPORTS_PER_SOL } from "./format";
 
-/**
- * The sample library shown in guest preview.
- *
- * Every record here is invented. It exists so somebody who has not signed in
- * can see what a populated feed, a watch page and a dashboard actually look
- * like, rather than judging the product by an empty grid.
- *
- * Two rules keep that honest. Nothing in this file is ever rendered without
- * the surface saying it is a sample — the cards carry a badge, the pages carry
- * a banner — and none of it is used on a signed-in session or on a page whose
- * live data loaded. Sample slugs are all prefixed `sample-`, so a preview link
- * can never collide with a real one.
- */
-
 const SAMPLE_PREFIX = "sample-";
 
 export function isSampleSlug(slug: string): boolean {
   return slug.startsWith(SAMPLE_PREFIX);
 }
 
-/** ISO timestamp for a point in the past, so relative times read naturally. */
 function ago(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
@@ -30,12 +15,6 @@ function sol(amount: number): number {
   return Math.round(amount * LAMPORTS_PER_SOL);
 }
 
-/**
- * Every sample record plays a real file: a short, generated editor timelapse
- * served from `public/demo` (regenerate with `scripts/gen_demo_videos.py`).
- * Hosting them ourselves means the demo never depends on somebody else's CDN
- * and stays inside the `media-src 'self'` policy.
- */
 const DEMO_SECONDS = 18;
 
 function demoMedia(name: string): Pick<Timelapse, "playbackUrl" | "thumbnailUrl"> {
@@ -174,7 +153,6 @@ export const SAMPLE_STATS: Stats = {
   ),
 };
 
-/** The feed, ordered the way the API would order it for each tab. */
 export function sampleFeed(sort: string): Timelapse[] {
   const items = [...SAMPLE_TIMELAPSES];
   switch (sort) {
@@ -218,15 +196,6 @@ const SAMPLE_BIOS: Record<string, string> = {
   dan: "Platform migrations, written down so the next person does not have to guess.",
 };
 
-/**
- * Sample peer notes for a previewed timelapse.
- *
- * A thread is the most believable part of a watch page, so leaving it empty in
- * a preview would undersell the page — but an invented observation attributed
- * to a name is exactly the kind of unlabelled fake data the product refuses to
- * show. The panel renders these behind a sample badge and disables everything
- * that would write, so they can only ever be read as illustration.
- */
 export function sampleNotes(slug: string): Note[] {
   const timelapse = findSampleTimelapse(slug);
   if (!timelapse) return [];
@@ -295,13 +264,6 @@ export function sampleDonations(slug: string): Donation[] {
   ];
 }
 
-/**
- * The account a guest is shown on the dashboard and settings screens.
- *
- * It deliberately includes an unverified payout wallet and one rejected
- * submission, because those are the two states the product is actually about:
- * a decision came back, and it came back with a reason.
- */
 export const SAMPLE_SELF: SelfUser = {
   id: "s-me",
   handle: "you",
