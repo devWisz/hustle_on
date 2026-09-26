@@ -7,7 +7,7 @@ import { MOTION, gsap, useGSAP } from "./gsap";
 const FORMATTERS = {
   count: formatCount,
   sol: formatSol,
-  plain: (n: number) => Math.round(n).toLocaleString(),
+  plain: (n: number) => Math.round(n).toLocaleString("en"),
   percent: (n: number) => `${Math.round(n)}%`,
 } as const;
 

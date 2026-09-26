@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { AuditEntry } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
-import { cx, timeAgo } from "@/lib/format";
+import { cx, formatStamp, timeAgo } from "@/lib/format";
 import { Avatar, Badge, Button, EmptyState, SearchField, type Tone } from "../ui";
 import { DownloadIcon, ListIcon, ShieldIcon } from "../ui/icons";
 
@@ -54,7 +54,7 @@ export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compac
           </p>
         ) : null}
       </div>
-      <time dateTime={entry.createdAt} title={new Date(entry.createdAt).toLocaleString()} className="shrink-0 text-[12px] text-fg-subtle">
+      <time dateTime={entry.createdAt} title={formatStamp(entry.createdAt)} className="shrink-0 text-[12px] text-fg-subtle">
         {timeAgo(entry.createdAt)}
       </time>
     </li>
