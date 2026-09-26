@@ -75,13 +75,13 @@ export function Feed({
           return;
         }
         gsap.set(el, { autoAlpha: 1 });
+        gsap.set(el.children, { autoAlpha: 0 });
         ScrollTrigger.batch(el.children, {
           start: "top 92%",
           once: true,
           onEnter: (batch) =>
             gsap.fromTo(batch, { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, stagger: 0.08, duration: 0.9, clearProps: "transform" }),
         });
-        gsap.set(el.children, { autoAlpha: 0 });
       });
     },
     { dependencies: [topic, sort, items.length], scope: grid },
