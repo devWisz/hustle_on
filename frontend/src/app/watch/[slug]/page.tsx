@@ -13,7 +13,7 @@ import { PlayerSeekProvider } from "@/components/timelapse/player-seek";
 import { ShareButton } from "@/components/timelapse/share-button";
 import { DiscussionPanel } from "@/components/watch/discussion-panel";
 import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/watch/donate-panel";
-import { SessionInspector } from "@/components/watch/session-inspector";
+import { ShareCard } from "@/components/watch/share-card";
 import { UpNext } from "@/components/watch/up-next";
 import { Avatar, Card, Container } from "@/components/ui";
 import { ArrowLeftIcon, ExternalIcon, GitHubIcon, XIcon } from "@/components/ui/icons";
@@ -82,7 +82,7 @@ export default async function WatchPage({ params }: Props) {
               <h1 className="text-title mt-3 max-w-3xl">{t.title}</h1>
 
               <div className="mt-6 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
-                <CreatorLine creator={t.creator} linkable={!demo || isSampleSlug(t.slug)} />
+                <CreatorLine creator={t.creator} />
                 {demo ? null : (
                   <div className="flex items-center gap-2">
                     <ShareButton title={t.title} text={t.summary.slice(0, 120)} path={`/watch/${t.slug}`} />
@@ -155,7 +155,7 @@ export default async function WatchPage({ params }: Props) {
               </Card>
             </Reveal>
 
-            {demo ? null : <SessionInspector timelapse={t} siteUrl={SITE_URL} />}
+            {demo ? null : <ShareCard timelapse={t} siteUrl={SITE_URL} />}
 
             <Reveal delay={0.25}>
               <UpNext items={data.upNext} demo={demo} />
@@ -167,13 +167,7 @@ export default async function WatchPage({ params }: Props) {
   );
 }
 
-function CreatorLine({
-  creator,
-  linkable,
-}: {
-  creator: { handle: string; displayName: string; avatarUrl?: string };
-  linkable: boolean;
-}) {
+function CreatorLine({ creator }: { creator: { handle: string; displayName: string; avatarUrl?: string } }) {
   const inner = (
     <>
       <Avatar name={creator.displayName} src={creator.avatarUrl} size={40} />
@@ -183,7 +177,6 @@ function CreatorLine({
       </span>
     </>
   );
-  if (!linkable) return <div className="flex items-center gap-3">{inner}</div>;
   return (
     <Link href={`/creator/${creator.handle}`} className="flex items-center gap-3 transition-opacity hover:opacity-80">
       {inner}

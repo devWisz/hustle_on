@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { apiServer } from "@/lib/api";
-import type { PublicUser, Timelapse } from "@/lib/types";
-import { isGuestPreview } from "@/lib/guest-server";
-import { SAMPLE_TIMELAPSES, findSampleCreator } from "@/lib/sample";
-import { formatDate, formatSol, shortAddress } from "@/lib/format";
-import { TimelapseGrid } from "@/components/timelapse-card";
-import { SampleNote } from "@/components/guest";
+import { getCreator } from "@/lib/data";
+import { formatDate, shortAddress } from "@/lib/format";
+import { DemoNote } from "@/components/demo/tag";
+import { CountUp } from "@/components/motion/count-up";
+import { Reveal } from "@/components/motion/reveal";
+import { SplitHeading } from "@/components/motion/split-heading";
+import { TimelapseGrid } from "@/components/timelapse/grid";
 import { Avatar, Container, EmptyState } from "@/components/ui";
-
-export const revalidate = 60;
+import { FilmIcon } from "@/components/ui/icons";
 
 interface Props {
   params: Promise<{ handle: string }>;
@@ -17,98 +16,73 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
-  const live = await apiServer<PublicUser>(`/v1/creators/${handle}`);
-  if (!live) {
-    const sample = findSampleCreator(handle);
-    return sample
-      ? { title: `${sample.displayName} (sample)`, robots: { index: false, follow: false } }
-      : { title: "Creator" };
-  }
-  return {
-    title: live.displayName,
-    description: live.bio ?? `Timelapses published by ${live.displayName}.`,
-  };
+  const result = await getCreator(handle);
+  if (!result) return { title: "Creator" };
+  const { creator } = result.data;
+  if (result.demo) return { title: `${creator.displayName} (demo)`, robots: { index: false, follow: false } };
+  return { title: creator.displayName, description: creator.bio ?? `Sessions published by ${creator.displayName}.` };
 }
 
 export default async function CreatorPage({ params }: Props) {
   const { handle } = await params;
-  const [live, timelapses] = await Promise.all([
-    apiServer<PublicUser>(`/v1/creators/${handle}`),
-    apiServer<{ items: Timelapse[] }>(`/v1/creators/${handle}/timelapses`),
-  ]);
-
-  // A sample profile exists only for the creators in the preview feed, and
-  // only while a preview is running.
-  // As on the watch page, demo creators resolve during a preview and while the
-  // API is down, because the front page links to them in both cases.
-  const apiDown = !live && (await apiServer<unknown>("/v1/stats", 60)) === null;
-  const sample =
-    !live && ((await isGuestPreview()) || apiDown) ? findSampleCreator(handle) : undefined;
-  const creator = live ?? sample;
-  if (!creator) notFound();
-
-  const isSample = !live;
-  const items = isSample
-    ? SAMPLE_TIMELAPSES.filter((t) => t.creator.handle === handle)
-    : (timelapses?.items ?? []);
+  const result = await getCreator(handle);
+  if (!result) notFound();
+  const { creator, items } = result.data;
+  const hours = Math.round(items.reduce((n, t) => n + t.sessionMinutes, 0) / 60);
 
   return (
-    <Container className="py-12">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-start">
-        <Avatar name={creator.displayName} src={creator.avatarUrl} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-[26px] font-semibold leading-tight">{creator.displayName}</h1>
-          <p className="mt-0.5 text-sm text-fg-muted">@{creator.handle}</p>
-          {creator.bio ? (
-            <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-fg-muted">
-              {creator.bio}
+    <>
+      <section className="grid-backdrop border-b border-border">
+        <Container width="wide" className="pb-12 pt-12 sm:pb-16 sm:pt-20">
+          <Reveal immediate>
+            <Avatar name={creator.displayName} src={creator.avatarUrl} size={88} />
+          </Reveal>
+          <SplitHeading as="h1" onScroll={false} className="text-headline mt-8">
+            {creator.displayName}
+          </SplitHeading>
+          <Reveal immediate delay={0.3}>
+            <p className="mt-3 font-mono text-[13px] text-fg-subtle">
+              @{creator.handle} · joined {formatDate(creator.joinedAt)}
+              {creator.payoutAddress ? ` · ${shortAddress(creator.payoutAddress)}` : ""}
             </p>
-          ) : null}
-        </div>
-      </header>
+            {creator.bio ? (
+              <p className="text-lede mt-6 max-w-2xl text-fg-muted">{creator.bio}</p>
+            ) : null}
+          </Reveal>
 
-      {isSample ? (
-        <SampleNote className="mt-6">
-          An invented creator from the preview feed. Real profiles look exactly like this.
-        </SampleNote>
-      ) : null}
-
-      <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-border py-5">
-        <Figure label="Published" value={String(creator.timelapseCount)} />
-        <Figure label="Received" value={formatSol(creator.donationTotalLamports)} />
-        <Figure label="Donations" value={String(creator.donationCount)} />
-        <Figure label="Joined" value={formatDate(creator.joinedAt)} />
-        {creator.payoutAddress ? (
-          <Figure label="Wallet" value={shortAddress(creator.payoutAddress)} mono />
-        ) : null}
-      </dl>
-
-      <section className="mt-10">
-        <h2 className="mb-6 text-[19px] font-semibold">Timelapses</h2>
-        {items.length > 0 ? (
-          <TimelapseGrid items={items} sample={isSample} />
-        ) : (
-          <EmptyState
-            title="Nothing published yet"
-            description={`${creator.displayName} has not had a timelapse approved yet.`}
-          />
-        )}
+          <Reveal as="dl" stagger={0.08} className="mt-10 grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4">
+            {[
+              { label: "Sessions", value: <CountUp value={creator.timelapseCount} format="plain" /> },
+              { label: "Hours recorded", value: <CountUp value={hours} format="plain" /> },
+              { label: "Sponsorships", value: <CountUp value={creator.donationCount} format="plain" /> },
+              { label: "Raised", value: <CountUp value={creator.donationTotalLamports} format="sol" /> },
+            ].map((f) => (
+              <div key={f.label} className="border-l border-border pl-4">
+                <dd className="tnum text-[clamp(1.4rem,1.1rem+1.2vw,2rem)] font-semibold leading-none tracking-tight">{f.value}</dd>
+                <dt className="mt-2 text-[12.5px] text-fg-muted">{f.label}</dt>
+              </div>
+            ))}
+          </Reveal>
+        </Container>
       </section>
-    </Container>
-  );
-}
 
-function Figure({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dd
-        className={
-          "text-[17px] font-semibold tabular-nums leading-tight" + (mono ? " font-mono" : "")
-        }
-      >
-        {value}
-      </dd>
-      <dt className="mt-0.5 text-[13px] text-fg-muted">{label}</dt>
-    </div>
+      <Container width="wide" className="pt-12 sm:pt-16">
+        {result.demo ? (
+          <DemoNote className="mb-10">A demo creator from the sample library. Real profiles look exactly like this.</DemoNote>
+        ) : null}
+        <h2 className="text-title">Sessions</h2>
+        <div className="mt-8">
+          {items.length > 0 ? (
+            <TimelapseGrid items={items} demo={result.demo} />
+          ) : (
+            <EmptyState
+              icon={<FilmIcon size={18} />}
+              title="Nothing published yet"
+              description={`${creator.displayName} has not had a session approved yet.`}
+            />
+          )}
+        </div>
+      </Container>
+    </>
   );
 }
