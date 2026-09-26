@@ -6,26 +6,13 @@ import { Flip } from "gsap/Flip";
 import type { Timelapse } from "@/lib/types";
 import { CATEGORIES, matchesCategory } from "@/lib/tags";
 import { cx } from "@/lib/format";
+import { FEED_SORTS, type FeedSort } from "@/lib/feed";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
 import { EmptyState } from "../ui/layout";
 import { FilmIcon } from "../ui/icons";
 import { TimelapseCard } from "./card";
 
 if (typeof window !== "undefined") gsap.registerPlugin(Flip);
-
-export const FEED_SORTS = [
-  { value: "", label: "Newest" },
-  { value: "funded", label: "Most funded" },
-  { value: "watched", label: "Most watched" },
-  { value: "longest", label: "Longest" },
-] as const;
-
-export type FeedSort = (typeof FEED_SORTS)[number]["value"];
-
-export function parseSort(value: string | string[] | undefined): FeedSort {
-  const first = Array.isArray(value) ? value[0] : value;
-  return FEED_SORTS.find((s) => s.value === first)?.value ?? "";
-}
 
 export function Feed({
   items,
