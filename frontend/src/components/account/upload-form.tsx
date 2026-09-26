@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api/client";
 import { cx, formatDuration } from "@/lib/format";
@@ -29,6 +30,7 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const [attested, setAttested] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const busy = stage !== "idle" && stage !== "done";
@@ -63,6 +65,10 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
 
     if (!file) {
       setError("Choose a video file to upload.");
+      return;
+    }
+    if (!attested) {
+      setError("Confirm the recording is your own work and that you agree to the terms.");
       return;
     }
     const minutes = Number(sessionMinutes);
@@ -258,6 +264,23 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
           />
         </Field>
       </Card>
+
+      <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-4 text-[13.5px] leading-relaxed text-fg-muted">
+        <input
+          type="checkbox"
+          checked={attested}
+          onChange={(e) => setAttested(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+        />
+        <span>
+          I recorded this session myself, it shows my own work, nothing private is visible in it,
+          and I agree to the{" "}
+          <Link href="/terms" target="_blank" className="font-medium text-fg underline underline-offset-2">
+            Terms and Conditions
+          </Link>
+          .
+        </span>
+      </label>
 
       {error ? (
         <p role="alert" className="text-[13px] text-danger">

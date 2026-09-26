@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import { Button, Field, Input } from "../ui";
@@ -87,6 +88,17 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
       <Button type="submit" size="lg" className="mt-4 w-full" loading={state === "sending"}>
         Send sign-in link
       </Button>
+      <p className="mt-3 text-[12.5px] leading-relaxed text-fg-subtle">
+        By continuing you agree to the{" "}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-fg">
+          Terms and Conditions
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-fg">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }

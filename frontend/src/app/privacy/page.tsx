@@ -22,7 +22,7 @@ const sections = [
   },
   {
     title: "How we use it",
-    body: "To sign you in, to show your profile and published work, to let reviewers make decisions and keep a record of them, to verify sponsorships against the Solana chain, to send the emails the service needs (sign-in links and review decisions), and to prevent abuse. We do not use your data for advertising or sell it to anyone.",
+    body: "To sign you in, to show your profile and published work, to let reviewers make decisions and keep a record of them, to verify sponsorships against the Solana chain, to send the sign-in emails the service needs, and to prevent abuse. Review decisions are shown on your dashboard rather than emailed. We do not use your data for advertising or sell it to anyone.",
   },
   {
     title: "What we never collect",
@@ -46,7 +46,7 @@ const sections = [
   },
   {
     title: "Who processes data for us",
-    body: "Our database is hosted by Neon. Recordings are kept with an object storage provider. Sign-in and notification emails are sent through Resend. Sponsorships are verified through a Solana RPC provider. Each receives only what it needs to do its part and is not allowed to use it for anything else.",
+    body: "Our database is hosted by Neon. Recordings are kept with an object storage provider. Sign-in emails are sent through Resend. Sponsorships are verified through a Solana RPC provider. Each receives only what it needs to do its part and is not allowed to use it for anything else.",
   },
   {
     title: "How long we keep it",
