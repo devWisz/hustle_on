@@ -13,6 +13,9 @@ migrations/
   0005_engagement        bookmarks, notes and helpful votes
   0006_search_indexes    trigram search on titles, summaries and people
   0007_maintenance       missing foreign-key indexes, recount_totals(), purge_expired_auth()
+  0008_security_hardening the sardhana_app role and its grants, role timeouts,
+                         the append-only audit trigger
+  0009_purge_grant       lets the API call the purge function 0008 restricted
 seeds/
   dev_seed.sql           development data; refused when APP_ENV=production
 ```
@@ -43,6 +46,15 @@ advisory locks and run DDL that a connection pooler does not carry across
 statements. The API image also contains the tool, so the same migrations can
 run from a deploy: `/app/migrate up`.
 
+## Privileges
+
+Migrations run as the owner. The API is meant to run as a different role that
+inherits `sardhana_app`, which `0008` gives read/write access to every table and
+then withholds the things the API does not do: `DELETE` on `users`, `timelapses`
+and `donations`, any write to `schema_migrations`, and `UPDATE`/`DELETE` on
+`audit_log`. The full list, and the two steps to adopt it, are in
+[../docs/database.md](../docs/database.md#the-application-role).
+
 ## Maintenance
 
 ```sql
@@ -50,9 +62,18 @@ SELECT recount_totals();            -- rebuild every cached counter from source 
 SELECT * FROM purge_expired_auth(); -- delete auth rows expired over 30 days ago
 ```
 
-The API runs `purge_expired_auth()` once at start and then daily.
-`recount_totals()` is the repair tool for when counters drift, for example after
-editing rows by hand.
+The API calls `purge_expired_auth()` once at start and then daily, so it holds
+`EXECUTE` on that one (`0009`). `recount_totals()` is the repair tool for when
+counters drift, for example after editing rows by hand, and is deliberately left
+to the owner — it rewrites every counter in the database, which is not something
+a request-serving process should be able to do.
+
+## The audit trail cannot be edited
+
+`UPDATE` and `DELETE` on `audit_log` are refused by a trigger, for every role
+including the owner. Removing a line means disabling the trigger first, which is
+recorded in the write-ahead log. The procedure and its consequences are in
+[../docs/database.md](../docs/database.md#the-audit-trail-is-append-only).
 
 ## Seed data
 

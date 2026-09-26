@@ -33,6 +33,7 @@ Three properties hold it together:
 | **Nothing publishes itself** | `published` is set by one statement, behind the admin role, every decision audited |
 | **Rejections carry a reason** | Enforced by the API and a database constraint — creators read it on their dashboard |
 | **Donations never touch us** | SOL moves wallet to wallet — no keys held, no cut taken, verified on-chain before credited |
+| **Nothing is destroyed quietly** | The API cannot `DELETE` an account, a timelapse or a donation, and the audit trail refuses `UPDATE` and `DELETE` even from the owner |
 
 ## Project structure
 
@@ -87,6 +88,32 @@ Roles are granted in the database on purpose, so no bug in an endpoint can creat
 UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
+## Security
+
+The short version; [docs/security.md](docs/security.md) is the real one.
+
+- **No passwords exist**, so none can leak. Sign-in is a single-use emailed link,
+  and sessions are stored as SHA-256 digests — a dump of the sessions table
+  grants nobody a session.
+- **Session cookies are `HttpOnly`**, `Secure` over https and `SameSite=Lax`; the
+  separate CSRF cookie is script-readable on purpose and is not a credential.
+- **Every state-changing request** passes one CSRF middleware — an allowlisted
+  `Origin` plus a double-submit token bound to the session — before any handler
+  can run. There is no per-endpoint opt-in to forget.
+- **Rate limits are per class of work**, not per API, so requesting a sign-in
+  link (which sends mail) is not budgeted like reading the feed. Sign-in budgets
+  are charged to the address even when a session is present.
+- **Every list endpoint is paginated** with a capped page size, and the cursor is
+  opaque and scoped to its query, so no request can ask for an unbounded response.
+- **The API does not own the database.** It connects as a least-privilege role
+  that cannot drop tables, cannot delete creator records, and holds no write
+  privilege at all on the audit trail.
+- **Maintenance is deliberate**: `statement_timeout`, `lock_timeout` and a pinned
+  `search_path` are set on the role, and the repair functions are the owner's.
+- **Production refuses to degrade** — no Resend key, no storage credentials, a
+  non-mainnet cluster, or a `DATABASE_URL` that would fall back to plaintext all
+  fail at startup rather than silently weakening the deployment.
+
 ## Tech stack
 
 | Layer | Technology |
@@ -103,7 +130,9 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 |---|---|
 | [**docs/workflow.md**](docs/workflow.md) | End-to-end path from upload to donation |
 | [**docs/auth.md**](docs/auth.md) | Sign-in flow and wallet proof verification |
-| [**docs/security.md**](docs/security.md) | Security model for auth, uploads, review, payments |
+| [**docs/security.md**](docs/security.md) | Security model: cookies, CSRF, rate limits, database privileges |
+| [**docs/api.md**](docs/api.md) | Endpoints, paging, error codes and rate-limit budgets |
+| [**docs/database.md**](docs/database.md) | Schema, constraints, the application role and the append-only audit trail |
 | [**docs/design-system.md**](docs/design-system.md) | Typography, colors, radii, shadows |
 | [**docs/README.md**](docs/README.md) | Full documentation index |
 
