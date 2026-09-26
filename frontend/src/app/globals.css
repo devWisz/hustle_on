@@ -1,18 +1,7 @@
 @import "tailwindcss";
 @source "../";
 
-/* ---------------------------------------------------------------------------
-   Design tokens.
-
-   One accent, one neutral ramp, four radii, three shadows. Every colour used
-   anywhere in the product is declared here; components reference the token,
-   never a raw hex value. Dark mode swaps the variables, so nothing downstream
-   needs a second set of classes.
-
-   There are no glow tokens. Depth comes from shadow, border and motion —
-   never from a coloured halo, which reads as noise at small sizes and is the
-   first thing to look cheap on a low-quality display.
-   --------------------------------------------------------------------------- */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --color-bg: var(--bg);
@@ -27,128 +16,118 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
-  --color-glass: var(--glass);
-  --color-glass-border: var(--glass-border);
+  --color-inverse: var(--inverse);
+  --color-inverse-fg: var(--inverse-fg);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-panel: 16px;
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.03);
-  --shadow-raised: 0 8px 24px -8px rgb(0 0 0 / 0.14), 0 2px 6px -2px rgb(0 0 0 / 0.06);
-  --shadow-lifted: var(--lifted-shadow);
+  --shadow-card: var(--shadow-1);
+  --shadow-raised: var(--shadow-2);
+  --shadow-lifted: var(--shadow-3);
 
-  /* One easing curve for everything that moves, so the product has a single
-     sense of weight. Durations vary; the curve does not. */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  --animate-blink: blink 1.6s ease-in-out infinite;
+  --animate-spin: spin 0.8s linear infinite;
 }
 
 :root {
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-panel: 16px;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.03);
-  --shadow-raised: 0 8px 24px -8px rgb(0 0 0 / 0.14), 0 2px 6px -2px rgb(0 0 0 / 0.06);
-
-  --bg: #fbfbfa;
+  --bg: #f6f6f3;
   --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --border: #e7e5e1;
-  --border-strong: #d6d3cd;
-  --fg: #191815;
-  --fg-muted: #5f5b55;
-  --fg-subtle: #8d887f;
-  --accent: #10715a;
-  --accent-hover: #0c5b48;
+  --surface-raised: #efeee9;
+  --border: #e3e1db;
+  --border-strong: #cdcac2;
+  --fg: #111110;
+  --fg-muted: #57554f;
+  --fg-subtle: #8b8880;
+  --accent: #2f45e8;
+  --accent-hover: #2537c4;
   --accent-fg: #ffffff;
-  --accent-soft: #e8f2ee;
-  --danger: #a72f2f;
-  --danger-soft: #fbeeee;
-  --warning: #8a5a11;
-  --warning-soft: #fbf2e4;
+  --accent-soft: #e9ebfd;
+  --success: #17804f;
+  --success-soft: #e5f4ec;
+  --danger: #c2372d;
+  --danger-soft: #fbebe9;
+  --warning: #a36308;
+  --warning-soft: #fbf1df;
+  --inverse: #111110;
+  --inverse-fg: #f6f6f3;
 
-  /* Frosted surfaces. Translucency only — no coloured bloom behind them. */
-  --glass: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(0, 0, 0, 0.06);
-
-  /* Hover depth is a neutral shadow, never a coloured halo. */
-  --lifted-shadow: 0 14px 34px -12px rgb(0 0 0 / 0.13), 0 4px 10px -4px rgb(0 0 0 / 0.05);
-
-  --gradient-accent: linear-gradient(135deg, #10715a 0%, #14866a 100%);
-  --gradient-divider: linear-gradient(90deg, transparent, var(--border-strong) 22%, var(--border-strong) 78%, transparent);
-  --grid-line: rgba(25, 24, 21, 0.045);
-
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --shadow-1: 0 1px 2px rgb(17 17 16 / 0.04), 0 1px 1px rgb(17 17 16 / 0.03);
+  --shadow-2: 0 12px 32px -12px rgb(17 17 16 / 0.16), 0 2px 6px -2px rgb(17 17 16 / 0.06);
+  --shadow-3: 0 24px 48px -20px rgb(17 17 16 / 0.22), 0 6px 14px -6px rgb(17 17 16 / 0.08);
+  --grid-line: rgb(17 17 16 / 0.05);
 
   color-scheme: light;
 }
 
-/* The system preference applies unless a visitor has chosen light explicitly. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0c0c0b;
-    --surface: #141413;
-    --surface-raised: #1b1b19;
-    --border: #272623;
-    --border-strong: #383733;
-    --fg: #f4f3f0;
-    --fg-muted: #a5a097;
-    --fg-subtle: #77726a;
-    --accent: #3fb28c;
-    --accent-hover: #55c39e;
-    --accent-fg: #06120e;
-    --accent-soft: #16302a;
-    --danger: #e08585;
-    --danger-soft: #2b1a1a;
-    --warning: #d8ae63;
-    --warning-soft: #2a2113;
-
-    --glass: rgba(20, 20, 19, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.07);
-    --lifted-shadow: 0 14px 34px -12px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.3);
-    --gradient-accent: linear-gradient(135deg, #3fb28c 0%, #4cc199 100%);
-    --gradient-divider: linear-gradient(90deg, transparent, var(--border-strong) 22%, var(--border-strong) 78%, transparent);
-    --grid-line: rgba(244, 243, 240, 0.05);
-
+    --bg: #0b0b0c;
+    --surface: #131315;
+    --surface-raised: #1b1b1e;
+    --border: #252528;
+    --border-strong: #37373c;
+    --fg: #f2f2ef;
+    --fg-muted: #a3a29c;
+    --fg-subtle: #6f6e69;
+    --accent: #8795ff;
+    --accent-hover: #a2adff;
+    --accent-fg: #0b0b0c;
+    --accent-soft: #1c2044;
+    --success: #4cc38a;
+    --success-soft: #12291d;
+    --danger: #f07a70;
+    --danger-soft: #2e1714;
+    --warning: #e3a84a;
+    --warning-soft: #2c2111;
+    --inverse: #f2f2ef;
+    --inverse-fg: #0b0b0c;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+    --shadow-3: 0 24px 48px -20px rgb(0 0 0 / 0.8), 0 6px 14px -6px rgb(0 0 0 / 0.5);
+    --grid-line: rgb(242 242 239 / 0.045);
     color-scheme: dark;
   }
 }
 
-/* An explicit choice wins in both directions. */
 :root[data-theme="dark"] {
-  --bg: #0c0c0b;
-  --surface: #141413;
-  --surface-raised: #1b1b19;
-  --border: #272623;
-  --border-strong: #383733;
-  --fg: #f4f3f0;
-  --fg-muted: #a5a097;
-  --fg-subtle: #77726a;
-  --accent: #3fb28c;
-  --accent-hover: #55c39e;
-  --accent-fg: #06120e;
-  --accent-soft: #16302a;
-  --danger: #e08585;
-  --danger-soft: #2b1a1a;
-  --warning: #d8ae63;
-  --warning-soft: #2a2113;
-
-  --glass: rgba(20, 20, 19, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.07);
-  --lifted-shadow: 0 14px 34px -12px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.3);
-  --gradient-accent: linear-gradient(135deg, #3fb28c 0%, #4cc199 100%);
-  --gradient-divider: linear-gradient(90deg, transparent, var(--border-strong) 22%, var(--border-strong) 78%, transparent);
-  --grid-line: rgba(244, 243, 240, 0.05);
-
+  --bg: #0b0b0c;
+  --surface: #131315;
+  --surface-raised: #1b1b1e;
+  --border: #252528;
+  --border-strong: #37373c;
+  --fg: #f2f2ef;
+  --fg-muted: #a3a29c;
+  --fg-subtle: #6f6e69;
+  --accent: #8795ff;
+  --accent-hover: #a2adff;
+  --accent-fg: #0b0b0c;
+  --accent-soft: #1c2044;
+  --success: #4cc38a;
+  --success-soft: #12291d;
+  --danger: #f07a70;
+  --danger-soft: #2e1714;
+  --warning: #e3a84a;
+  --warning-soft: #2c2111;
+  --inverse: #f2f2ef;
+  --inverse-fg: #0b0b0c;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-3: 0 24px 48px -20px rgb(0 0 0 / 0.8), 0 6px 14px -6px rgb(0 0 0 / 0.5);
+  --grid-line: rgb(242 242 239 / 0.045);
   color-scheme: dark;
 }
 
@@ -159,29 +138,24 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
-  /* Keeps a sticky header from covering the target of an in-page anchor. */
-  scroll-padding-top: 80px;
+  scroll-padding-top: 96px;
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  /* A page must never scroll sideways on a phone, whatever a child does. */
-  overflow-x: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
 }
 
-/* Headings are the only place tracking is tightened; body text stays at its
-   natural spacing so long descriptions remain comfortable to read. */
 h1,
 h2,
 h3,
 h4 {
-  letter-spacing: -0.021em;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
@@ -189,20 +163,17 @@ p {
   text-wrap: pretty;
 }
 
-/* A single, visible focus treatment everywhere. Keyboard users must never have
-   to guess where they are. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 ::selection {
-  background: var(--accent-soft);
-  color: var(--fg);
+  background: var(--accent);
+  color: var(--accent-fg);
 }
 
-/* Media never widens its column, on any device. */
 img,
 video,
 svg,
@@ -210,336 +181,107 @@ canvas {
   max-width: 100%;
 }
 
-/* ---------------------------------------------------------------------------
-   Fluid type scale.
-
-   One clamp per step means a heading is legible at 320px and composed at
-   1440px without a breakpoint for every size.
-   --------------------------------------------------------------------------- */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
 
 .text-display {
-  font-size: clamp(2rem, 1.35rem + 3.1vw, 3.4rem);
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  font-size: clamp(2.6rem, 1.2rem + 6.4vw, 7rem);
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+  font-weight: 600;
+}
+
+.text-headline {
+  font-size: clamp(2rem, 1.3rem + 3vw, 3.75rem);
+  line-height: 1.02;
+  letter-spacing: -0.042em;
+  font-weight: 600;
 }
 
 .text-title {
-  font-size: clamp(1.375rem, 1.16rem + 1.05vw, 1.875rem);
-  line-height: 1.18;
-  letter-spacing: -0.028em;
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.125rem);
+  line-height: 1.12;
+  letter-spacing: -0.032em;
+  font-weight: 600;
 }
 
 .text-lede {
-  font-size: clamp(1rem, 0.95rem + 0.28vw, 1.125rem);
-  line-height: 1.62;
+  font-size: clamp(1.02rem, 0.96rem + 0.3vw, 1.2rem);
+  line-height: 1.6;
 }
 
-/* A section label. Small, tracked and quiet — it names the band without
-   competing with the heading under it. */
 .text-eyebrow {
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-subtle);
 }
 
-/* An eyebrow with a rule running out from it, which is what stops a row of
-   small caps from reading as a stray line of text. */
-.eyebrow-rule {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
-.eyebrow-rule::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--border-strong), transparent);
+.js [data-reveal],
+.js [data-split] {
+  visibility: hidden;
 }
 
-/* ---------------------------------------------------------------------------
-   Keyframes
-   --------------------------------------------------------------------------- */
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+.split-line {
+  overflow: clip;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+.press {
+  transition: transform 0.14s var(--ease-out-quint);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-100%); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* A recording indicator: opacity only, so it reads as a blink rather than a
-   halo pushing light out past its own edge. */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.28; }
-}
-
-/* Draws an SVG path on. Used by the hero diagram. */
-@keyframes draw-line {
-  from { stroke-dashoffset: var(--dash, 200); }
-  to   { stroke-dashoffset: 0; }
-}
-
-/* A caret that types out a line of text. */
-@keyframes caret {
-  0%, 45%   { opacity: 1; }
-  50%, 95%  { opacity: 0; }
-  100%      { opacity: 1; }
-}
-
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-
-@keyframes sweep {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ---------------------------------------------------------------------------
-   Entrance animation utilities
-   --------------------------------------------------------------------------- */
-
-.animate-fade-in      { animation: fadeIn 0.28s var(--ease-out-quint) both; }
-.animate-fade-in-up   { animation: fadeInUp 0.5s var(--ease-out-quint) both; }
-.animate-fade-in-down { animation: fadeInDown 0.4s var(--ease-out-quint) both; }
-.animate-slide-in-right { animation: slideInRight 0.4s var(--ease-out-quint) both; }
-.animate-scale-in     { animation: scaleIn 0.3s var(--ease-out-quint) both; }
-.animate-toast-in     { animation: toast-in 0.28s var(--ease-spring) both; }
-.animate-blink        { animation: blink 1.6s ease-in-out infinite; }
-
-/* Hand-tuned delays, so a sequence can be composed without inline styles. */
-.delay-1 { animation-delay: 60ms; }
-.delay-2 { animation-delay: 120ms; }
-.delay-3 { animation-delay: 180ms; }
-.delay-4 { animation-delay: 240ms; }
-.delay-5 { animation-delay: 300ms; }
-.delay-6 { animation-delay: 360ms; }
-
-/* Stagger children — apply to a parent and its children sequence themselves. */
-.stagger-children > * {
-  animation: fadeInUp 0.5s var(--ease-out-quint) both;
-}
-.stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2)  { animation-delay: 55ms; }
-.stagger-children > *:nth-child(3)  { animation-delay: 110ms; }
-.stagger-children > *:nth-child(4)  { animation-delay: 165ms; }
-.stagger-children > *:nth-child(5)  { animation-delay: 220ms; }
-.stagger-children > *:nth-child(6)  { animation-delay: 275ms; }
-.stagger-children > *:nth-child(7)  { animation-delay: 330ms; }
-.stagger-children > *:nth-child(8)  { animation-delay: 385ms; }
-.stagger-children > *:nth-child(9)  { animation-delay: 440ms; }
-.stagger-children > *:nth-child(10) { animation-delay: 495ms; }
-.stagger-children > *:nth-child(11) { animation-delay: 550ms; }
-.stagger-children > *:nth-child(12) { animation-delay: 605ms; }
-
-/* ---------------------------------------------------------------------------
-   Scroll reveal.
-
-   The element starts shifted and transparent; a single IntersectionObserver
-   (see components/reveal.tsx) adds `data-revealed` when it enters the
-   viewport. CSS owns the motion so nothing animates on the main thread.
-   --------------------------------------------------------------------------- */
-
-/* The hidden state is gated behind `.js`, which the inline script in the
-   document head sets before first paint. Content is therefore visible by
-   default: if the script never runs, or the bundle fails to load, or a policy
-   blocks it, the page reads normally instead of rendering blank. The same
-   script lifts the gate again if React has not signalled hydration shortly
-   after load, so a broken bundle degrades to a still page rather than an
-   empty one. */
-.js [data-reveal] {
-  opacity: 0;
+.lift {
   transition:
-    opacity 0.6s var(--ease-out-quint),
-    transform 0.6s var(--ease-out-quint);
-  transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
-}
-
-.js [data-reveal="up"]    { transform: translateY(22px); }
-.js [data-reveal="left"]  { transform: translateX(-22px); }
-.js [data-reveal="right"] { transform: translateX(22px); }
-.js [data-reveal="scale"] { transform: scale(0.97); }
-
-.js [data-reveal][data-revealed] {
-  opacity: 1;
-  transform: none;
-  will-change: auto;
-}
-
-/* ---------------------------------------------------------------------------
-   Interaction
-   --------------------------------------------------------------------------- */
-
-/* A card lifts on hover and settles when pressed. Pointer-coarse devices get
-   neither, because a phone has no hover and the press would fight the scroll. */
-.card-hover {
-  transition:
-    transform 0.32s var(--ease-out-quint),
-    box-shadow 0.32s var(--ease-out-quint),
-    border-color 0.32s var(--ease-out-quint);
+    transform 0.45s var(--ease-out-quint),
+    box-shadow 0.45s var(--ease-out-quint),
+    border-color 0.45s var(--ease-out-quint);
 }
 
 @media (hover: hover) {
-  .card-hover:hover {
+  .lift:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lifted);
     border-color: var(--border-strong);
   }
 }
 
-/* Every button acknowledges the press. */
-.press {
-  transition: transform 0.12s var(--ease-out-quint);
-}
-.press:active:not(:disabled) {
-  transform: scale(0.975);
-}
-
-/* An underline that grows from the left on hover. */
 .link-underline {
   background-image: linear-gradient(currentColor, currentColor);
   background-size: 0% 1px;
   background-position: 0 100%;
   background-repeat: no-repeat;
-  transition: background-size 0.3s var(--ease-out-quint);
+  transition: background-size 0.35s var(--ease-out-quint);
 }
 .link-underline:hover,
 .link-underline:focus-visible {
   background-size: 100% 1px;
 }
 
-/* An icon that nudges in the reading direction when its row is hovered. */
 .nudge-icon {
-  transition: transform 0.28s var(--ease-out-quint);
+  transition: transform 0.3s var(--ease-out-quint);
 }
 .group:hover .nudge-icon {
   transform: translateX(3px);
 }
 
-/* ---------------------------------------------------------------------------
-   Surfaces
-   --------------------------------------------------------------------------- */
-
-.glass {
-  background: var(--glass);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  border: 1px solid var(--glass-border);
-}
-
-.gradient-accent-bg {
-  background: var(--gradient-accent);
-}
-
-/* A row of figures separated by hairlines rather than boxed in cards.
-
-   The rule is drawn on the left of each cell and suppressed on whichever cell
-   starts a row — two across on a phone, four on a desktop — so it survives the
-   grid reflowing. The same rule governs the cell's left padding, which is what
-   keeps the first figure of every row flush with the column it sits in. */
-.figure-rail > * {
-  position: relative;
-  padding-inline: 16px;
-}
-
-.figure-rail > *::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  background: var(--border);
-}
-
-.figure-rail > *:nth-child(2n + 1) {
-  padding-inline-start: 0;
-}
-
-.figure-rail > *:nth-child(2n + 1)::before {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .figure-rail > * {
-    padding-inline: 24px;
-  }
-  .figure-rail > *:nth-child(2n + 1) {
-    padding-inline-start: 24px;
-  }
-  .figure-rail > *:nth-child(2n + 1)::before {
-    display: block;
-  }
-  .figure-rail > *:nth-child(4n + 1) {
-    padding-inline-start: 0;
-  }
-  .figure-rail > *:nth-child(4n + 1)::before {
-    display: none;
-  }
-}
-
-.gradient-divider {
-  height: 1px;
-  background: var(--gradient-divider);
-  border: none;
-}
-
-/* A faint ruled backdrop for hero and section bands. It replaces the coloured
-   bloom that used to sit behind the hero: structure instead of light. */
 .grid-backdrop {
   position: relative;
   isolation: isolate;
 }
-
 .grid-backdrop::before {
   content: "";
   position: absolute;
@@ -548,153 +290,60 @@ canvas {
   background-image:
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 68px 68px;
-  /* Fades out well before the section edge so it never becomes a texture. */
-  mask-image: radial-gradient(ellipse 70% 62% at 50% 32%, #000 0%, transparent 78%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 62% at 50% 32%, #000 0%, transparent 78%);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 10%, transparent 75%);
   pointer-events: none;
 }
 
-.dot-backdrop::before {
-  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
-
-/* ---------------------------------------------------------------------------
-   Skeletons
-   --------------------------------------------------------------------------- */
-
-.skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--surface-raised) 25%,
-    var(--border) 50%,
-    var(--surface-raised) 75%
-  );
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-raised) 25%, var(--border) 50%, var(--surface-raised) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.8s ease-in-out infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
   border-radius: var(--radius-control);
 }
 
-/* ---------------------------------------------------------------------------
-   Utilities
-   --------------------------------------------------------------------------- */
-
-/* A horizontally scrollable region that never widens the page. */
 .scroll-x {
   overflow-x: auto;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Hides the scrollbar on a deliberately swipeable row (filter chips, tabs). */
-.scroll-x-hidden {
-  overflow-x: auto;
   scrollbar-width: none;
-  -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
 }
-.scroll-x-hidden::-webkit-scrollbar {
+.scroll-x::-webkit-scrollbar {
   display: none;
 }
 
-/* Numbers that change in place must not make the row jump. */
-.tnum {
-  font-variant-numeric: tabular-nums;
+.fade-edges {
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 
-.heading-tight {
-  letter-spacing: -0.025em;
-}
-
-/* A continuously scrolling row. The track holds the content twice, so the
-   halfway translate is seamless. */
-.marquee {
-  overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-.marquee__track {
-  display: flex;
-  width: max-content;
-  animation: marquee var(--marquee-duration, 38s) linear infinite;
-}
-.marquee:hover .marquee__track {
-  animation-play-state: paused;
-}
-
-/* Mobile drawer overlay */
-.drawer-overlay {
-  animation: backdrop-in 0.2s ease both;
-}
-
-/* Reading progress bar at the top of the page. */
-.reading-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 2px;
-  background: var(--accent);
-  z-index: 50;
-  transition: width 0.1s linear;
-}
-
-/* Tooltip */
-.tooltip {
-  position: relative;
-}
-
-.tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%) translateY(3px);
-  background: var(--fg);
-  color: var(--bg);
-  padding: 4px 8px;
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
   border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.16s var(--ease-out-quint), transform 0.16s var(--ease-out-quint);
-  z-index: 30;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
 }
 
-@media (hover: hover) {
-  .tooltip:hover::after {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-/* A vertical rule joining the steps of a numbered sequence. */
-.step-connector {
-  position: relative;
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
-.step-connector::before {
-  content: "";
-  position: absolute;
-  left: 15px;
-  top: 36px;
-  bottom: -22px;
-  width: 1px;
-  background: linear-gradient(to bottom, var(--border-strong), transparent);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
-
-.step-connector:last-child::before {
-  display: none;
-}
-
-/* ---------------------------------------------------------------------------
-   Reduced motion.
-
-   Last in the file so it wins. Everything above is decoration; a visitor who
-   has asked for stillness gets the finished state immediately, including the
-   scroll-reveal elements, which must never be left invisible.
-   --------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -706,12 +355,12 @@ canvas {
     scroll-behavior: auto !important;
   }
 
-  .js [data-reveal] {
-    opacity: 1 !important;
-    transform: none !important;
+  .js [data-reveal],
+  .js [data-split] {
+    visibility: visible !important;
   }
 
-  .card-hover:hover {
+  .lift:hover {
     transform: none;
   }
 }
