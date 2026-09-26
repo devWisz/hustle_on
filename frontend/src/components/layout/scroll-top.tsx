@@ -1,39 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowUpIcon } from "./icons";
+import { useRef } from "react";
+import { ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
+import { ArrowUpIcon } from "../ui/icons";
 
-/**
- * A floating button that appears after the visitor has scrolled past the fold.
- *
- * It uses smooth scrolling (the CSS `scroll-behavior: smooth` on `html`)
- * rather than a JS scroll call, so the motion matches every other anchor
- * navigation on the site.
- */
-export function ScrollToTop() {
-  const [visible, setVisible] = useState(false);
+export function ScrollTop() {
+  const ref = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    function onScroll() {
-      setVisible(window.scrollY > 400);
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  if (!visible) return null;
+  useGSAP(() => {
+    const el = ref.current;
+    if (!el) return;
+    gsap.set(el, { autoAlpha: 0, scale: 0.8 });
+    const trigger = ScrollTrigger.create({
+      start: 600,
+      end: "max",
+      onToggle: (self) =>
+        gsap.to(el, { autoAlpha: self.isActive ? 1 : 0, scale: self.isActive ? 1 : 0.8, duration: 0.3 }),
+    });
+    return () => trigger.kill();
+  });
 
   return (
     <button
+      ref={ref}
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center
-                 rounded-full bg-accent text-accent-fg shadow-[var(--shadow-raised)]
-                 press transition-colors duration-300 hover:bg-accent-hover
-                 animate-scale-in"
-      aria-label="Scroll to top"
+      aria-label="Back to top"
+      className="press invisible fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-fg shadow-[var(--shadow-raised)] hover:border-border-strong sm:bottom-6 sm:right-6"
     >
-      <ArrowUpIcon size={18} />
+      <ArrowUpIcon size={17} />
     </button>
   );
 }

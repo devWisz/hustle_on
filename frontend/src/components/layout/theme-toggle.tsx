@@ -1,73 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MoonIcon, SunIcon } from "./icons";
+import { useCallback, useEffect, useState } from "react";
+import { MoonIcon, SunIcon } from "../ui/icons";
 
-type Theme = "light" | "dark" | "system";
+export const THEME_EVENT = "sardhana:theme";
 
-export function ThemeToggle({ className }: { className?: string }) {
-  const [mounted, setMounted] = useState(false);
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    const saved = (localStorage.getItem("theme") as Theme | null) ?? "system";
-
-    const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialResolved = saved === "system" ? (isSystemDark ? "dark" : "light") : saved;
-    setResolvedTheme(initialResolved);
-
-    if (saved === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", saved);
-    }
-
-    const listener = (e: MediaQueryListEvent) => {
-      if ((localStorage.getItem("theme") ?? "system") === "system") {
-        const next = e.matches ? "dark" : "light";
-        setResolvedTheme(next);
-      }
-    };
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    mql.addEventListener("change", listener);
-    return () => mql.removeEventListener("change", listener);
+    const saved = localStorage.getItem("theme");
+    const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    setTheme(saved === "light" || saved === "dark" ? saved : system);
   }, []);
 
-  function toggle() {
-    const next: "light" | "dark" = resolvedTheme === "dark" ? "light" : "dark";
-    setResolvedTheme(next);
-    localStorage.setItem("theme", next);
-    document.documentElement.setAttribute("data-theme", next);
-  }
+  const toggle = useCallback(() => {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("theme", next);
+      } catch {
+        return next;
+      }
+      return next;
+    });
+  }, []);
 
-  if (!mounted) {
-    return (
-      <button
-        type="button"
-        className={
-          className ??
-          "flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg"
-        }
-        aria-label="Toggle theme"
-      >
-        <span className="h-4 w-4" />
-      </button>
-    );
-  }
+  useEffect(() => {
+    window.addEventListener(THEME_EVENT, toggle);
+    return () => window.removeEventListener(THEME_EVENT, toggle);
+  }, [toggle]);
 
+  const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
   return (
     <button
       type="button"
       onClick={toggle}
-      className={
-        className ??
-        "flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg"
-      }
-      aria-label={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-      title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={label}
+      title={label}
+      className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg"
     >
-      {resolvedTheme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+      {theme === null ? <span className="h-4 w-4" /> : theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
     </button>
   );
 }

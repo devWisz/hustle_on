@@ -2,20 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api/client";
 import { cx } from "@/lib/format";
 
-/** Long enough not to hammer a server that is starting up. */
 const POLL_MS = 8000;
 
-/**
- * Says the live feed is offline, then quietly waits for it to come back.
- *
- * The page underneath is already showing the demo library, so nothing here is
- * urgent: it polls the API's health endpoint and, the moment it answers,
- * re-renders the page on the server so real records replace the demo ones
- * without a reload. The retry button does the same thing on demand.
- */
 export function ApiStatus({ className }: { className?: string }) {
   const router = useRouter();
   const [checking, setChecking] = useState(false);

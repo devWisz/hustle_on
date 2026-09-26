@@ -1,92 +1,100 @@
 import Link from "next/link";
-import { GitHubIcon, XIcon } from "./icons";
+import { GitHubIcon, LogoMark, XIcon } from "../ui/icons";
 
 const CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
 
-export function SiteFooter() {
-  return (
-    <footer className="mt-24 border-t border-border">
-      {/* Gradient accent line */}
-      <div className="gradient-divider" />
+const COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { href: "/#feed", label: "Explore" },
+      { href: "/about", label: "How it works" },
+      { href: "/upload", label: "Upload" },
+      { href: "/dashboard", label: "Dashboard" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/terms", label: "Terms" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/admin", label: "Admin" },
+    ],
+  },
+];
 
-      <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-3">
-          {/* Brand */}
+export function Footer() {
+  return (
+    <footer className="mt-24 border-t border-border sm:mt-32">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-14 sm:px-6 lg:px-8">
+        <div className="grid gap-12 md:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.6fr))]">
           <div>
-            <p className="text-[15px] font-semibold text-fg">Sardhana</p>
-            <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
-              Timelapses of real work, funded by the people who want to see more of it.
+            <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold">
+              <LogoMark />
+              Sardhana
+            </Link>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-fg-muted">
+              Timelapses of real work, reviewed by a person and funded directly by the people who
+              want to see more of it.
             </p>
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-6 flex items-center gap-2">
               <a
                 href="https://github.com/sardhana"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-fg-subtle transition-colors hover:text-fg"
                 aria-label="GitHub"
+                className="press flex h-9 w-9 items-center justify-center rounded-full border border-border text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
               >
-                <GitHubIcon size={16} />
+                <GitHubIcon size={15} />
               </a>
               <a
                 href="https://x.com/sardhana"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-fg-subtle transition-colors hover:text-fg"
                 aria-label="X"
+                className="press flex h-9 w-9 items-center justify-center rounded-full border border-border text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
               >
-                <XIcon size={16} />
+                <XIcon size={14} />
               </a>
             </div>
           </div>
 
-          {/* Navigation */}
-          <div>
-            <p className="text-[13px] font-medium text-fg-muted uppercase tracking-wider">
-              Navigate
-            </p>
-            <nav aria-label="Footer navigation" className="mt-3 space-y-2">
-              <FooterLink href="/">Timelapses</FooterLink>
-              <FooterLink href="/about">How it works</FooterLink>
-              <FooterLink href="/upload">Upload</FooterLink>
-              <FooterLink href="/dashboard">Dashboard</FooterLink>
+          {COLUMNS.map((column) => (
+            <nav key={column.title} aria-label={column.title}>
+              <p className="text-eyebrow">{column.title}</p>
+              <ul className="mt-4 space-y-2.5">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="link-underline text-sm text-fg-muted hover:text-fg">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </nav>
-          </div>
-
-          {/* Legal & Network */}
-          <div>
-            <p className="text-[13px] font-medium text-fg-muted uppercase tracking-wider">
-              Legal
-            </p>
-            <nav aria-label="Legal" className="mt-3 space-y-2">
-              <FooterLink href="/terms">Terms of service</FooterLink>
-              <FooterLink href="/privacy">Privacy policy</FooterLink>
-            </nav>
-            <div className="mt-6">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-2.5 py-1 text-[11px] font-medium tabular-nums text-fg-subtle">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Solana {CLUSTER}
-              </span>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-center">
-          <p className="text-[12px] text-fg-subtle">
-            Built for creators who show their work.
+        <p
+          aria-hidden
+          className="mt-16 select-none text-[clamp(3.5rem,17vw,15rem)] font-semibold leading-[0.8] tracking-[-0.06em] text-fg/[0.07]"
+        >
+          Sardhana
+        </p>
+
+        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
+          <p>Your hustle should be paid off.</p>
+          <p className="flex items-center gap-4">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
+              Solana {CLUSTER}
+            </span>
+            <span>
+              Press <span className="kbd">?</span> for shortcuts
+            </span>
           </p>
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="block text-[13px] text-fg-subtle transition-colors hover:text-fg"
-    >
-      {children}
-    </Link>
   );
 }

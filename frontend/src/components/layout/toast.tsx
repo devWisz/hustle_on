@@ -9,20 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { CheckIcon, CloseIcon } from "./icons";
+import { CheckIcon, CloseIcon } from "../ui/icons";
 import { cx } from "@/lib/format";
-
-/**
- * Transient confirmations.
- *
- * A toast is for something that already succeeded and needs no decision — a
- * link copied, a preference saved. Anything the person must act on belongs in
- * the page, not here, because a message that disappears on a timer is a message
- * some people will never finish reading.
- *
- * The live region is polite and always present in the DOM: a region inserted at
- * the same moment as its first message is frequently missed by screen readers.
- */
 
 type ToastTone = "success" | "error";
 
@@ -34,14 +22,13 @@ interface Toast {
 
 interface ToastContextValue {
   toast: (message: string, tone?: ToastTone) => void;
-  /** Convenience wrappers, so call sites read as what happened. */
+
   success: (message: string) => void;
   error: (message: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-/** Duration a toast stays on screen. Long enough to read a short sentence. */
 const DISMISS_MS = 4000;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -70,7 +57,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismiss],
   );
 
-  // Clearing on unmount stops a timer firing setState against a gone tree.
   useEffect(() => {
     const pending = timers.current;
     return () => {
@@ -129,13 +115,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Returns the toast function.
- *
- * Outside a provider this is a no-op rather than a thrown error: a missing
- * confirmation is a far smaller failure than a component tree that will not
- * render, and it keeps these components usable in isolation.
- */
 export function useToast(): ToastContextValue {
   return useContext(ToastContext) ?? { toast: () => {}, success: () => {}, error: () => {} };
 }
