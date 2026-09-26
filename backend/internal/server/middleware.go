@@ -206,6 +206,60 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 	})
 }
 
+// csrfGuard is the single point at which cross-site request forgery is refused.
+//
+// Every state-changing method on every route passes through here, so protection
+// is a property of the API rather than of remembering to call a helper in each
+// handler. The check itself lives in the auth package — origin allowlist first,
+// then the double-submit token bound to this session — and this middleware only
+// decides that it runs and what a refusal looks like.
+func (s *Server) csrfGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins); err != nil {
+			s.writeError(w, r, apierr.Forbidden(
+				"This request could not be verified. Reload the page and try again."))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// privatePrefixes are the API surfaces whose response depends on who is asking.
+// Everything under them is per-caller data and must never be reused for anyone
+// else, least of all by an intermediary that only looked at the URL.
+var privatePrefixes = []string{"/v1/me", "/v1/admin", "/v1/auth"}
+
+// cacheHeaders stops anything between us and the caller from reusing a response
+// it should not.
+//
+// Two things vary the response here that a URL does not: the Origin (the CORS
+// headers differ per origin) and the session cookie (the payload differs per
+// caller). Saying so in Vary is what makes the distinction visible to a cache;
+// without it, a shared cache can hand one signed-in user another's saved list.
+func (s *Server) cacheHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Add("Vary", "Origin")
+		h.Add("Vary", "Cookie")
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			// A write's response describes one caller's action.
+			h.Set("Cache-Control", "no-store, must-revalidate")
+		} else if isPrivatePath(r.URL.Path) {
+			h.Set("Cache-Control", "no-store, must-revalidate")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isPrivatePath(path string) bool {
+	for _, p := range privatePrefixes {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // attachSession resolves the session cookie, if any, and stores the user on
 // the request context. It never rejects: routes decide what they require.
 func (s *Server) attachSession(next http.Handler) http.Handler {
@@ -219,9 +273,31 @@ func (s *Server) attachSession(next http.Handler) http.Handler {
 			if err := s.auth.Touch(r.Context(), sess, time.Hour); err != nil {
 				s.log.WarnContext(r.Context(), "touch session", slog.Any("error", err))
 			}
+			// A session can outlive its CSRF cookie — a browser may drop it, an
+			// old tab may hold a stale copy — and every write would then fail
+			// with an opaque 403 until the user signed out and back in. Reissue
+			// it here instead. The refusal above still stands for the request
+			// that lacked the token; this only makes the next one work.
+			s.refreshCSRFCookie(w, r)
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// refreshCSRFCookie reissues the CSRF cookie when a signed-in caller presents a
+// session without one. The token is derived from the session value, so it is not
+// a new secret: it is the same value the caller would have had.
+func (s *Server) refreshCSRFCookie(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(s.auth.CSRFCookieName())
+	if err == nil && c.Value != "" {
+		return
+	}
+	session, err := r.Cookie(s.cfg.SessionCookieName)
+	if err != nil || session.Value == "" {
+		return
+	}
+	http.SetCookie(w, s.auth.CSRFCookie(
+		s.auth.CSRFToken(session.Value), s.cfg.SessionTTL))
 }
 
 // currentUser returns the signed-in user, if there is one.
@@ -258,14 +334,6 @@ func randomSuffix() string {
 	buf := make([]byte, 3)
 	_, _ = rand.Read(buf)
 	return hex.EncodeToString(buf)
-}
-
-// checkCSRF guards every state-changing request from a browser.
-func (s *Server) checkCSRF(r *http.Request) error {
-	if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins); err != nil {
-		return apierr.Forbidden("This request could not be verified. Reload the page and try again.")
-	}
-	return nil
 }
 
 // clientIP extracts the caller's address.
