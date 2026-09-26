@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { apiServer } from "./api/server";
+import { apiServer, apiServerResult } from "./api/server";
 import { hasDemoCookie } from "./demo/server";
 import {
   SAMPLE_RECEIVED,
@@ -42,20 +42,33 @@ export interface Viewer {
   user?: SelfUser;
   online: boolean;
   demo: boolean;
+  uncertain: boolean;
 }
 
 const liveStats = cache(() => apiServer<Stats>("/v1/stats", 60));
 
 export const getViewer = cache(async (): Promise<Viewer> => {
-  const [stats, session, cookie] = await Promise.all([
-    liveStats(),
-    apiServer<SessionResponse>("/v1/auth/session", 0),
+  const [session, cookie] = await Promise.all([
+    apiServerResult<SessionResponse>("/v1/auth/session", 0),
     hasDemoCookie(),
   ]);
-  const online = stats !== null;
-  const user = session?.authenticated ? session.user : undefined;
-  return { user, online, demo: !user && (cookie || !online) };
+  const online = session.status !== 0;
+  const uncertain = online && session.data === null;
+  const user = session.data?.authenticated ? session.data.user : undefined;
+  return { user, online, uncertain, demo: !user && (cookie || !online) };
 });
+
+class ApiUnavailableError extends Error {
+  constructor() {
+    super("The API is busy. Try again in a moment.");
+    this.name = "ApiUnavailableError";
+  }
+}
+
+function signInOrRetry(viewer: Viewer): "signin" {
+  if (viewer.uncertain) throw new ApiUnavailableError();
+  return "signin";
+}
 
 export interface Sourced<T> {
   data: T;
@@ -166,14 +179,14 @@ export async function getDashboard(): Promise<DashboardData | "signin"> {
   if (viewer.demo) {
     return { me: SAMPLE_SELF, items: SAMPLE_SUBMISSIONS, donations: SAMPLE_RECEIVED, demo: true };
   }
-  return "signin";
+  return signInOrRetry(viewer);
 }
 
 export async function getAccount(): Promise<{ me: SelfUser; demo: boolean } | "signin"> {
   const viewer = await getViewer();
   if (viewer.user) return { me: viewer.user, demo: false };
   if (viewer.demo) return { me: SAMPLE_SELF, demo: true };
-  return "signin";
+  return signInOrRetry(viewer);
 }
 
 export interface AdminData {
@@ -216,7 +229,7 @@ export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidde
     };
   }
   if (viewer.user) return "forbidden";
-  if (!viewer.demo) return "signin";
+  if (!viewer.demo) return signInOrRetry(viewer);
 
   return {
     operator: DEMO_ADMIN,
