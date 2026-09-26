@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { API_URL } from "./client";
 
-const SERVER_TIMEOUT_MS = 2500;
+const SERVER_TIMEOUT_MS = 6000;
 
 export async function apiServer<T>(path: string, revalidate = 30): Promise<T | null> {
   const cookieHeader = (await cookies()).toString();
