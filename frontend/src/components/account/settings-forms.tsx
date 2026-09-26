@@ -163,7 +163,6 @@ export function WalletForm({ user }: { user: SelfUser }) {
 }
 
 export function SignOutButton() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function signOut() {
@@ -171,8 +170,7 @@ export function SignOutButton() {
     try {
       await api("/v1/auth/logout", { method: "POST" });
     } finally {
-      router.push("/");
-      router.refresh();
+      window.location.assign("/");
     }
   }
 
