@@ -26,9 +26,13 @@ GRANT EXECUTE ON FUNCTION purge_expired_auth(interval) TO PUBLIC;
 -- Take back everything granted above. DROP ROLE refuses to run while the role
 -- still holds any privilege, so this has to be exhaustive: tables, sequences,
 -- functions and the schema itself.
+--
+-- Functions need no counterpart: the up migration granted EXECUTE to PUBLIC,
+-- not to this role, and a privilege held through PUBLIC is not a dependency of
+-- the role, so it does not block the drop. REVOKE ... ON ALL FUNCTIONS would
+-- only print a warning for every extension function in the schema.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM sardhana_app;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM sardhana_app;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM sardhana_app;
 REVOKE ALL ON SCHEMA public FROM sardhana_app;
 
 DROP ROLE IF EXISTS sardhana_app;
