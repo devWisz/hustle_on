@@ -54,13 +54,13 @@ export function HeroShowcase({
     [reel.length],
   );
 
-  // Reloads the element when the source changes; `key` on the video would
-  // remount it and drop the decoded first frame, which flashes black.
+  // The source is set on the element itself, so a failed file raises `error`
+  // on the video (a failing <source> child would raise it there instead).
+  // Changing `src` reloads it; this only has to start playback again.
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-    v.load();
-    if (autoplay) v.play().catch(() => setAutoplay(false));
+    if (!v || !autoplay) return;
+    v.play().catch(() => setAutoplay(false));
   }, [current?.id, autoplay]);
 
   if (!current) return null;
@@ -107,6 +107,7 @@ export function HeroShowcase({
             muted
             playsInline
             preload="auto"
+            src={current.playbackUrl}
             poster={current.thumbnailUrl}
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
@@ -121,9 +122,7 @@ export function HeroShowcase({
               setFailed((prev) => new Set(prev).add(current.id));
             }}
             className="h-full w-full object-cover"
-          >
-            <source src={current.playbackUrl} type="video/mp4" />
-          </video>
+          />
 
           {!autoplay ? (
             <button
