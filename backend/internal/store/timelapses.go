@@ -2,8 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/base64"
-	"errors"
 	"strings"
 	"time"
 
@@ -451,44 +449,29 @@ func (s *Store) SlugTaken(ctx context.Context, slug string) (bool, error) {
 // paginate trims the extra row a keyset query fetches to detect a next page,
 // and turns it into a cursor.
 func paginate(items []domain.Timelapse, limit int) domain.Page[domain.Timelapse] {
-	if len(items) <= limit {
-		return domain.Page[domain.Timelapse]{Items: items}
-	}
-	last := items[limit-1]
-	items = items[:limit]
-	return domain.Page[domain.Timelapse]{Items: items, NextCursor: encodeCursor(last)}
+	return pageOf(items, limit, encodeCursor)
 }
 
-// encodeCursor packs the sort key of the last row seen. It is base64 to signal
-// that clients should treat it as opaque and pass it back unchanged.
+// encodeCursor packs the sort key of the last row seen: the timestamp it was
+// ordered by, then its id. The id is not decoration — without it, two rows
+// published in the same transaction have no defined order between them, and a
+// page boundary landing between them would repeat or drop one.
 func encodeCursor(t domain.Timelapse) string {
-	if t.PublishedAt == nil {
+	return encodeTimelapseCursor(t, t.PublishedAt)
+}
+
+// encodeTimelapseCursor builds a cursor from a timelapse and the timestamp the
+// list it came from was ordered by. It returns the empty string when that
+// timestamp is null, which ends paging honestly rather than looping.
+func encodeTimelapseCursor(t domain.Timelapse, at *time.Time) string {
+	if at == nil {
 		return ""
 	}
-	return base64.RawURLEncoding.EncodeToString(
-		[]byte(t.PublishedAt.UTC().Format(time.RFC3339Nano) + "|" + t.ID))
+	return encodeKeyset(keysetTime(*at), t.ID)
 }
 
-// ErrBadCursor is returned when a cursor cannot be decoded.
-var ErrBadCursor = errors.New("store: cursor is not valid")
-
 func decodeCursor(cursor string) (*time.Time, *string, error) {
-	if cursor == "" {
-		return nil, nil, nil
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(cursor)
-	if err != nil {
-		return nil, nil, ErrBadCursor
-	}
-	stamp, id, ok := strings.Cut(string(raw), "|")
-	if !ok {
-		return nil, nil, ErrBadCursor
-	}
-	at, err := time.Parse(time.RFC3339Nano, stamp)
-	if err != nil {
-		return nil, nil, ErrBadCursor
-	}
-	return &at, &id, nil
+	return decodeTimeIDCursor(cursor)
 }
 
 // derefOr renders a nil pointer as the empty string, which the UPDATE above
