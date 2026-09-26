@@ -196,6 +196,34 @@ func (c Config) validate() error {
 			problems = append(problems, "SESSION_COOKIE_DOMAIN must contain the WEB_PUBLIC_URL host")
 		}
 	}
+	// A cookie name is written into a Set-Cookie header verbatim, so a name that
+	// is not an RFC 6265 token can inject attributes — a ";" or a space turns
+	// the rest of the name into something the browser reads as flags. The
+	// derived CSRF cookie shares the name, so this covers both.
+	if !isCookieToken(c.SessionCookieName) {
+		problems = append(problems, "SESSION_COOKIE_NAME must be a valid cookie name (letters, digits and !#$%&'*+-.^_`|~ only)")
+	}
+	for _, b := range []struct {
+		name  string
+		value int
+	}{
+		{"DATABASE_MAX_CONNS", int(c.DatabaseMaxConns)},
+		{"RATE_LIMIT_ANON", c.RateLimitAnon},
+		{"RATE_LIMIT_AUTH_ATTEMPTS", c.RateLimitAuth},
+		{"RATE_LIMIT_ENGAGE", c.RateLimitEngage},
+		{"RATE_LIMIT_WRITE", c.RateLimitWrite},
+		{"RATE_LIMIT_UPLOAD", c.RateLimitUpload},
+		{"RATE_LIMIT_DONATE", c.RateLimitDonate},
+		{"RATE_LIMIT_ADMIN", c.RateLimitAdmin},
+		{"RATE_LIMIT_IP_CEILING", c.RateLimitIPCeiling},
+	} {
+		if b.value < 1 {
+			problems = append(problems, b.name+" must be at least 1")
+		}
+	}
+	if c.DatabaseMaxConns > 100 {
+		problems = append(problems, "DATABASE_MAX_CONNS above 100 will exhaust a pooled endpoint; use a higher-tier pool instead")
+	}
 
 	if c.IsProduction() {
 		// Development conveniences are refused outright in production rather
@@ -213,12 +241,53 @@ func (c Config) validate() error {
 		if c.SolanaCluster != "mainnet-beta" {
 			problems = append(problems, "SOLANA_CLUSTER must be mainnet-beta in production")
 		}
+		// Creator records, donations and session digests cross this connection.
+		// pgx would happily negotiate TLS if the server offered it and fall back
+		// to plaintext if it did not, so production asks for it explicitly
+		// rather than trusting the default.
+		if mode := sslMode(c.DatabaseURL); mode == "disable" || mode == "allow" || mode == "prefer" || mode == "" {
+			problems = append(problems, "DATABASE_URL must set sslmode=require (or verify-full) in production")
+		}
 	}
 
 	if len(problems) > 0 {
 		return fmt.Errorf("configuration invalid:\n  - %s", strings.Join(problems, "\n  - "))
 	}
 	return nil
+}
+
+// isCookieToken reports whether name is a valid RFC 6265 cookie-name: one or
+// more token characters, and nothing else.
+func isCookieToken(name string) bool {
+	if name == "" {
+		return false
+	}
+	const extra = "!#$%&'*+-.^_`|~"
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case strings.ContainsRune(extra, r):
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// sslMode reads the sslmode parameter out of a connection string without
+// parsing it as a URL: DSNs come in both URL and key=value form, and only the
+// value is needed here.
+func sslMode(dsn string) string {
+	lower := strings.ToLower(dsn)
+	i := strings.Index(lower, "sslmode=")
+	if i < 0 {
+		return ""
+	}
+	value := lower[i+len("sslmode="):]
+	if end := strings.IndexAny(value, "& \t"); end >= 0 {
+		value = value[:end]
+	}
+	return value
 }
 
 func env(key, fallback string) string {
