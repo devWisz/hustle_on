@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -87,7 +88,11 @@ func run() error {
 		URLTTL:    cfg.UploadURLTTL,
 	})
 
-	server.SetTrustProxyHeaders(os.Getenv("TRUST_PROXY_HEADERS") == "true")
+	hops, _ := strconv.Atoi(os.Getenv("TRUSTED_PROXY_HOPS"))
+	if hops == 0 && os.Getenv("TRUST_PROXY_HEADERS") == "true" {
+		hops = 1
+	}
+	server.SetTrustedProxyHops(hops)
 
 	// Settles donations whose confirmation call never reached us, so a donor
 	// who closed the tab after signing is still credited.

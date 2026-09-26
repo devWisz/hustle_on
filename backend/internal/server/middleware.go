@@ -272,13 +272,18 @@ func (s *Server) checkCSRF(r *http.Request) error {
 // X-Forwarded-For is only honoured when the platform is running behind a proxy
 // that sets it; taking it from an arbitrary client would let anyone spoof their
 // address and sidestep every per-address limit.
+// clientIP returns the address a request came from.
+//
+// With trustedProxyHops = 0 (the default) it is the TCP peer, and forwarding
+// headers are ignored. Behind N proxies you control, each one appends the
+// address it saw to X-Forwarded-For, so the Nth entry from the right is the
+// last one written by a trusted proxy. Anything to the left of it was supplied
+// by the client and can be forged, which is why the leftmost entry is never
+// used.
 func clientIP(r *http.Request) netip.Addr {
-	if trustProxyHeaders {
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			first, _, _ := strings.Cut(xff, ",")
-			if addr, err := netip.ParseAddr(strings.TrimSpace(first)); err == nil {
-				return addr
-			}
+	if trustedProxyHops > 0 {
+		if addr, ok := forwardedFor(r.Header.Values("X-Forwarded-For"), trustedProxyHops); ok {
+			return addr
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -292,12 +297,37 @@ func clientIP(r *http.Request) netip.Addr {
 	return addr
 }
 
-// trustProxyHeaders is set at startup from TRUST_PROXY_HEADERS. It defaults to
-// false so a direct-to-internet deployment is safe out of the box.
-var trustProxyHeaders = false
+func forwardedFor(headers []string, hops int) (netip.Addr, bool) {
+	var entries []string
+	for _, h := range headers {
+		for _, part := range strings.Split(h, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				entries = append(entries, part)
+			}
+		}
+	}
+	i := len(entries) - hops
+	if i < 0 || i >= len(entries) {
+		return netip.Addr{}, false
+	}
+	addr, err := netip.ParseAddr(entries[i])
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
+}
 
-// SetTrustProxyHeaders configures forwarded-header handling.
-func SetTrustProxyHeaders(v bool) { trustProxyHeaders = v }
+// trustedProxyHops is set at startup from TRUSTED_PROXY_HOPS (or the older
+// TRUST_PROXY_HEADERS=true, which means one hop). It must match the number of
+// proxies in front of the API that append to X-Forwarded-For.
+var trustedProxyHops = 0
+
+func SetTrustedProxyHops(n int) {
+	if n < 0 {
+		n = 0
+	}
+	trustedProxyHops = n
+}
 
 func userAgent(r *http.Request) string {
 	ua := r.Header.Get("User-Agent")
