@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestCookieDomainMustCoverTheWebHost(t *testing.T) {
-	base := Config{DatabaseURL: "postgres://x", SessionSecret: make([]byte, 32), AllowedOrigins: []string{"https://sardhana.com"}}
+	base := validConfig()
 
 	ok := base
 	ok.WebURL, ok.CookieDomain = "https://sardhana.com", ".sardhana.com"
