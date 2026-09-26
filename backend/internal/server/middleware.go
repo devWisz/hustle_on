@@ -131,7 +131,8 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 			h.Set("Access-Control-Allow-Headers", "Content-Type, "+auth.CSRFHeader)
 			h.Set("Access-Control-Max-Age", "600")
-			h.Add("Vary", "Origin")
+			// Vary: Origin is set once, by cacheHeaders, which runs outside this
+			// middleware and therefore covers the preflight path too.
 		}
 		if r.Method == http.MethodOptions {
 			status := http.StatusNoContent
