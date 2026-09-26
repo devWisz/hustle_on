@@ -148,7 +148,7 @@ func (s *Server) handleMembers(w http.ResponseWriter, r *http.Request) error {
 	if _, err := requireAdmin(r); err != nil {
 		return err
 	}
-	page, err := s.store.Members(r.Context(), queryString(r, "q", 80), pageQuery(r, 50, 200))
+	page, err := s.store.Members(r.Context(), queryString(r, "q", 80), pageQuery(r, 100, 200))
 	if err != nil {
 		return listErr(err, "Members")
 	}

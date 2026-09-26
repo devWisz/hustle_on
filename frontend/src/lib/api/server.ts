@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
 import { API_URL } from "./client";
+import type { Page } from "../types";
 
 const SERVER_TIMEOUT_MS = 6000;
 const PROXY_SECRET = process.env.INTERNAL_PROXY_SECRET ?? "";

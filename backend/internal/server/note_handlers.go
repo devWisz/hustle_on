@@ -52,7 +52,7 @@ func (s *Server) handleTimelapseNotes(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return err
 	}
-	page, err := s.store.TimelapseNotes(r.Context(), t.ID, viewerID(r), pageQuery(r, 50, 100))
+	page, err := s.store.TimelapseNotes(r.Context(), t.ID, viewerID(r), pageQuery(r, 100, 200))
 	if err != nil {
 		return listErr(err, "Note")
 	}
@@ -182,7 +182,7 @@ func (s *Server) handleMyBookmarks(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	page, err := s.store.Bookmarks(r.Context(), u.ID, pageQuery(r, 50, 100))
+	page, err := s.store.Bookmarks(r.Context(), u.ID, pageQuery(r, 100, 200))
 	if err != nil {
 		return listErr(err, "Bookmark")
 	}
