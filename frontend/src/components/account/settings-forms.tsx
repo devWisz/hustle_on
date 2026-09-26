@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api/client";
 import { shortAddress } from "@/lib/format";
 import { connectWallet, signOwnershipProof, walletAvailable, WalletError } from "@/lib/wallet";
 import type { SelfUser } from "@/lib/types";
-import { Button, Card, Field, Input, Textarea } from "./ui";
-import { useToast } from "./toast";
-import { CheckIcon, WalletIcon } from "./icons";
+import { Button, Card, Field, Input, Textarea } from "../ui";
+import { useToast } from "../layout/toast";
+import { CheckIcon, WalletIcon } from "../ui/icons";
 
 export function ProfileForm({ user }: { user: SelfUser }) {
   const router = useRouter();
@@ -91,13 +91,6 @@ export function ProfileForm({ user }: { user: SelfUser }) {
   );
 }
 
-/**
- * Verifying the payout wallet.
- *
- * The signature proves control of the key and authorises no transfer — the
- * wallet will say as much when it shows the message. Sardhana asks for this
- * once, and never asks for a seed phrase at any point.
- */
 export function WalletForm({ user }: { user: SelfUser }) {
   const router = useRouter();
   const toast = useToast();

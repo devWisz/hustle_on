@@ -1,12 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { api, ApiError } from "@/lib/api";
-import { Button, Field, Input } from "./ui";
+import { api, ApiError } from "@/lib/api/client";
+import { Button, Field, Input } from "../ui";
 
-/**
- * Requests an email login link.
- */
 export function LoginForm({ next, className }: { next?: string; className?: string }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");

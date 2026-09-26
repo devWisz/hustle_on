@@ -2,16 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
-import { ButtonLink, SpinnerCard } from "./ui";
+import { api, ApiError } from "@/lib/api/client";
+import { ButtonLink, Spinner } from "../ui";
 
-/**
- * Consumes a magic-link token.
- *
- * The token arrives in the URL, so the exchange happens immediately and the
- * browser is then replaced onto a clean path — a URL carrying a login token
- * should not stay in history, or in the Referer of the next request.
- */
 export function VerifyClient() {
   const router = useRouter();
   const params = useSearchParams();
@@ -19,8 +12,7 @@ export function VerifyClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Guarded because React runs effects twice in development, and this token
-    // is single use: a second exchange would fail against a valid login.
+
     if (attempted.current) return;
     attempted.current = true;
 
@@ -58,5 +50,5 @@ export function VerifyClient() {
     );
   }
 
-  return <SpinnerCard label="Signing you in" />;
+  return <Spinner label="Signing you in" />;
 }

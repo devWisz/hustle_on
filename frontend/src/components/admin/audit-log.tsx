@@ -1,18 +1,8 @@
 import type { AuditEntry } from "@/lib/types";
-import { Avatar, Card } from "./ui";
+import { Avatar, Card } from "../ui";
 import { timeAgo } from "@/lib/format";
-import { CheckIcon, CloseIcon, ShieldIcon, TrashIcon } from "./icons";
+import { CheckIcon, CloseIcon, ShieldIcon, TrashIcon } from "../ui/icons";
 
-/**
- * The review panel's record of itself.
- *
- * Every decision that changes what the public sees is written to the audit
- * table, but a record nobody reads changes nobody's behaviour. Showing it here
- * is what makes it a check rather than a formality: an operator can see what was
- * decided, by whom, and when — including decisions taken by somebody else.
- */
-
-/** How each recorded action reads to a person, and how it should look. */
 const ACTIONS: Record<string, { label: string; tone: "accent" | "danger" | "neutral" }> = {
   "timelapse.approve": { label: "Published", tone: "accent" },
   "timelapse.reject": { label: "Sent back", tone: "danger" },
@@ -54,7 +44,7 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
                   className="mt-0.5"
                 />
               ) : (
-                // The account is gone; the decision it took is not.
+
                 <span className="mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-fg-subtle">
                   <ShieldIcon size={13} />
                 </span>

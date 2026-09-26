@@ -2,25 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api/client";
 import { formatDuration } from "@/lib/format";
 import type { Timelapse, Upload } from "@/lib/types";
-import { Button, Card, Field, Input, Textarea } from "./ui";
-import { UploadIcon } from "./icons";
-
-/**
- * The submission form.
- *
- * It is one form rather than a wizard, because everything on it is needed
- * before a human can review the result, and splitting that across four steps
- * only hides how much is being asked for. The multi-step part is the upload
- * itself, which is reported as progress rather than as pages.
- *
- * In `preview` mode — a guest looking around without an account — every field
- * still works and nothing is sent. The submit button says what would happen
- * rather than pretending to do it, because a form that silently discards what
- * somebody typed is worse than one that never accepted it.
- */
+import { Button, Card, Field, Input, Textarea } from "../ui";
+import { UploadIcon } from "../ui/icons";
 
 const MIN_SUMMARY = 40;
 
@@ -74,18 +60,15 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
     }
 
     try {
-      // 1. Ask for a destination. The API names the object key and signs it;
-      //    the browser only gets permission to write to that one key.
+
       setStage("uploading");
       setProgress(0);
       const upload = await api<Upload>("/v1/uploads", {
         body: { contentType: file.type, sizeBytes: file.size },
       });
 
-      // 2. Send the bytes straight to storage, never through the API.
       await putFile(upload.url, file, setProgress);
 
-      // 3. Record the submission against the object that was just written.
       setStage("recording");
       const created = await api<Timelapse>("/v1/timelapses", {
         body: {
@@ -101,7 +84,6 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
         body: { sizeBytes: file.size, durationSeconds: Math.round(duration) },
       });
 
-      // 4. Hand it to review. Nothing is public until somebody approves it.
       setStage("submitting");
       await api(`/v1/timelapses/${created.id}/submit`, { method: "POST" });
 
@@ -296,12 +278,6 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-/**
- * Uploads the file to the presigned URL.
- *
- * XMLHttpRequest rather than fetch, only because it reports upload progress:
- * a two-gigabyte upload with no feedback is indistinguishable from a hang.
- */
 function putFile(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
@@ -319,10 +295,6 @@ function putFile(url: string, file: File, onProgress: (pct: number) => void): Pr
   });
 }
 
-/**
- * Reads the clip's runtime from the file itself, so the creator does not have
- * to type a number the browser already knows.
- */
 function readDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);

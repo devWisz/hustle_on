@@ -2,21 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api/client";
 import { formatSession, timeAgo } from "@/lib/format";
 import type { Timelapse } from "@/lib/types";
-import { Avatar, Button, Card, Field, Textarea } from "./ui";
-import { useToast } from "./toast";
-import { GitHubIcon, XIcon } from "./icons";
+import { Avatar, Button, Card, Field, Textarea } from "../ui";
+import { useToast } from "../layout/toast";
+import { GitHubIcon, XIcon } from "../ui/icons";
 
-/**
- * The review queue.
- *
- * A reviewer sees the video, the write-up and the links side by side, because
- * the decision is whether those three describe the same piece of work. Nothing
- * here is a bulk action: approving in one click across a list is how unchecked
- * submissions reach a feed.
- */
 export function ReviewQueue({ initial }: { initial: Timelapse[] }) {
   const [queue, setQueue] = useState(initial);
 

@@ -2,19 +2,12 @@
 
 import Link from "next/link";
 import { useBookmarks } from "@/lib/bookmarks";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 import { formatSession, timeAgo } from "@/lib/format";
-import { BookmarkIcon } from "./icons";
-import { Card } from "./ui";
-import { useToast } from "./toast";
+import { BookmarkIcon } from "../ui/icons";
+import { Card } from "../ui";
+import { useToast } from "../layout/toast";
 
-/**
- * The reader's saved list.
- *
- * It is a client component because where the list lives depends on who is
- * asking: the API for an account, this browser otherwise. Rendering it on the
- * server would have to pick one of those and be wrong for the other.
- */
 export function SavedList() {
   const { bookmarks, loaded, signedIn, removeBookmark } = useBookmarks();
   const { success, error } = useToast();
@@ -28,8 +21,6 @@ export function SavedList() {
     }
   }
 
-  // Nothing is claimed until the list is actually known: an empty-state message
-  // shown while the account's list is still loading is a lie for a moment.
   if (!loaded) return null;
 
   if (bookmarks.length === 0) {

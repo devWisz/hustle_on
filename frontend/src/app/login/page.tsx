@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container } from "@/components/ui";
-import { LoginForm } from "@/components/login-form";
-import { EnterGuestButton } from "@/components/guest";
-import { isGuestPreview } from "@/lib/guest-server";
-import { safeNext } from "@/lib/guest";
-import { CheckIcon, ShieldIcon } from "@/components/icons";
+import { getViewer } from "@/lib/data";
+import { safeNext } from "@/lib/demo/cookie";
+import { LoginForm } from "@/components/account/login-form";
+import { EnterDemoButton } from "@/components/demo/demo";
+import { Reveal } from "@/components/motion/reveal";
+import { SplitHeading } from "@/components/motion/split-heading";
+import { ButtonLink, Container } from "@/components/ui";
+import { AlertIcon, CheckIcon, ShieldIcon } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -13,91 +15,95 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** What a preview actually opens up, said plainly rather than promised vaguely. */
-const PREVIEW_INCLUDES = [
-  "The feed, a watch page and a creator profile",
-  "The creator dashboard, with a decision on every submission",
-  "The submission form and the account settings",
+const DEMO_INCLUDES = [
+  "The feed, watch pages and creator profiles",
+  "A creator dashboard with a decision on every submission",
+  "The full admin console: review desk, members, ledger and audit trail",
 ];
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>;
-}) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   const destination = safeNext(next);
-  const guest = await isGuestPreview();
+  const viewer = await getViewer();
 
   return (
-    <Container className="py-16 sm:py-24">
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
-        <div className="animate-fade-in-up">
+    <Container width="wide" className="py-14 sm:py-24">
+      <div className="grid gap-14 lg:grid-cols-2 lg:gap-24">
+        <div className="max-w-md">
           <p className="text-eyebrow">Sardhana</p>
-          <h1 className="mt-3 text-[26px] font-semibold tracking-tight">Sign in</h1>
-          <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-            Enter your email and we will send you a link. Your account is created the first time you
-            open one, so there is nothing separate to sign up for.
-          </p>
-
-          <LoginForm next={next} className="mt-8" />
-
-          <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-4">
-            <ShieldIcon size={18} className="mt-0.5 shrink-0 text-accent" />
-            <p className="text-[13px] leading-relaxed text-fg-muted">
-              There is no password stored here, so there is none to breach. The link works once and
-              expires in fifteen minutes. Sardhana will never ask you for a seed phrase or a private
-              key.
+          <SplitHeading as="h1" onScroll={false} className="text-headline mt-4">
+            Sign in
+          </SplitHeading>
+          <Reveal immediate delay={0.2}>
+            <p className="mt-4 text-[15px] leading-relaxed text-fg-muted">
+              Enter your email and we send you a link. Your account is created the first time you
+              open one, so there is nothing separate to sign up for.
             </p>
-          </div>
+
+            {viewer.online ? (
+              <LoginForm next={next} className="mt-8" />
+            ) : (
+              <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft p-4 text-[13.5px] leading-relaxed text-warning">
+                <AlertIcon size={18} className="mt-0.5 shrink-0" />
+                <p>
+                  Sign-in is unavailable while the API is offline. Everything else still works in
+                  demo mode.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-8 flex gap-3 border-t border-border pt-6">
+              <ShieldIcon size={18} className="mt-0.5 shrink-0 text-fg-subtle" />
+              <p className="text-[13px] leading-relaxed text-fg-muted">
+                No password is stored here, so there is none to breach. The link works once and
+                expires in fifteen minutes. We will never ask for a seed phrase or private key.
+              </p>
+            </div>
+          </Reveal>
         </div>
 
-        {/* The other half of the offer. Somebody who arrived at a sign-in form
-            they did not ask for should be able to go and look first. */}
-        <div className="animate-fade-in-up delay-2 lg:border-l lg:border-border lg:pl-20">
-          <p className="text-eyebrow">Or don&rsquo;t, yet</p>
-          <h2 className="mt-3 text-[22px] font-semibold tracking-tight">
-            Look around without an account
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-fg-muted">
-            Guest preview opens every screen in the product, filled in with sample records so there
-            is something to look at. Nothing is saved and nothing is sent.
+        <Reveal immediate delay={0.3} className="rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:p-10">
+          <p className="text-eyebrow">Or look around first</p>
+          <h2 className="text-title mt-4">Explore the whole product without an account</h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-fg-muted">
+            Demo mode opens every screen, filled with sample data and real demo videos. Nothing is
+            saved and nothing is sent.
           </p>
-
-          <ul className="mt-6 space-y-2.5">
-            {PREVIEW_INCLUDES.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[14px] text-fg-muted">
-                <CheckIcon size={15} className="mt-0.5 shrink-0 text-accent" />
+          <ul className="mt-7 space-y-3">
+            {DEMO_INCLUDES.map((item) => (
+              <li key={item} className="flex items-start gap-3 text-[14.5px] text-fg-muted">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
+                  <CheckIcon size={12} />
+                </span>
                 {item}
               </li>
             ))}
           </ul>
-
-          <div className="mt-7">
-            {guest ? (
-              <p className="text-sm text-fg-muted">
-                You are already previewing.{" "}
-                <Link href="/" className="link-underline text-fg">
-                  Back to the feed
-                </Link>
-                .
-              </p>
+          <div className="mt-9">
+            {viewer.demo ? (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <ButtonLink href="/dashboard" size="lg" className="w-full sm:w-auto">
+                  Open the dashboard
+                </ButtonLink>
+                <ButtonLink href="/admin" variant="secondary" size="lg" className="w-full sm:w-auto">
+                  Open the admin console
+                </ButtonLink>
+              </div>
             ) : (
-              <EnterGuestButton
+              <EnterDemoButton
                 next={destination === "/login" ? "/" : destination}
-                label="Start a guest preview"
-                size="lg"
-                withIcon
+                label="Start the demo"
+                variant="inverse"
                 className="w-full sm:w-auto"
               />
             )}
           </div>
-
-          <p className="mt-4 text-[13px] leading-relaxed text-fg-subtle">
-            Writing anything — a submission, a profile, a donation — still needs an account, because
-            it has to belong to somebody a reviewer can write back to.
-          </p>
-        </div>
+          {viewer.demo ? (
+            <p className="mt-5 text-[13px] text-fg-subtle">
+              You are already in demo mode. <Link href="/" className="link-underline text-fg-muted">Back to the feed</Link>
+            </p>
+          ) : null}
+        </Reveal>
       </div>
     </Container>
   );
