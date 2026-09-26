@@ -74,13 +74,13 @@ client still gets a usable page.
 | --- | --- | --- |
 | `GET` | `/health` | Liveness |
 | `GET` | `/health/ready` | Pings the database |
-| `GET` | `/v1/timelapses` | Feed. `?limit=` (1–50), `?cursor=`, `?q=`, `?sort=` |
+| `GET` | `/v1/timelapses` | Feed. `?limit=` (default 12, max 50), `?cursor=`, `?q=`, `?sort=` |
 | `GET` | `/v1/timelapses/{slug}` | Unpublished rows: creator and admin only, else 404 |
-| `GET` | `/v1/timelapses/{slug}/donations` | Confirmed supporters |
-| `GET` | `/v1/timelapses/{slug}/notes` | Peer notes, newest first |
+| `GET` | `/v1/timelapses/{slug}/donations` | Confirmed supporters, largest first. `?limit=` (20, 100) |
+| `GET` | `/v1/timelapses/{slug}/notes` | Peer notes, newest first. `?limit=` (100, 200) |
 | `POST` | `/v1/timelapses/{slug}/views` | Counted once per viewer per day |
 | `GET` | `/v1/creators/{handle}` | Public profile |
-| `GET` | `/v1/creators/{handle}/timelapses` | Their published work |
+| `GET` | `/v1/creators/{handle}/timelapses` | Their published work. `?limit=` (24, 50) |
 | `GET` | `/v1/stats` | Homepage totals |
 
 `reviewNote` and `submittedAt` are stripped from every public payload.
@@ -117,11 +117,11 @@ ignored.
 | --- | --- | --- |
 | `GET` | `/v1/me` | Private profile |
 | `PATCH` | `/v1/me` | `{ displayName?, handle?, bio? }`. Absent keys are left alone |
-| `GET` | `/v1/me/timelapses` | Every state, including drafts and rejections |
-| `GET` | `/v1/me/donations` | Received |
+| `GET` | `/v1/me/timelapses` | Every state, including drafts and rejections. `?limit=` (50, 100) |
+| `GET` | `/v1/me/donations` | Received. `?limit=` (50, 100) |
 | `POST` | `/v1/me/wallet/challenge` | `{ address }` → the message to sign |
 | `POST` | `/v1/me/wallet/verify` | `{ address, nonce, signature, issuedAt }` |
-| `GET` | `/v1/me/bookmarks` | Saved timelapses, most recently saved first |
+| `GET` | `/v1/me/bookmarks` | Saved timelapses, most recently saved first. `?limit=` (100, 200) |
 | `PUT` | `/v1/me/bookmarks/{slug}` | Save. Idempotent |
 | `DELETE` | `/v1/me/bookmarks/{slug}` | Unsave. Removing one that was never saved is a 204 |
 
@@ -177,31 +177,75 @@ because the settle worker finishes anything left open.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/v1/admin/queue` | Oldest submission first |
-| `GET` | `/v1/admin/audit` | Most recent operator actions, `?limit=` (1–200) |
+| `GET` | `/v1/admin/queue` | Oldest submission first. `?limit=` (50, 100) |
+| `GET` | `/v1/admin/audit` | Most recent operator actions. `?limit=` (50, 200) |
 | `POST` | `/v1/admin/timelapses/{id}/approve` | Publishes |
 | `POST` | `/v1/admin/timelapses/{id}/reject` | `{ note }`, 10–500 chars, required |
 | `DELETE` | `/v1/admin/timelapses/{id}` | Takedown after publication |
+| `GET` | `/v1/admin/members` | Most recently active first. `?q=`, `?limit=` (100, 200) |
+| `POST` | `/v1/admin/members/{id}/suspend` | `{ note? }`. Revokes the member's sessions |
+| `POST` | `/v1/admin/members/{id}/reinstate` | `{ note? }` |
+| `GET` | `/v1/admin/ledger` | Sponsorships, newest first. `?status=`, `?limit=` (100, 200) |
+| `GET` | `/v1/admin/activity` | One row per day. `?days=` (7–90) and **not** paged |
 
 The audit trail is append-only and readable only by an admin. It is what makes
 the record worth writing: an operator can see what was decided, by whom and when.
 A deleted account leaves its decisions standing, attributed to nobody.
 
+Append-only is enforced by the database, not by convention: a trigger refuses
+`UPDATE` and `DELETE` on `audit_log` for every role including the owner, and the
+application role is not granted either privilege. See
+[database.md](database.md#the-audit-trail-is-append-only).
+
 ## Rate limits
 
-Two budgets apply, and they are keyed differently on purpose.
+Limits are per **class of work**, not per API. A single global budget has to be
+set to whatever the busiest endpoint needs, which would let the most expensive
+endpoint to abuse — requesting a sign-in link, which sends mail — run at the same
+rate as reading the feed. Each route in `routes.go` names the budget it is
+charged against, so the route table doubles as the rate-limit policy and a new
+endpoint cannot be added without choosing one.
 
-A per-address ceiling (`RATE_LIMIT_IP_CEILING`, default 600/min) is applied
-*before* the session is resolved. It is deliberately far looser than the real
-budget: a household, an office or a carrier NAT can present thousands of distinct
-callers from one address, and throttling all of them as one client is the bug
-this arrangement exists to avoid. What it bounds is how much work one address can
-cause ahead of authentication.
+| Budget | Default/min | Charged to | Covers |
+| --- | --- | --- | --- |
+| read | `RATE_LIMIT_ANON` 300 | caller | Public GETs and `/health` |
+| engage | `RATE_LIMIT_ENGAGE` 60 | caller | Views, notes, votes, bookmarks, logout |
+| write | `RATE_LIMIT_WRITE` 60 | caller | Creating, editing and submitting work |
+| upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing an upload URL |
+| donate | `RATE_LIMIT_DONATE` 10 | caller | Recording and confirming a sponsorship |
+| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Requesting a sign-in link |
+| verify | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Consuming a sign-in token |
+| admin | `RATE_LIMIT_ADMIN` 240 | caller | Operator console reads and decisions |
 
-The meaningful budget (`RATE_LIMIT_ANON`, default 60/min) is applied *after*, and
-is keyed by user id when the caller is signed in and by address when they are
-not. Sign-in attempts have their own far tighter budget
-(`RATE_LIMIT_AUTH_ATTEMPTS`, default 5/min).
+"Caller" means the account id when a session is present and the address
+otherwise — the reason the limiter sits *after* session resolution. The two
+sign-in budgets are always charged to the address: they are anonymous by
+definition, and keying them on an account would let one session send as much mail
+as it liked.
+
+Two coarser layers sit above and below this:
+
+- A per-address ceiling (`RATE_LIMIT_IP_CEILING`, default 1200/min) is applied
+  *before* the session is resolved. It is deliberately far looser: a household, an
+  office or a carrier NAT legitimately presents many callers from one address, and
+  throttling them as one client is the bug this arrangement exists to avoid. What
+  it bounds is how much work one address can cause before we know who is asking.
+- A global per-caller backstop (`RATE_LIMIT_ANON`) wraps every route, so a class
+  of work that has no budget of its own still cannot be hammered.
+
+Every response carries the state of the budget it was charged against:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 41
+```
+
+and a refusal adds `Retry-After` in seconds. A `429` body is the usual error
+envelope with `code: "rate_limited"` and a message naming the budget.
+
+Limits are per process and in-memory, so they are the last line of defence behind
+an edge limiter rather than a global quota. A multi-instance deployment should
+also enforce limits at the edge.
 
 ## Development only
 
