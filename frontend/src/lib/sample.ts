@@ -234,7 +234,7 @@ export function sampleNotes(slug: string): Note[] {
     {
       id: `${timelapse.id}-n1`,
       body: "The part around the middle is worth watching twice — the fixpoint is computed over the dominator tree rather than the CFG, which is why the nested case stops miscompiling.",
-      timestampSeconds: 38,
+      timestampSeconds: 12,
       helpfulCount: 14,
       viewerHasVoted: false,
       viewerCanDelete: false,
@@ -244,7 +244,7 @@ export function sampleNotes(slug: string): Note[] {
     {
       id: `${timelapse.id}-n2`,
       body: "Notice how the region inference pass was walking the graph twice before this change. That redundant traversal is the actual bug, and the rewrite is what removes it.",
-      timestampSeconds: 15,
+      timestampSeconds: 5,
       helpfulCount: 9,
       viewerHasVoted: false,
       viewerCanDelete: false,
