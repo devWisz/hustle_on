@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/sardhana/auth"
@@ -13,18 +14,64 @@ import (
 	"github.com/sardhana/backend/internal/ratelimit"
 )
 
-func testServer() *Server {
-	return &Server{
-		cfg: config.Config{
-			Env:            "production",
-			AllowedOrigins: []string{"https://sardhana.com"},
-			RateLimitAnon:  60,
-		},
-		log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		limiter: ratelimit.New(60),
-		ceil:    ratelimit.New(600),
-		authLim: ratelimit.New(5),
+// authTestKey is 32 bytes of key material, the floor the auth service accepts.
+const authTestKey = "0123456789abcdef0123456789abcdef"
+
+// stubAuthStore satisfies auth.Store without implementing any of it. The CSRF
+// check never reaches the store — it compares an HMAC against the key — so a
+// test that somehow did would panic on the nil embedded interface rather than
+// quietly pass.
+type stubAuthStore struct{ auth.Store }
+
+// stubMailer satisfies auth.Mailer for the same reason.
+type stubMailer struct{}
+
+func (stubMailer) Send(context.Context, auth.Message) error { return nil }
+
+func testAuth(t *testing.T) *auth.Service {
+	t.Helper()
+	svc, err := auth.NewService(auth.Config{
+		AppURL:     "https://sardhana.com",
+		CookieName: "sardhana_session",
+		Secure:     true,
+		CSRFKey:    []byte(authTestKey),
+	}, stubAuthStore{}, stubMailer{})
+	if err != nil {
+		t.Fatalf("build auth service: %v", err)
 	}
+	return svc
+}
+
+func testServer() *Server {
+	cfg := config.Config{
+		Env:                "production",
+		AllowedOrigins:     []string{"https://sardhana.com"},
+		RateLimitAnon:      60,
+		RateLimitAuth:      5,
+		RateLimitEngage:    60,
+		RateLimitWrite:     60,
+		RateLimitUpload:    10,
+		RateLimitDonate:    10,
+		RateLimitAdmin:     240,
+		RateLimitIPCeiling: 600,
+	}
+	return &Server{
+		cfg:     cfg,
+		log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		limiter: ratelimit.New(cfg.RateLimitAnon),
+		ceil:    ratelimit.New(cfg.RateLimitIPCeiling),
+		budgets: buildBudgets(cfg),
+		auth:    &auth.Service{},
+	}
+}
+
+// testServerWithAuth is testServer plus a working auth service, for the tests
+// that exercise the CSRF guard.
+func testServerWithAuth(t *testing.T) *Server {
+	t.Helper()
+	s := testServer()
+	s.auth = testAuth(t)
+	return s
 }
 
 /** asUser returns a request carrying a resolved session, the way attachSession
@@ -159,5 +206,135 @@ func TestIPCeilingAppliesBeforeSessionResolution(t *testing.T) {
 	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodGet, "/v1/feed", nil), "user-b"))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("second request got %d, want 429 — the ceiling does not distinguish users", rec.Code)
+	}
+}
+
+// --- cross-site request forgery -------------------------------------------
+
+// A state-changing request with no Origin at all is refused. Everything the
+// browser sends carries one, so a writer that cannot name an origin is not the
+// web app.
+func TestCSRFGuardRejectsUnsafeRequestWithoutOrigin(t *testing.T) {
+	s := testServerWithAuth(t)
+	handler := s.csrfGuard(http.HandlerFunc(ok))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/donations", nil))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("originless POST got %d, want 403", rec.Code)
+	}
+}
+
+func TestCSRFGuardRejectsForeignOrigin(t *testing.T) {
+	s := testServerWithAuth(t)
+	handler := s.csrfGuard(http.HandlerFunc(ok))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/donations", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("cross-site POST got %d, want 403", rec.Code)
+	}
+}
+
+// Reading is not a state change, so the guard must let it through untouched —
+// including for a signed-out visitor, who has no token to present.
+func TestCSRFGuardAllowsSafeMethods(t *testing.T) {
+	s := testServerWithAuth(t)
+	handler := s.csrfGuard(http.HandlerFunc(ok))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/timelapses", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET got %d, want 200", rec.Code)
+	}
+}
+
+// Requesting a sign-in link is a write from a caller who has no session, so the
+// origin check alone has to carry it.
+func TestCSRFGuardAllowsAnonymousWriteFromOurOrigin(t *testing.T) {
+	s := testServerWithAuth(t)
+	handler := s.csrfGuard(http.HandlerFunc(ok))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
+	req.Header.Set("Origin", "https://sardhana.com")
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("anonymous sign-in request got %d, want 200", rec.Code)
+	}
+}
+
+// With a session cookie present, the origin check is no longer enough: the
+// double-submit token has to match this exact session or the request is refused.
+func TestCSRFGuardRequiresATokenOnceASessionIsPresent(t *testing.T) {
+	s := testServerWithAuth(t)
+	handler := s.csrfGuard(http.HandlerFunc(ok))
+	session := "a-session-cookie-value"
+
+	post := func(token string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/v1/me/bookmarks/thing", nil)
+		req.Header.Set("Origin", "https://sardhana.com")
+		req.AddCookie(&http.Cookie{Name: "sardhana_session", Value: session})
+		if token != "" {
+			req.Header.Set(auth.CSRFHeader, token)
+		}
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := post(""); rec.Code != http.StatusForbidden {
+		t.Errorf("session POST with no token got %d, want 403", rec.Code)
+	}
+	if rec := post("not-the-token"); rec.Code != http.StatusForbidden {
+		t.Errorf("session POST with a forged token got %d, want 403", rec.Code)
+	}
+	if rec := post(s.auth.CSRFToken(session)); rec.Code != http.StatusOK {
+		t.Errorf("session POST with the right token got %d, want 200", rec.Code)
+	}
+}
+
+// --- response caching -----------------------------------------------------
+
+func TestCacheHeadersMarkPrivateSurfacesNoStore(t *testing.T) {
+	s := testServer()
+	private := []string{"/v1/me/bookmarks", "/v1/admin/queue", "/v1/auth/session"}
+	for _, path := range private {
+		rec := httptest.NewRecorder()
+		s.cacheHeaders(http.HandlerFunc(ok)).
+			ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if got := rec.Header().Get("Cache-Control"); got != "no-store, must-revalidate" {
+			t.Errorf("%s Cache-Control = %q, want no-store", path, got)
+		}
+	}
+
+	// The public feed is readable by anyone, so it is not marked no-store; the
+	// Vary header is what tells a cache that the body still depends on the
+	// caller's cookie and origin.
+	rec := httptest.NewRecorder()
+	s.cacheHeaders(http.HandlerFunc(ok)).
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/timelapses", nil))
+	if got := rec.Header().Get("Cache-Control"); got != "" {
+		t.Errorf("public feed Cache-Control = %q, want empty", got)
+	}
+	vary := strings.Join(rec.Header().Values("Vary"), ",")
+	for _, want := range []string{"Origin", "Cookie"} {
+		if !strings.Contains(vary, want) {
+			t.Errorf("Vary = %q, missing %s", vary, want)
+		}
+	}
+}
+
+// A write's response describes one caller's action, so it is never cacheable
+// even on a path that is otherwise public.
+func TestCacheHeadersMarkWritesNoStore(t *testing.T) {
+	s := testServer()
+	rec := httptest.NewRecorder()
+	s.cacheHeaders(http.HandlerFunc(ok)).
+		ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/timelapses", nil))
+	if got := rec.Header().Get("Cache-Control"); got != "no-store, must-revalidate" {
+		t.Errorf("POST Cache-Control = %q, want no-store", got)
 	}
 }
