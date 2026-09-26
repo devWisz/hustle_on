@@ -28,8 +28,10 @@ WEB_PUBLIC_URL=https://sardhana.com          # https is enforced
 CORS_ALLOWED_ORIGINS=https://sardhana.com
 TRUST_PROXY_HEADERS=true                     # only behind a proxy that sets XFF
 
-DATABASE_URL=…pooler…                        # the API uses the pooled endpoint
-DATABASE_URL_DIRECT=…                        # migrations use the direct one
+DATABASE_URL=…pooler…?sslmode=require        # the API uses the pooled endpoint,
+                                             # as a login role inheriting sardhana_app
+DATABASE_URL_DIRECT=…                        # migrations use the direct one, as the owner
+DATABASE_MAX_CONNS=10                        # stay inside the pooler's allowance
 
 RESEND_API_KEY=…
 SOLANA_CLUSTER=mainnet-beta
@@ -39,9 +41,18 @@ STORAGE_SECRET_ACCESS_KEY=…
 STORAGE_PUBLIC_BASE_URL=https://media.sardhana.com
 ```
 
-`TRUST_PROXY_HEADERS` must stay false unless something in front of the API
-overwrites `X-Forwarded-For`. Honouring it otherwise lets any client claim any
-address and bypass every per-address limit.
+`TRUSTED_PROXY_HOPS` (or `TRUST_PROXY_HEADERS=true`, which means one) must stay
+at zero unless something in front of the API overwrites `X-Forwarded-For`.
+Honouring it otherwise lets any client claim any address and bypass every
+per-address limit. Set it to the exact number of proxies you operate.
+
+Production refuses to start without `sslmode=require` on `DATABASE_URL`: session
+digests, emails and payout addresses cross that connection, and pgx would
+otherwise negotiate TLS only if the server offered it.
+
+The API should connect as a login role that inherits `sardhana_app`, not as the
+database owner — the owner is for migrations. See
+[database.md](database.md#the-application-role).
 
 ## Build
 

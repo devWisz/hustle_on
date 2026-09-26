@@ -100,6 +100,15 @@ to echo it back. That is safe because it is derived from the session under a
 server-side key: an attacker who can plant a cookie value still cannot produce
 the matching token.
 
+Both checks run in a single middleware in front of the whole API rather than in
+each handler, so a new state-changing endpoint is covered by existing rather than
+by remembering. A request with no session — requesting a sign-in link — is
+protected by the origin check alone, since there is no session to bind a token to.
+
+If a valid session arrives without its CSRF cookie, the API reissues it on that
+response. The request that lacked the token is still a 403; the next one works,
+instead of the user being stuck until they sign out and back in.
+
 CORS is configured to reflect only allowlisted origins. Credentials are
 permitted, which is precisely why the `Origin` is never reflected blindly.
 
@@ -165,14 +174,23 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 
 | Surface | Default | Why |
 | --- | --- | --- |
-| Anonymous requests | 60/min per address | General abuse ceiling |
-| Sign-in attempts | 5/min per address | `RATE_LIMIT_AUTH_ATTEMPTS` |
+| Reading | 300/min per caller | `RATE_LIMIT_ANON`; also the backstop on every route |
+| Sign-in and sign-in tokens | 5/min per **address** | `RATE_LIMIT_AUTH_ATTEMPTS` |
 | Links per email | 5/hour | Stops mailbox flooding via our sender |
+| Per address, before the session is read | 1200/min | `RATE_LIMIT_IP_CEILING`; loose on purpose |
 
-Forwarded headers are trusted **only** when `TRUST_PROXY_HEADERS=true`. It
-defaults to false, because honouring `X-Forwarded-For` with nothing in front to
-overwrite it lets any client claim any address and walk past every per-address
-limit.
+Beyond those, each endpoint is charged against a budget for its class of work —
+engage, write, upload, donate, admin — so the cheapest route to abuse is not
+budgeted like the busiest one. The full table is in
+[api.md](api.md#rate-limits).
+
+Forwarded headers are trusted **only** when `TRUSTED_PROXY_HOPS` is set to the
+number of proxies you operate (`TRUST_PROXY_HEADERS=true` is the older spelling
+and means one). The default of zero uses the TCP peer and no forwarded headers at
+all, because honouring `X-Forwarded-For` with nothing in front to overwrite it
+lets any client claim any address and walk past every per-address limit. When it
+is trusted, the *rightmost* entry is used — everything to its left came from the
+client.
 
 ---
 
