@@ -63,13 +63,18 @@ export function getBookmarks(): SavedTimelapse[] {
   }
 }
 
-function cacheLocally(items: SavedTimelapse[]) {
-  if (typeof window === "undefined") return;
+function persist(items: SavedTimelapse[]): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    return true;
   } catch {
-    return;
+    return false;
   }
+}
+
+function cacheLocally(items: SavedTimelapse[]) {
+  if (typeof window === "undefined") return;
+  persist(items);
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }
 
