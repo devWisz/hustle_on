@@ -30,6 +30,18 @@ function sol(amount: number): number {
   return Math.round(amount * LAMPORTS_PER_SOL);
 }
 
+/**
+ * Every sample record plays a real file: a short, generated editor timelapse
+ * served from `public/demo` (regenerate with `scripts/gen_demo_videos.py`).
+ * Hosting them ourselves means the demo never depends on somebody else's CDN
+ * and stays inside the `media-src 'self'` policy.
+ */
+const DEMO_SECONDS = 18;
+
+function demoMedia(name: string): Pick<Timelapse, "playbackUrl" | "thumbnailUrl"> {
+  return { playbackUrl: `/demo/${name}.mp4`, thumbnailUrl: `/demo/${name}.jpg` };
+}
+
 const CREATORS = {
   mira: { id: "s-c1", handle: "mira", displayName: "Mira Okonkwo" },
   theo: { id: "s-c2", handle: "theo", displayName: "Theo Lindqvist" },
@@ -43,12 +55,13 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-1",
     slug: "sample-borrow-checker-pass",
+    ...demoMedia("borrow-checker"),
     title: "Rewriting the borrow-checker pass",
     summary:
       "Spent the session replacing the recursive walk in our lifetime inference with an explicit worklist. The recursion was blowing the stack on generated code — one file in the test corpus nests closures fourteen deep and it died every time.\n\nThe worklist version is uglier to read and about four times faster, which was not the point but I will take it. Two tests still fail on early-return borrows; I left them failing rather than papering over them, and the commit says so.",
     githubUrl: "https://github.com/example/lang/pull/812",
     status: "published",
-    durationSeconds: 214,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 331,
     viewCount: 4820,
     donationCount: 14,
@@ -60,13 +73,14 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-2",
     slug: "sample-payment-reconciler",
+    ...demoMedia("payment-reconciler"),
     title: "A payment reconciler that survives a double refund",
     summary:
       "Our reconciler assumed a refund could only happen once per charge. It cannot. A support agent and a webhook retry did it simultaneously last Tuesday and the ledger went negative.\n\nThis session is the rewrite: every mutation now carries an idempotency key derived from the provider's event id, and the ledger is append-only with a computed balance instead of a stored one. The interesting bit starts around the eleven-minute mark, where I reproduce the original bug on purpose before fixing it.",
     githubUrl: "https://github.com/example/ledger",
     xUrl: "https://x.com/example",
     status: "published",
-    durationSeconds: 402,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 488,
     viewCount: 9310,
     donationCount: 31,
@@ -78,12 +92,13 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-3",
     slug: "sample-sqlite-index-hunt",
+    ...demoMedia("index-hunt"),
     title: "Four hours finding one missing index",
     summary:
       "A report page took nine seconds to load and nobody could say why. The session is mostly reading query plans and being wrong.\n\nIt turned out to be a correlated subquery in a view, three levels down, that nobody had opened since 2022. The fix is one index and two deleted lines. I kept the dead ends in the recording because the dead ends were the work.",
     githubUrl: "https://github.com/example/reports",
     status: "published",
-    durationSeconds: 168,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 247,
     viewCount: 6140,
     donationCount: 22,
@@ -95,12 +110,13 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-4",
     slug: "sample-typography-pass",
+    ...demoMedia("typography-pass"),
     title: "A typography pass on a dense settings screen",
     summary:
       "No new features. The settings screen had eleven type sizes on it and read like a form someone had lost an argument with.\n\nThis session cuts it to four, sets everything on a four-point rhythm, and moves the destructive actions into their own group at the bottom. Half of the recording is me undoing changes that looked better in isolation and worse in the page.",
     xUrl: "https://x.com/example",
     status: "published",
-    durationSeconds: 289,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 196,
     viewCount: 3270,
     donationCount: 9,
@@ -112,12 +128,13 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-5",
     slug: "sample-firmware-bringup",
+    ...demoMedia("firmware-bringup"),
     title: "Bringing up a board with no working UART",
     summary:
       "The debug serial line was dead, so the entire session is done by blinking one LED in morse. It is as slow as it sounds.\n\nBy the end the clock tree is configured, the bootloader hands off correctly, and the UART turns out to have been fine all along — the pin was muxed to the wrong peripheral in a header nobody had regenerated. The last twenty minutes are just relief.",
     githubUrl: "https://github.com/example/board-bringup",
     status: "published",
-    durationSeconds: 331,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 615,
     viewCount: 11240,
     donationCount: 47,
@@ -129,12 +146,13 @@ export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-6",
     slug: "sample-migration-rollback",
+    ...demoMedia("migration-rollback"),
     title: "Writing the rollback before the migration",
     summary:
       "We are splitting a table that forty services read from. The session is spent writing the down-migration first and proving it on a branch of production data, because the only migration worth trusting is the one you have already reversed once.\n\nThe forward migration takes six minutes. The rollback takes nine. Both are in the repository, both are tested, and neither has been run in anger yet.",
     githubUrl: "https://github.com/example/platform",
     status: "published",
-    durationSeconds: 246,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 402,
     viewCount: 5480,
     donationCount: 18,

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Timelapse } from "@/lib/types";
 import { formatDuration, formatSession } from "@/lib/format";
+import { isSampleSlug } from "@/lib/sample";
 import { usePlayerSeek } from "./player-seek";
 import {
   MaximizeIcon,
@@ -61,9 +62,10 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
 
   const seek = usePlayerSeek();
 
-  // View count tracking after 5s of watching
+  // View count tracking after 5s of watching. A demo record has no row on the
+  // API to count against, so it is never reported.
   useEffect(() => {
-    if (!timelapse.playbackUrl) return;
+    if (!timelapse.playbackUrl || isSampleSlug(timelapse.slug)) return;
     const timer = setTimeout(() => {
       if (counted.current) return;
       counted.current = true;
