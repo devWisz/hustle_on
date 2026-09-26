@@ -104,7 +104,7 @@ func Load() (Config, error) {
 		Env:      env("APP_ENV", "development"),
 		LogLevel: env("LOG_LEVEL", "info"),
 
-		Port:         env("API_PORT", "8085"),
+		Port:         env("API_PORT", env("PORT", "8085")),
 		PublicAPIURL: env("API_PUBLIC_URL", "http://localhost:8085"),
 		WebURL:       env("WEB_PUBLIC_URL", "http://localhost:3000"),
 		AdminURL:     env("ADMIN_PUBLIC_URL", "http://localhost:3002"),
