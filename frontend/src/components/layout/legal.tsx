@@ -5,12 +5,14 @@ import { Container } from "../ui";
 export function LegalPage({
   eyebrow,
   title,
+  updated,
   intro,
   sections,
   footer,
 }: {
   eyebrow: string;
   title: string;
+  updated: string;
   intro: string;
   sections: readonly { title: string; body: string }[];
   footer?: React.ReactNode;
@@ -23,6 +25,7 @@ export function LegalPage({
       </SplitHeading>
       <Reveal immediate delay={0.2}>
         <p className="text-lede mt-5 max-w-2xl text-fg-muted">{intro}</p>
+        <p className="mt-4 font-mono text-[12px] text-fg-subtle">Last updated {updated}</p>
       </Reveal>
 
       <div className="mt-14 grid gap-12 lg:grid-cols-[220px_minmax(0,1fr)]">

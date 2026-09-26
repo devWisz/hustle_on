@@ -16,8 +16,8 @@ const COLUMNS = [
   {
     title: "Company",
     links: [
-      { href: "/terms", label: "Terms" },
-      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms and Conditions" },
+      { href: "/privacy", label: "Privacy Policy" },
       { href: "/admin", label: "Admin" },
     ],
   },
