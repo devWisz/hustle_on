@@ -7,8 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Authenticated and single-use surfaces have nothing worth indexing, and
-      // the verify route carries a sign-in token in its URL.
+
       disallow: ["/dashboard", "/settings", "/upload", "/admin", "/auth/", "/login"],
     },
     sitemap: `${site}/sitemap.xml`,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/ui";
+import { LegalPage } from "@/components/layout/legal";
 
 export const metadata: Metadata = { title: "Privacy" };
 
@@ -32,31 +32,20 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <Container width="narrow" className="py-14 sm:py-20">
-      <h1 className="text-[28px] font-semibold tracking-tight">Privacy</h1>
-      <p className="mt-3 text-sm text-fg-muted">
-        The short version: we hold as little as the service can function with.
-      </p>
-
-      <div className="mt-10 space-y-8">
-        {sections.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-[16px] font-semibold">{section.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-fg-muted">{section.body}</p>
-          </section>
-        ))}
-      </div>
-
-      <p className="mt-10 text-sm text-fg-muted">
-        Questions about your data go to{" "}
-        <a
-          href="mailto:privacy@sardhana.com"
-          className="font-medium text-fg underline underline-offset-4"
-        >
-          privacy@sardhana.com
-        </a>
-        .
-      </p>
-    </Container>
+    <LegalPage
+      eyebrow="Legal"
+      title="Privacy"
+      intro="The short version: we hold as little as the service can function with."
+      sections={sections}
+      footer={
+        <p>
+          Questions about your data go to{" "}
+          <a href="mailto:privacy@sardhana.com" className="font-medium text-fg underline underline-offset-4">
+            privacy@sardhana.com
+          </a>
+          .
+        </p>
+      }
+    />
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/ui";
+import { LegalPage } from "@/components/layout/legal";
 
 export const metadata: Metadata = { title: "Terms" };
 
@@ -32,23 +32,11 @@ const clauses = [
 
 export default function TermsPage() {
   return (
-    <Container width="narrow" className="py-14 sm:py-20">
-      <h1 className="text-[28px] font-semibold tracking-tight">Terms</h1>
-      <p className="mt-3 text-sm text-fg-muted">
-        Plain language, and binding. If something here is unclear, ask before you rely on it.
-      </p>
-
-      <ol className="mt-10 space-y-8">
-        {clauses.map((clause, index) => (
-          <li key={clause.title}>
-            <h2 className="text-[16px] font-semibold">
-              <span className="mr-2 tabular-nums text-fg-subtle">{index + 1}.</span>
-              {clause.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-fg-muted">{clause.body}</p>
-          </li>
-        ))}
-      </ol>
-    </Container>
+    <LegalPage
+      eyebrow="Legal"
+      title="Terms"
+      intro="Plain language, and binding. If something here is unclear, ask before you rely on it."
+      sections={clauses}
+    />
   );
 }
