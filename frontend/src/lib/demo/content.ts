@@ -1,5 +1,5 @@
-import type { Donation, Note, PublicUser, SelfUser, Stats, Timelapse } from "./types";
-import { LAMPORTS_PER_SOL } from "./format";
+import type { Donation, Note, PublicUser, SelfUser, Stats, Timelapse } from "../types";
+import { LAMPORTS_PER_SOL } from "../format";
 
 const SAMPLE_PREFIX = "sample-";
 
@@ -7,21 +7,21 @@ export function isSampleSlug(slug: string): boolean {
   return slug.startsWith(SAMPLE_PREFIX);
 }
 
-function ago(minutes: number): string {
+export function ago(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
 
-function sol(amount: number): number {
+export function sol(amount: number): number {
   return Math.round(amount * LAMPORTS_PER_SOL);
 }
 
-const DEMO_SECONDS = 18;
+export const DEMO_SECONDS = 18;
 
-function demoMedia(name: string): Pick<Timelapse, "playbackUrl" | "thumbnailUrl"> {
+export function demoMedia(name: string): Pick<Timelapse, "playbackUrl" | "thumbnailUrl"> {
   return { playbackUrl: `/demo/${name}.mp4`, thumbnailUrl: `/demo/${name}.jpg` };
 }
 
-const CREATORS = {
+export const CREATORS = {
   mira: { id: "s-c1", handle: "mira", displayName: "Mira Okonkwo" },
   theo: { id: "s-c2", handle: "theo", displayName: "Theo Lindqvist" },
   ana: { id: "s-c3", handle: "ana", displayName: "Ana Ruiz" },
@@ -283,10 +283,11 @@ export const SAMPLE_SUBMISSIONS: Timelapse[] = [
   {
     id: "s-sub-1",
     slug: "sample-your-parser-session",
+    ...demoMedia("index-hunt"),
     title: "Replacing the hand-written parser with a generated one",
     summary: "Six hours of grammar wrangling, plus the two tests it broke.",
     status: "published",
-    durationSeconds: 198,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 372,
     viewCount: 2140,
     donationCount: 7,
@@ -299,10 +300,11 @@ export const SAMPLE_SUBMISSIONS: Timelapse[] = [
   {
     id: "s-sub-2",
     slug: "sample-your-cache-session",
+    ...demoMedia("payment-reconciler"),
     title: "Caching the expensive route",
     summary: "Added a read-through cache and the invalidation that goes with it.",
     status: "in_review",
-    durationSeconds: 142,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 164,
     viewCount: 0,
     donationCount: 0,
@@ -314,12 +316,13 @@ export const SAMPLE_SUBMISSIONS: Timelapse[] = [
   {
     id: "s-sub-3",
     slug: "sample-your-refactor-session",
+    ...demoMedia("typography-pass"),
     title: "Tidying the settings module",
     summary: "Moved some files around.",
     status: "rejected",
     reviewNote:
       "The write-up does not say what changed or why, and there is no link to the result. Tell us what the module looked like before, what you moved and what that fixed, then send it back — the recording itself is fine.",
-    durationSeconds: 96,
+    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 48,
     viewCount: 0,
     donationCount: 0,

@@ -1,10 +1,3 @@
-/**
- * Base58 encoding, matching the alphabet Solana wallets use for signatures and
- * addresses. Implemented here rather than pulled in as a dependency: it is
- * twenty lines, and every third-party package on this path is one more place a
- * supply-chain compromise could read a signature.
- */
-
 const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 function encode(bytes: Uint8Array): string {

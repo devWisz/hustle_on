@@ -22,7 +22,7 @@ export function getTimelapseTags(t: { title: string; summary: string }): string[
   for (const cat of CATEGORIES) {
     if (cat.id === "all") continue;
     const hit = cat.keywords.some((k) => {
-      // Word boundary check or substring
+
       return text.includes(k.toLowerCase());
     });
     if (hit) {
@@ -30,7 +30,6 @@ export function getTimelapseTags(t: { title: string; summary: string }): string[
     }
   }
 
-  // Fallback tag if none matched
   if (matched.length === 0) {
     matched.push("Engineering");
   }

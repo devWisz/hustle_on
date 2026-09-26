@@ -8,15 +8,6 @@ import {
   Transaction,
 } from "@solana/web3.js";
 
-/**
- * Browser wallet access.
- *
- * The site never sees a private key and never asks for a seed phrase. It asks
- * the injected wallet to sign, and the wallet shows the user exactly what they
- * are approving. Anything that asked for more than that would be a phishing
- * pattern, not a feature.
- */
-
 interface InjectedWallet {
   isConnected?: boolean;
   publicKey?: { toString(): string } | null;
@@ -62,16 +53,11 @@ export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.de
 let connection: Connection | null = null;
 
 export function getConnection(): Connection {
-  // One connection per tab; creating one per transaction would open a new
-  // websocket every time a donation is sent.
+
   connection ??= new Connection(RPC_URL, "confirmed");
   return connection;
 }
 
-/**
- * Signs a message with the connected wallet, proving control of the address.
- * Used to attach a wallet to an account — it authorises no transfer.
- */
 export async function signOwnershipProof(message: string): Promise<string> {
   const wallet = getWallet();
   const encoded = new TextEncoder().encode(message);
@@ -82,18 +68,10 @@ export async function signOwnershipProof(message: string): Promise<string> {
 
 export interface SentTransfer {
   signature: string;
-  /** The address that actually paid, which the API needs to verify the transfer. */
+
   payer: string;
 }
 
-/**
- * Sends lamports to a creator.
- *
- * The signature is only a receipt to hand back to the API, which verifies the
- * transfer against the cluster itself before crediting anyone. The payer is
- * returned alongside it because verification checks that this specific account
- * is the one whose balance fell.
- */
 export async function sendSol(to: string, lamports: number): Promise<SentTransfer> {
   const wallet = getWallet();
   const from = wallet.publicKey?.toString() ?? (await connectWallet());

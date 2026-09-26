@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError } from "./api/client";
 import type { Timelapse } from "./types";
 
 const STORAGE_KEY = "sardhana-bookmarks";
@@ -27,17 +27,6 @@ export interface SavedTimelapse {
   };
   savedAt: string;
 }
-
-/**
- * The saved list.
- *
- * Where it lives depends on who is asking. A signed-in reader's list is kept by
- * the API, so it follows them between devices; a signed-out visitor's is kept in
- * this browser, because there is no account for a write to belong to and a saved
- * list is not worth blocking on a sign-in form. The two are not merged: signing
- * in replaces the local list with the account's, which is the only behaviour
- * that does not silently attribute one person's saves to another.
- */
 
 function toSaved(t: Timelapse, savedAt: string): SavedTimelapse {
   return {
@@ -84,14 +73,13 @@ function cacheLocally(items: SavedTimelapse[]) {
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }
 
-/** The account's list, or null when there is no account to ask. */
 async function fetchServerBookmarks(): Promise<SavedTimelapse[] | null> {
   try {
     const page = await api<{ items: Timelapse[] }>("/v1/me/bookmarks");
     const now = new Date().toISOString();
     return page.items.map((t) => toSaved(t, now));
   } catch (err) {
-    // A signed-out visitor is the expected case, not a failure.
+
     if (err instanceof ApiError && err.status === 401) return null;
     return null;
   }
@@ -102,14 +90,10 @@ export function useBookmarks() {
   const [loaded, setLoaded] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
 
-  // Read by the mutation callbacks so they do not have to be rebuilt — and so a
-  // background refresh cannot be clobbered by a stale closure.
   const signedInRef = useRef(false);
 
   useEffect(() => {
-    // Local first so a saved list paints instantly, then the account's list if
-    // there is one. The API wins, because it is the list that follows the reader
-    // to another device.
+
     setBookmarks(getBookmarks());
     setLoaded(true);
 
@@ -139,13 +123,6 @@ export function useBookmarks() {
     [bookmarks],
   );
 
-  /**
-   * Saves or unsaves, updating the list immediately and the API behind it.
-   *
-   * Returns the state the list ended in. Throws if the account's list could not
-   * be changed, after putting the list back the way it was — a saved badge that
-   * survives a failed write is a promise the product cannot keep.
-   */
   const toggleBookmark = useCallback(async (t: Timelapse): Promise<boolean> => {
     const current = getBookmarks();
     const exists = current.some((b) => b.slug === t.slug);
