@@ -177,3 +177,7 @@ The short version; [docs/security.md](docs/security.md) is the real one.
 **Built for creators who show their work.**
 
 </div>
+
+
+
+Developed by Sarjak Khanal
