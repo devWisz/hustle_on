@@ -1,0 +1,15 @@
+-- 0009: give the API back the function it actually calls.
+--
+-- 0008 revoked EXECUTE on the two maintenance functions from PUBLIC. That is
+-- right for recount_totals() — it rebuilds every cached counter and is meant to
+-- be run by an operator after editing rows by hand. It was wrong for
+-- purge_expired_auth(): internal/store calls it at start-up and then daily, so
+-- revoking it from PUBLIC without granting it to sardhana_app would have left
+-- the application role unable to delete expired sign-in links, wallet
+-- challenges and sessions.
+--
+-- This went unnoticed at first because the role is inert until a deployment
+-- points its connection string at it. It was found by reading the call site,
+-- which is the point: a privilege model is only as good as the list of things
+-- the application actually does.
+GRANT EXECUTE ON FUNCTION purge_expired_auth(interval) TO sardhana_app;

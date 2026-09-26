@@ -68,9 +68,17 @@ REVOKE DELETE ON TABLE users, timelapses, donations FROM sardhana_app;
 --    rather than harden anything.
 REVOKE UPDATE, DELETE ON TABLE audit_log FROM sardhana_app;
 
--- 7. The counter-repair and purge functions are run by an operator on purpose.
---    PUBLIC has EXECUTE on every function by default, so this has to be said
+-- 7. PUBLIC has EXECUTE on every function by default, so this has to be said
 --    explicitly rather than assumed.
+--
+--    recount_totals() rebuilds every cached counter and is an operator's repair
+--    tool: nobody else should be able to call it.
+--
+--    purge_expired_auth(interval) is a different case — the API calls it at
+--    start-up and then daily — so revoking it here without granting it back to
+--    the application role would stop the scheduled purge. That grant is 0009,
+--    because this migration had already been applied by the time the call site
+--    was noticed, and an applied migration is not edited.
 REVOKE EXECUTE ON FUNCTION recount_totals() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION purge_expired_auth(interval) FROM PUBLIC;
 
