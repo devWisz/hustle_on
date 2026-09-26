@@ -80,6 +80,29 @@ make dev                      # api on :8085, web on :3000
 > Sign-in links print to the API log, uploads write to disk, and the chain is read-only.
 > None of these shortcuts exist in production — the API refuses to start without the real thing.
 
+### Run the API as its own database role
+
+Migrations need DDL and run as the owner. The API needs to read and write rows,
+and nothing else. Migration `0008` creates a `sardhana_app` group role with
+exactly that and withholds the rest — no `DELETE` on accounts, timelapses or
+donations, no write access to the audit trail or the migration ledger.
+
+It is inert until you point the API at a login role that inherits it, which is
+one command and one env change:
+
+```sql
+-- replace the placeholder with the output of: openssl rand -base64 48
+CREATE ROLE sardhana_api LOGIN PASSWORD '<generated-password>'
+    IN ROLE sardhana_app;
+```
+
+```bash
+DATABASE_URL="postgres://sardhana_api:<password>@<pooler-host>/sardhana?sslmode=require"
+```
+
+See [docs/database.md](docs/database.md#the-application-role) for what the role
+can and cannot do, and why.
+
 ### Become an admin
 
 Roles are granted in the database on purpose, so no bug in an endpoint can create one:
