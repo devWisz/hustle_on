@@ -1,21 +1,55 @@
 import type { TimelapseStatus } from "@/lib/types";
-import { Badge } from "./ui";
+import { cx } from "@/lib/format";
 
-/**
- * The review state of a submission, in the creator's own words rather than the
- * database's. "in_review" is a column value; "Waiting for review" is what the
- * person who uploaded it needs to know.
- */
-const LABELS: Record<TimelapseStatus, { text: string; tone: "neutral" | "accent" | "danger" }> = {
+export type Tone = "neutral" | "accent" | "success" | "warning" | "danger";
+
+const tones: Record<Tone, string> = {
+  neutral: "bg-surface-raised text-fg-muted",
+  accent: "bg-accent-soft text-accent",
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-warning",
+  danger: "bg-danger-soft text-danger",
+};
+
+export function Badge({
+  children,
+  tone = "neutral",
+  dot = false,
+  className,
+}: {
+  children: React.ReactNode;
+  tone?: Tone;
+  dot?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cx(
+        "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium",
+        tones[tone],
+        className,
+      )}
+    >
+      {dot ? <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" /> : null}
+      {children}
+    </span>
+  );
+}
+
+const STATUS: Record<TimelapseStatus, { text: string; tone: Tone }> = {
   draft: { text: "Draft", tone: "neutral" },
   uploaded: { text: "Not submitted", tone: "neutral" },
-  in_review: { text: "Waiting for review", tone: "neutral" },
-  published: { text: "Published", tone: "accent" },
+  in_review: { text: "In review", tone: "warning" },
+  published: { text: "Published", tone: "success" },
   rejected: { text: "Needs changes", tone: "danger" },
   removed: { text: "Removed", tone: "neutral" },
 };
 
 export function StatusBadge({ status }: { status: TimelapseStatus }) {
-  const label = LABELS[status] ?? LABELS.draft;
-  return <Badge tone={label.tone}>{label.text}</Badge>;
+  const label = STATUS[status] ?? STATUS.draft;
+  return (
+    <Badge tone={label.tone} dot>
+      {label.text}
+    </Badge>
+  );
 }
