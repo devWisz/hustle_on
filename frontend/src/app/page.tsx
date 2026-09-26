@@ -1,27 +1,19 @@
-import Link from "next/link";
-import { apiServer } from "@/lib/api";
-import type { Page, SessionResponse, Stats, Timelapse } from "@/lib/types";
-import { isGuestPreview } from "@/lib/guest-server";
-import { SAMPLE_STATS, SAMPLE_TIMELAPSES, sampleFeed } from "@/lib/sample";
-import { formatCount } from "@/lib/format";
-import { TimelapseGrid } from "@/components/timelapse-card";
-import { ButtonLink, Container, EmptyState } from "@/components/ui";
-import { EnterGuestButton, SampleTag } from "@/components/guest";
-import { CountUp } from "@/components/count-up";
-import { Reveal } from "@/components/reveal";
-import { FeedTabs, parseSort, type FeedSort } from "@/components/feed-tabs";
-import { HeroShowcase } from "@/components/hero-showcase";
-import { ApiStatus } from "@/components/api-status";
-import {
-  ArrowRightIcon,
-  ShieldIcon,
-  TrendingIcon,
-  UploadIcon,
-  WalletIcon,
-} from "@/components/icons";
-
-/** The feed is re-read often enough to feel live, cheaply enough to cache. */
-export const revalidate = 30;
+import { getFeed, getStats, getViewer } from "@/lib/data";
+import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
+import type { Stats } from "@/lib/types";
+import { EnterDemoButton } from "@/components/demo/demo";
+import { DemoTag } from "@/components/demo/tag";
+import { CountUp } from "@/components/motion/count-up";
+import { Magnetic } from "@/components/motion/magnetic";
+import { Marquee } from "@/components/motion/marquee";
+import { ProgressRail } from "@/components/motion/progress-rail";
+import { Reveal } from "@/components/motion/reveal";
+import { ScrollScale } from "@/components/motion/scroll-scale";
+import { SplitHeading } from "@/components/motion/split-heading";
+import { Feed, parseSort } from "@/components/timelapse/feed";
+import { Showcase } from "@/components/timelapse/showcase";
+import { ButtonLink, Container, SectionHeader } from "@/components/ui";
+import { ArrowRightIcon, ShieldIcon, WalletIcon, ZapIcon } from "@/components/ui/icons";
 
 export default async function HomePage({
   searchParams,
@@ -29,415 +21,285 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sort = parseSort((await searchParams).sort);
-  const query = sort ? `?limit=12&sort=${sort}` : "?limit=12";
-
-  const [feed, stats, session, guest] = await Promise.all([
-    apiServer<Page<Timelapse>>(`/v1/timelapses${query}`),
-    apiServer<Stats>("/v1/stats", 120),
-    apiServer<SessionResponse>("/v1/auth/session", 0),
-    isGuestPreview(),
-  ]);
-
-  const live = feed?.items ?? [];
-  const apiDown = feed === null;
-  // The demo library stands in when a guest would otherwise be staring at an
-  // empty grid, and when the API cannot be reached at all — an outage should
-  // not leave the front page looking broken. Real content always wins, every
-  // demo record is labelled as one, and a signed-out visitor on a working but
-  // empty site still sees the honest empty state.
-  const preview = (guest || apiDown) && live.length === 0;
-  const items = preview ? sampleFeed(sort) : live;
-  const figures = stats && stats.publishedTimelapses > 0 ? stats : preview ? SAMPLE_STATS : null;
+  const [feed, stats, viewer] = await Promise.all([getFeed(sort), getStats(), getViewer()]);
+  const signedIn = Boolean(viewer.user);
 
   return (
     <>
-      <Hero
-        signedIn={Boolean(session?.authenticated)}
-        guest={guest}
-        reel={preview ? [] : live}
-        sample={preview}
-      />
-      {figures ? <StatBand stats={figures} sample={preview} /> : null}
-      <Container width="wide">
-        <Feed items={items} sort={sort} apiDown={apiDown} sample={preview} />
-        <HowItWorks />
-        <Principles />
-        <ClosingCTA signedIn={Boolean(session?.authenticated)} guest={guest} />
+      <Hero signedIn={signedIn} demo={viewer.demo} />
+
+      <Container width="wide" className="-mt-2 sm:mt-0">
+        <ScrollScale>
+          <Showcase items={feed.demo ? [] : feed.data} fallback={SAMPLE_TIMELAPSES} demo={feed.demo} />
+        </ScrollScale>
       </Container>
+
+      <Claims />
+
+      {stats ? <Figures stats={stats.data} demo={stats.demo} /> : null}
+
+      <section id="feed" className="scroll-mt-20 pt-20 sm:pt-28" aria-labelledby="feed-heading">
+        <Container width="wide">
+          <Reveal>
+            <SectionHeader
+              eyebrow={feed.demo ? "The feed · demo library" : "The feed"}
+              title={<span id="feed-heading">Real sessions, read by a person before they went up</span>}
+              description="Hover a session to preview it. Filter by topic, or sort by what people funded and watched most."
+            />
+          </Reveal>
+          <div className="mt-10">
+            <Feed
+              items={feed.data}
+              sort={sort}
+              demo={feed.demo}
+              emptyAction={<ButtonLink href="/upload">Upload the first one</ButtonLink>}
+            />
+          </div>
+        </Container>
+      </section>
+
+      <HowItWorks />
+      <Principles />
+      <Closing signedIn={signedIn} demo={viewer.demo} />
     </>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-
-/**
- * The hero.
- *
- * Copy on the left, the product itself on the right: a reel of real sessions
- * playing one after another. The backdrop is a ruled grid that fades out
- * rather than a coloured bloom — structure instead of light.
- *
- * The second button is the one that matters for somebody who has just arrived.
- * Uploading needs an account; looking does not, and saying so next to the
- * action that would otherwise demand one is the only place that offer lands.
- */
-function Hero({
-  signedIn,
-  guest,
-  reel,
-  sample,
-}: {
-  signedIn: boolean;
-  guest: boolean;
-  reel: Timelapse[];
-  sample: boolean;
-}) {
+function Hero({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
   return (
-    <div className="grid-backdrop border-b border-border">
-      <Container width="wide" className="py-12 sm:py-16 lg:py-24">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
-          <section className="lg:col-span-6">
-            <p className="animate-fade-in-down inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-[12px] font-medium text-fg-muted">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Timelapses of real work, reviewed by a person
+    <section className="grid-backdrop">
+      <Container width="wide" className="pb-12 pt-14 sm:pb-16 sm:pt-20 lg:pb-20 lg:pt-28">
+        <Reveal immediate className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[12.5px] text-fg-muted">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
+            Every session read by a person before it goes up
+          </span>
+        </Reveal>
+
+        <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
+          <SplitHeading as="h1" onScroll={false} className="text-display lg:col-span-8">
+            Your hustle should be paid off.
+          </SplitHeading>
+
+          <Reveal immediate delay={0.35} className="lg:col-span-4 lg:pb-3">
+            <p className="text-lede text-fg-muted">
+              Record the session. Write down what you actually did. People who watch it can sponsor
+              you in SOL, wallet to wallet, or hire you for the next one.
             </p>
-
-            <h1 className="animate-fade-in-up delay-1 text-display mt-6 font-semibold">
-              Your hustle should be <span className="text-accent">paid off</span>.
-            </h1>
-
-            <p className="animate-fade-in-up delay-2 text-lede mt-5 max-w-lg text-fg-muted">
-              Record the session, write down what you actually did, and publish it. The people who
-              watch it can sponsor you in SOL — wallet to wallet, no cut taken — or hire you for
-              the next one.
-            </p>
-
-            <div className="animate-fade-in-up delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <ButtonLink href="/upload" size="lg" className="group w-full sm:w-auto">
-                Upload a timelapse
-                <ArrowRightIcon size={16} className="nudge-icon" />
-              </ButtonLink>
-
-              {signedIn || guest ? (
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Magnetic className="inline-flex w-full sm:w-auto">
+                <ButtonLink href="/upload" size="lg" className="w-full sm:w-auto">
+                  Upload a timelapse
+                  <ArrowRightIcon size={16} className="nudge-icon" />
+                </ButtonLink>
+              </Magnetic>
+              {signedIn || demo ? (
                 <ButtonLink href="/#feed" variant="secondary" size="lg" className="w-full sm:w-auto">
-                  Browse the feed
+                  Browse sessions
                 </ButtonLink>
               ) : (
-                <EnterGuestButton
-                  next="/"
-                  label="Look around first"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                />
+                <EnterDemoButton next="/" label="Explore the demo" className="w-full sm:w-auto" />
               )}
             </div>
-
-            <ul className="animate-fade-in-up delay-4 mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-border pt-6">
-              <HeroPoint icon={<TrendingIcon size={15} />} title="0% cut" body="Every lamport reaches you" />
-              <HeroPoint icon={<ShieldIcon size={15} />} title="Human review" body="Rejections carry a reason" />
-              <HeroPoint icon={<WalletIcon size={15} />} title="Your keys" body="We never hold custody" />
-            </ul>
-          </section>
-
-          <section className="animate-scale-in delay-2 lg:col-span-6">
-            <HeroShowcase items={reel} fallback={SAMPLE_TIMELAPSES} sample={sample} />
-          </section>
+          </Reveal>
         </div>
       </Container>
+    </section>
+  );
+}
+
+const CLAIMS = [
+  "0% platform cut",
+  "Human review on every upload",
+  "Wallet to wallet",
+  "Rejections carry a reason",
+  "Verified on-chain",
+  "No passwords stored",
+  "Your keys, always",
+];
+
+function Claims() {
+  return (
+    <div className="mt-16 border-y border-border py-6 sm:mt-24">
+      <Marquee speed={45}>
+        {CLAIMS.map((claim) => (
+          <span key={claim} className="flex items-center gap-8 pr-8 text-[clamp(1.1rem,0.9rem+1vw,1.6rem)] font-medium tracking-tight text-fg-muted">
+            {claim}
+            <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-border-strong" />
+          </span>
+        ))}
+      </Marquee>
     </div>
   );
 }
 
-function HeroPoint({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  return (
-    <li>
-      <span className="text-accent">{icon}</span>
-      <p className="mt-2 text-[13.5px] font-semibold leading-tight">{title}</p>
-      <p className="mt-1 text-[12px] leading-snug text-fg-subtle">{body}</p>
-    </li>
-  );
-}
+function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
+  const figures = [
+    { label: "Hours of work recorded", value: <CountUp value={Math.round(stats.sessionMinutesRecorded / 60)} format="plain" /> },
+    { label: "Sessions published", value: <CountUp value={stats.publishedTimelapses} format="plain" /> },
+    { label: "Creators", value: <CountUp value={stats.creators} format="plain" /> },
+    { label: "Sent straight to creators", value: <CountUp value={stats.donationTotalLamports} format="sol" /> },
+  ];
 
-/**
- * The one place raw totals appear.
- *
- * A band of hairline-separated figures rather than four cards: these are one
- * reading of the same thing, and boxing each of them separately says they are
- * four unrelated facts. Hours of recorded work leads, because that is what the
- * site is a record of; the SOL figure follows rather than the other way round.
- * Each figure counts up once, when it first scrolls into view.
- */
-function StatBand({ stats, sample }: { stats: Stats; sample: boolean }) {
-  const hours = Math.round(stats.sessionMinutesRecorded / 60);
   return (
-    <div className="border-b border-border bg-surface">
-      <Container width="wide" className="py-8 sm:py-10">
-        <Reveal>
-          <div className="mb-6 flex items-center gap-3">
-            <span className="text-eyebrow">By the numbers</span>
-            {sample ? <SampleTag /> : null}
-          </div>
-          <dl className="figure-rail grid grid-cols-2 gap-y-8 sm:grid-cols-4">
-            <Figure label="Hours recorded" value={<CountUp value={hours} format="count" />} />
-            <Figure
-              label="Timelapses published"
-              value={<CountUp value={stats.publishedTimelapses} format="count" />}
-            />
-            <Figure label="Creators" value={<CountUp value={stats.creators} format="count" />} />
-            <Figure
-              label="Sent to creators"
-              value={<CountUp value={stats.donationTotalLamports} format="sol" durationMs={1400} />}
-              accent
-            />
-          </dl>
+    <section aria-label="By the numbers" className="pt-20 sm:pt-28">
+      <Container width="wide">
+        <div className="flex items-center gap-3">
+          <p className="text-eyebrow">By the numbers</p>
+          {demo ? <DemoTag /> : null}
+        </div>
+        <Reveal as="dl" stagger={0.1} className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border lg:grid-cols-4">
+          {figures.map((f) => (
+            <div key={f.label} className="bg-surface p-5 sm:p-8">
+              <dd className="tnum text-[clamp(1.75rem,1.2rem+2.4vw,3.25rem)] font-semibold leading-none tracking-tight">
+                {f.value}
+              </dd>
+              <dt className="mt-3 text-[13px] text-fg-muted">{f.label}</dt>
+            </div>
+          ))}
         </Reveal>
       </Container>
-    </div>
-  );
-}
-
-function Figure({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: React.ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    // Padding and the divider rule both come from `.figure-rail`, so they stay
-    // in step when the grid changes from four columns to two.
-    <div>
-      <dd
-        className={
-          "tnum text-[clamp(1.5rem,1.2rem+1.4vw,2.125rem)] font-semibold leading-none" +
-          (accent ? " text-accent" : "")
-        }
-      >
-        {value}
-      </dd>
-      <dt className="mt-2 text-[13px] leading-snug text-fg-muted">{label}</dt>
-    </div>
+    </section>
   );
 }
 
 const STEPS = [
   {
-    icon: UploadIcon,
-    title: "Record and write it up",
-    body: "Upload the session and say what you actually did. Point at the commit, the repo, the thing that moved.",
+    title: "Record the session",
+    body: "A timelapse of the work itself. No editing expected. The clip is evidence, not a production.",
   },
   {
-    icon: ShieldIcon,
+    title: "Write down what you did",
+    body: "What you were trying to do, what went wrong, what you ended up with. Link the repo or the post so a reader can check.",
+  },
+  {
     title: "A person reads it",
     body: "Nothing publishes itself. A reviewer checks the write-up against the work, and a rejection always comes back with a reason.",
   },
   {
-    icon: WalletIcon,
-    title: "Viewers fund it directly",
-    body: "SOL moves from their wallet to yours. We never hold a key, never take a cut, and verify the transfer on-chain before crediting it.",
+    title: "People fund what they want more of",
+    body: "SOL moves from their wallet to yours. No key is held, no cut is taken, and every transfer is verified on-chain.",
   },
 ];
 
-/**
- * Three steps, revealed one after another as the section arrives.
- *
- * Set as a numbered sequence rather than three cards. The steps happen in an
- * order, and a row of identical boxes is the one layout that does not say so.
- */
 function HowItWorks() {
   return (
-    <section className="mt-20 sm:mt-28" aria-labelledby="how-heading">
-      <Reveal>
-        <p className="eyebrow-rule text-eyebrow">How it works</p>
-        <h2 id="how-heading" className="text-title mt-4 font-semibold">
-          Three steps, and one of them is a person
-        </h2>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-fg-muted">
-          The review step is the whole product. Everything else is plumbing around it.
-        </p>
-      </Reveal>
+    <section className="pt-24 sm:pt-36" aria-labelledby="how-heading">
+      <Container width="wide">
+        <div className="grid gap-12 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <div className="lg:sticky lg:top-28">
+              <p className="text-eyebrow">How it works</p>
+              <SplitHeading className="text-headline mt-4">
+                Four steps, and one of them is a person.
+              </SplitHeading>
+              <Reveal delay={0.2}>
+                <p className="mt-5 max-w-md text-[15px] leading-relaxed text-fg-muted">
+                  The review step is the product. Everything else is plumbing that gets the work in
+                  front of the right people.
+                </p>
+                <ButtonLink href="/about" variant="secondary" className="mt-7">
+                  Read the details
+                  <ArrowRightIcon size={15} className="nudge-icon" />
+                </ButtonLink>
+              </Reveal>
+            </div>
+          </div>
 
-      {/* Dividers rather than a one-pixel grid gap over a coloured ground: the
-          steps fade in one after another, and a gap would show through as a
-          grey slab for as long as a cell is still transparent. */}
-      <ol
-        className="mt-10 grid divide-y divide-border overflow-hidden rounded-[var(--radius-card)]
-                   border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0"
-      >
-        {STEPS.map((step, i) => (
-          <Reveal as="li" key={step.title} delay={i * 110}>
-            <div className="h-full p-6 sm:p-7">
-              <div className="flex items-baseline gap-3">
-                <span className="tnum text-[26px] font-semibold leading-none text-border-strong">
+          <ol className="relative lg:col-span-7">
+            <ProgressRail className="bottom-6 left-[19px] top-6" />
+            {STEPS.map((step, i) => (
+              <Reveal as="li" key={step.title} className="relative flex gap-6 pb-12 last:pb-0">
+                <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg font-mono text-[13px] text-fg">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="text-accent">
-                  <step.icon size={16} />
-                </span>
-              </div>
-              <h3 className="mt-5 text-[15px] font-semibold">{step.title}</h3>
-              <p className="mt-2 text-[14px] leading-relaxed text-fg-muted">{step.body}</p>
-            </div>
-          </Reveal>
-        ))}
-      </ol>
+                <div className="pt-1.5">
+                  <h3 className="text-[clamp(1.2rem,1rem+0.8vw,1.6rem)] font-semibold tracking-tight">{step.title}</h3>
+                  <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-fg-muted">{step.body}</p>
+                </div>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </Container>
     </section>
   );
 }
 
 const PRINCIPLES = [
   {
+    icon: ShieldIcon,
     claim: "Nothing publishes itself",
-    detail:
-      "Published is set by one statement, behind the admin role, and every decision is written to an audit trail.",
+    detail: "Publishing happens behind the admin role, and every decision is written to an append-only audit trail.",
   },
   {
+    icon: ZapIcon,
     claim: "Rejections carry a reason",
-    detail:
-      "The API refuses a decline with no note, and so does a database constraint. Creators read the reason on their dashboard.",
+    detail: "The API refuses a decline with no note, and so does the database. Creators read the reason on their dashboard.",
   },
   {
+    icon: WalletIcon,
     claim: "Donations never touch us",
-    detail:
-      "SOL moves wallet to wallet. No key is held, no cut is taken, and the transfer is verified on-chain before it is credited.",
+    detail: "SOL moves wallet to wallet. We hold no key, take no cut, and verify the transfer on-chain before crediting it.",
   },
 ];
 
-/**
- * The three properties the product is actually built on.
- *
- * Stated as claim and enforcement, because a promise about review is worth
- * nothing without the sentence explaining what stops it being broken.
- */
 function Principles() {
   return (
-    <section className="mt-20 sm:mt-28" aria-labelledby="principles-heading">
-      <Reveal>
-        <p className="eyebrow-rule text-eyebrow">What holds it together</p>
-        <h2 id="principles-heading" className="text-title mt-4 font-semibold">
-          Three promises, each with something enforcing it
-        </h2>
-      </Reveal>
-
-      <dl className="mt-8 divide-y divide-border border-y border-border">
-        {PRINCIPLES.map((principle, i) => (
-          <Reveal key={principle.claim} delay={i * 90}>
-            <div className="grid gap-2 py-5 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:gap-8 sm:py-6">
-              <dt className="text-[15px] font-semibold">{principle.claim}</dt>
-              <dd className="text-[14px] leading-relaxed text-fg-muted">{principle.detail}</dd>
-            </div>
-          </Reveal>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
-function Feed({
-  items,
-  sort,
-  apiDown,
-  sample,
-}: {
-  items: Timelapse[];
-  sort: FeedSort;
-  apiDown: boolean;
-  sample: boolean;
-}) {
-  return (
-    <section id="feed" className="mt-16 scroll-mt-24 sm:mt-24" aria-labelledby="feed-heading">
-      <Reveal>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="eyebrow-rule text-eyebrow">The feed</p>
-            <h2 id="feed-heading" className="text-title mt-4 font-semibold">
-              {sample ? "Demo sessions" : "Published work"}
-              {items.length > 0 ? (
-                <span className="tnum ml-3 align-middle text-[15px] font-normal text-fg-subtle">
-                  {formatCount(items.length)}
-                </span>
-              ) : null}
-            </h2>
-            <p className="mt-2 max-w-md text-[14px] leading-relaxed text-fg-muted">
-              Hover a card to preview it. Every session here was read by a person before it went up.
-            </p>
-          </div>
-          <FeedTabs active={sort} />
-        </div>
-      </Reveal>
-
-      {apiDown ? (
-        <ApiStatus className="mt-6" />
-      ) : sample ? (
-        <p className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
-          <SampleTag>Demo</SampleTag>
-          Invented sessions, shown so the layout has something in it. Real submissions replace
-          them the moment there are any.
-        </p>
-      ) : null}
-
-      <div className="mt-8">
-        {items.length > 0 ? (
-          <TimelapseGrid items={items} sample={sample} />
-        ) : (
-          <EmptyState
-            title="Nothing published yet"
-            description="Every timelapse here has been through review. The first ones are on their way."
-            action={<ButtonLink href="/upload">Upload the first one</ButtonLink>}
+    <section className="pt-24 sm:pt-36" aria-labelledby="principles-heading">
+      <Container width="wide">
+        <Reveal>
+          <SectionHeader
+            eyebrow="What holds it together"
+            title={<span id="principles-heading">Three promises, each with something enforcing it</span>}
           />
-        )}
-      </div>
+        </Reveal>
+        <Reveal stagger={0.12} className="mt-12 grid gap-4 md:grid-cols-3">
+          {PRINCIPLES.map((p) => (
+            <article key={p.claim} className="lift flex flex-col rounded-[var(--radius-card)] border border-border bg-surface p-6 sm:p-8">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+                <p.icon size={19} />
+              </span>
+              <h3 className="mt-10 text-[19px] font-semibold tracking-tight">{p.claim}</h3>
+              <p className="mt-2.5 text-[14.5px] leading-relaxed text-fg-muted">{p.detail}</p>
+            </article>
+          ))}
+        </Reveal>
+      </Container>
     </section>
   );
 }
 
-function ClosingCTA({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
+function Closing({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
   return (
-    <Reveal direction="scale">
-      <section className="mb-20 mt-20 sm:mt-28">
-        <div className="grid-backdrop rounded-[var(--radius-panel)] border border-border bg-surface px-6 py-12 text-center shadow-[var(--shadow-card)] sm:px-12 sm:py-16">
-          <p className="text-eyebrow">Start here</p>
-          <h2 className="text-title mt-4 font-semibold">Ready to show your work?</h2>
-          <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-fg-muted">
-            Record what you build, write what you learned, and let the people who watch it
-            decide whether it was worth doing.
+    <section className="pt-24 sm:pt-36">
+      <Container width="wide">
+        <Reveal className="relative overflow-hidden rounded-[var(--radius-panel)] bg-inverse px-6 py-14 text-inverse-fg sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] opacity-60">Start here</p>
+          <SplitHeading className="text-headline mt-5 max-w-3xl">
+            Record it. Write it down. Get paid for it.
+          </SplitHeading>
+          <p className="mt-6 max-w-lg text-[15px] leading-relaxed opacity-70">
+            Your first upload goes to review the same day. An account is one email and one click.
           </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
-            <ButtonLink href="/upload" size="lg" className="group w-full sm:w-auto">
-              Start uploading
-              <ArrowRightIcon size={16} className="nudge-icon" />
-            </ButtonLink>
-            {signedIn || guest ? (
-              <ButtonLink
-                href="/about"
-                variant="secondary"
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                Read how review works
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Magnetic className="inline-flex w-full sm:w-auto">
+              <ButtonLink href="/upload" size="lg" variant="primary" className="w-full sm:w-auto">
+                Start uploading
+                <ArrowRightIcon size={16} className="nudge-icon" />
               </ButtonLink>
-            ) : (
-              <EnterGuestButton
-                next="/dashboard"
-                label="See the creator dashboard"
-                size="lg"
-                className="w-full sm:w-auto"
-              />
-            )}
+            </Magnetic>
+            <ButtonLink
+              href={signedIn || demo ? "/dashboard" : "/login"}
+              size="lg"
+              variant="ghost"
+              className="w-full text-inverse-fg/70 hover:bg-white/10 hover:text-inverse-fg sm:w-auto"
+            >
+              {signedIn ? "Open your dashboard" : demo ? "See the creator dashboard" : "Sign in"}
+            </ButtonLink>
           </div>
-          {!signedIn ? (
-            <p className="mt-5 text-[13px] text-fg-subtle">
-              Or read{" "}
-              <Link href="/about" className="link-underline text-fg-muted hover:text-fg">
-                how review works
-              </Link>{" "}
-              before you decide.
-            </p>
-          ) : null}
-        </div>
-      </section>
-    </Reveal>
+        </Reveal>
+      </Container>
+    </section>
   );
 }
