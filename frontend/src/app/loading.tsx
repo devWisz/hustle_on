@@ -1,22 +1,21 @@
 import { Container } from "@/components/ui";
 
-/** Default route-level pending state: shimmer skeletons instead of flat pulses. */
 export default function Loading() {
   return (
-    <Container className="py-12">
-      <div className="h-7 w-40 skeleton-shimmer" aria-hidden />
-      <div className="mt-3 h-4 w-72 max-w-full skeleton-shimmer" aria-hidden />
-      <div className="mt-10 grid gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+    <Container width="wide" className="pt-14">
+      <div className="skeleton h-12 w-2/3 max-w-xl" aria-hidden />
+      <div className="skeleton mt-4 h-5 w-96 max-w-full" aria-hidden />
+      <div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="aspect-video w-full skeleton-shimmer rounded-[var(--radius-card)]" />
-            <div className="mt-3 h-4 w-3/4 skeleton-shimmer" />
-            <div className="mt-2 h-3 w-1/2 skeleton-shimmer" />
+          <div key={i}>
+            <div className="skeleton aspect-video w-full rounded-[var(--radius-card)]" />
+            <div className="skeleton mt-4 h-4 w-1/3" />
+            <div className="skeleton mt-3 h-5 w-4/5" />
           </div>
         ))}
       </div>
       <span className="sr-only" role="status">
-        Loading.
+        Loading
       </span>
     </Container>
   );

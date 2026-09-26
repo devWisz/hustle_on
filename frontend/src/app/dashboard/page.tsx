@@ -73,7 +73,7 @@ export default async function DashboardPage() {
       </Reveal>
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Reveal as="section" aria-labelledby="subs-heading">
+        <Reveal as="section">
           <h2 id="subs-heading" className="text-[20px] font-semibold tracking-tight">
             Submissions
           </h2>
