@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { formatSol, solToLamports } from "@/lib/format";
+import { cx, formatSol, solToLamports } from "@/lib/format";
 import { sendSol, walletAvailable, WalletError } from "@/lib/wallet";
 import type { DonationIntent, Timelapse } from "@/lib/types";
 import { Avatar, Button, Card, Field, Input, Textarea, buttonClass } from "../ui";
-import { cx } from "@/lib/format";
 import { CheckIcon, CopyIcon, SolanaIcon, WalletIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 
