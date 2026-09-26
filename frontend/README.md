@@ -1,50 +1,62 @@
 # frontend
 
-The web application, including the role-gated review queue at `/admin`.
-Next.js 15 App Router, React 19, Tailwind v4, TypeScript in strict mode.
+The web application, including the admin console at `/admin`.
+Next.js 15 App Router, React 19, Tailwind v4, GSAP 3, TypeScript in strict mode.
 
 ## Layout
 
 ```
-src/app           routes; server components unless a page needs interactivity
-src/components    ui.tsx primitives, icons.tsx, feature components
-src/lib           api client, types, formatting, wallet access
-src/middleware.ts security headers, and a redirect for signed-out visitors
+src/app                      routes; server components unless a page needs interactivity
+src/app/admin                overview, review desk, library, members, ledger, audit trail
+src/components/ui            primitives (button, card, form, badge, avatar, layout) and icons
+src/components/layout        header, footer, command palette, shortcuts, toasts, theme
+src/components/motion        GSAP wrappers: reveal, split headings, count-up, marquee, magnetic
+src/components/timelapse     card, feed, hero showcase, player, preview
+src/components/watch         donate panel, discussion, share card, up next
+src/components/account       login, upload, settings, submissions, saved list
+src/components/admin         admin nav, data table, activity chart, review desk, tables
+src/components/demo          demo banner and demo labels
+src/lib/api                  browser client and server fetcher
+src/lib/demo                 demo content, admin demo data, demo cookie and actions
+src/lib/data.ts              every page's data, with the demo fallback
+src/middleware.ts            security headers and cache rules
+public/demo                  generated demo timelapses (scripts/gen_demo_videos.py)
 ```
 
-## How data is fetched
+## Demo mode
 
-`apiServer` runs in server components. It forwards the visitor's cookies, so a
-page renders exactly what that visitor may see, and it returns `null` instead
-of throwing — a page degrades to an empty state rather than an error screen
-when the API hiccups.
+Every page reads through `lib/data.ts`. When the API cannot be reached, or the
+visitor starts the demo from the login page, pages render sample data and the
+generated demo videos, labelled as demo throughout. Nothing a demo visitor does
+is sent anywhere. When the API comes back, an open page notices and reloads its
+data.
 
-`api` runs in the browser. It sends the session cookie and, for anything that
-changes state, the CSRF token read from its readable companion cookie.
+## Motion
+
+All animation goes through `components/motion`, which registers GSAP,
+ScrollTrigger, SplitText and Flip once. Every animation is set up inside
+`gsap.matchMedia`, so reduced-motion visitors get the finished state. Content
+hidden before an entrance is gated behind the `.js` class, which is removed if
+the page never hydrates.
 
 ## Rules
 
-**Server components by default.** `"use client"` only where there is state or
-an event handler: the forms, the donate panel, the review queue, the player.
+**Server components by default.** `"use client"` only where there is state, an
+event handler or an animation.
 
-**No emoji.** Icons come from `components/icons.tsx` as inline SVG. See
-`docs/design-system.md`.
+**No emoji, no glow.** Icons are inline SVG from `components/ui/icons.tsx`.
+Depth comes from borders, neutral shadows and motion.
 
 **Tokens, not values.** Colour, radius and shadow come from CSS custom
-properties. A component containing a hex value is a bug.
+properties in `app/globals.css`.
 
-**User text is text.** React escapes it; nothing renders user-supplied HTML.
-Outbound links to user-supplied URLs carry `rel="noopener noreferrer nofollow"`,
-and the URLs themselves are pinned to GitHub and X by the API.
-
-**Middleware authorises nothing.** It redirects on the presence of a session
-cookie, which is only a hint. Every real check runs in the API against the
+**Middleware authorises nothing.** Every real check runs in the API against the
 session record.
 
 ## Commands
 
 ```bash
-npm run dev        # :3000
+npm run dev        # :3001
 npm run build
 npm run typecheck
 npm run lint
