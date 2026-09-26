@@ -59,15 +59,6 @@ export function WalletIcon(props: IconProps) {
   );
 }
 
-export function ClockIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
-    </Svg>
-  );
-}
-
 export function UsersIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -151,15 +142,6 @@ export function MenuIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="M4 6h16M4 12h16M4 18h16" />
-    </Svg>
-  );
-}
-
-export function TrendingIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="m22 7-8.5 8.5-5-5L2 17" />
-      <path d="M16 7h6v6" />
     </Svg>
   );
 }
@@ -447,14 +429,6 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
-export function ChevronRightIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="m9 6 6 6-6 6" />
-    </Svg>
-  );
-}
-
 export function ArrowLeftIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -487,15 +461,6 @@ export function SettingsIcon(props: IconProps) {
       <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
       <circle cx="16" cy="7" r="2" />
       <circle cx="8" cy="17" r="2" />
-    </Svg>
-  );
-}
-
-export function KeyboardIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="2.5" y="6" width="19" height="12" rx="2" />
-      <path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9" />
     </Svg>
   );
 }

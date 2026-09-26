@@ -1,4 +1,4 @@
-export interface Category {
+interface Category {
   id: string;
   label: string;
   keywords: string[];
@@ -14,28 +14,6 @@ export const CATEGORIES: Category[] = [
   { id: "frontend", label: "UI & Web", keywords: ["react", "ui", "css", "next.js", "frontend", "animation", "layout", "web"] },
   { id: "algorithms", label: "Algorithms", keywords: ["algorithm", "data structure", "inference", "optimization", "graph", "tree"] },
 ];
-
-export function getTimelapseTags(t: { title: string; summary: string }): string[] {
-  const text = `${t.title} ${t.summary}`.toLowerCase();
-  const matched: string[] = [];
-
-  for (const cat of CATEGORIES) {
-    if (cat.id === "all") continue;
-    const hit = cat.keywords.some((k) => {
-
-      return text.includes(k.toLowerCase());
-    });
-    if (hit) {
-      matched.push(cat.label);
-    }
-  }
-
-  if (matched.length === 0) {
-    matched.push("Engineering");
-  }
-
-  return matched.slice(0, 3);
-}
 
 export function matchesCategory(t: { title: string; summary: string }, categoryId: string): boolean {
   if (!categoryId || categoryId === "all") return true;
