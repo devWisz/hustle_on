@@ -421,11 +421,11 @@ func (s *Server) handleMyTimelapses(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	items, err := s.store.MyTimelapses(r.Context(), user.ID, queryInt(r, "limit", 50, 1, 100))
+	page, err := s.store.MyTimelapses(r.Context(), user.ID, pageQuery(r, 50, 100))
 	if err != nil {
-		return storeErr(err, "Timelapses")
+		return listErr(err, "Timelapses")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 // handleMyDonations lists what the caller has received.
@@ -434,11 +434,11 @@ func (s *Server) handleMyDonations(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	items, err := s.store.CreatorDonations(r.Context(), user.ID, queryInt(r, "limit", 50, 1, 100))
+	page, err := s.store.CreatorDonations(r.Context(), user.ID, pageQuery(r, 50, 100))
 	if err != nil {
-		return storeErr(err, "Donations")
+		return listErr(err, "Donations")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 // ownedTimelapse resolves the {id} path value for a mutating request, having
