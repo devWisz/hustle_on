@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
 import { ButtonLink, Spinner } from "../ui";
 
 export function VerifyClient() {
-  const router = useRouter();
   const params = useSearchParams();
   const attempted = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +25,7 @@ export function VerifyClient() {
         const next = params.get("next");
         const destination =
           next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-        router.replace(destination);
+        window.location.replace(destination);
       })
       .catch((err: unknown) => {
         setError(
@@ -35,7 +34,7 @@ export function VerifyClient() {
             : "That sign-in link is no longer valid. Request a new one.",
         );
       });
-  }, [params, router]);
+  }, [params]);
 
   if (error) {
     return (
