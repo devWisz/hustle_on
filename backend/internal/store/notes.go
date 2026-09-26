@@ -20,7 +20,8 @@ const noteProjection = `n.id::text, n.body, n.timestamp_seconds, n.helpful_count
 	n.created_at, u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, ''),
 	(v.user_id IS NOT NULL)`
 
-// noteQuery is parameterised as ($1 timelapse id, $2 viewer id, $3 limit).
+// noteQuery is parameterised as ($1 timelapse id, $2 viewer id, $3 before
+// timestamp, $4 before id, $5 limit).
 //
 // An empty viewer id becomes NULL, so the join matches nothing and every note
 // comes back with ViewerHasVoted false. That is exactly right for a signed-out
@@ -30,8 +31,9 @@ const noteQuery = `SELECT ` + noteProjection + `
 	JOIN users u ON u.id = n.author_id
 	LEFT JOIN note_votes v ON v.note_id = n.id AND v.user_id = NULLIF($2, '')::uuid
 	WHERE n.timelapse_id = $1
-	ORDER BY n.created_at DESC
-	LIMIT $3`
+	  AND ($3::timestamptz IS NULL OR (n.created_at, n.id) < ($3, $4::uuid))
+	ORDER BY n.created_at DESC, n.id DESC
+	LIMIT $5`
 
 func scanNote(row pgx.Row) (domain.Note, error) {
 	var n domain.Note
@@ -42,22 +44,34 @@ func scanNote(row pgx.Row) (domain.Note, error) {
 }
 
 // TimelapseNotes lists the notes on a timelapse, newest first.
-func (s *Store) TimelapseNotes(ctx context.Context, timelapseID, viewerID string, limit int) ([]domain.Note, error) {
-	rows, err := s.pool.Query(ctx, noteQuery, timelapseID, viewerID, limit)
+//
+// A thread is paged like any other list: long arguments are exactly the ones a
+// reader wants to scroll, and an unbounded thread is an unbounded response.
+func (s *Store) TimelapseNotes(ctx context.Context, timelapseID, viewerID string, q PageQuery) (domain.Page[domain.Note], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Note]{}, err
+	}
+	rows, err := s.pool.Query(ctx, noteQuery, timelapseID, viewerID, before, beforeID, q.Limit+1)
+	if err != nil {
+		return domain.Page[domain.Note]{}, normalize(err)
 	}
 	defer rows.Close()
 
-	out := []domain.Note{}
+	items := []domain.Note{}
 	for rows.Next() {
 		n, err := scanNote(rows)
 		if err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.Note]{}, normalize(err)
 		}
-		out = append(out, n)
+		items = append(items, n)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.Note]{}, normalize(err)
+	}
+	return pageOf(items, q.Limit, func(n domain.Note) string {
+		return encodeKeyset(keysetTime(n.CreatedAt), n.ID)
+	}), nil
 }
 
 // NoteByID returns a single note as the given viewer sees it.

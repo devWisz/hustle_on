@@ -22,14 +22,24 @@ const timelapseColumns = `t.id::text, t.slug, t.title, t.summary,
 
 const timelapseFrom = ` FROM timelapses t JOIN users u ON u.id = t.user_id`
 
-func scanTimelapse(row pgx.Row) (domain.Timelapse, error) {
-	var t domain.Timelapse
-	err := row.Scan(&t.ID, &t.Slug, &t.Title, &t.Summary,
+// timelapseScanTargets lists the destinations for one row of timelapseColumns,
+// in order.
+//
+// It exists so a query that selects the shared projection *plus* a column of its
+// own — the saved-list needs the bookmark's timestamp — can append one more
+// target instead of restating all twenty-two and slowly drifting from them.
+func timelapseScanTargets(t *domain.Timelapse) []any {
+	return []any{&t.ID, &t.Slug, &t.Title, &t.Summary,
 		&t.GitHubURL, &t.XURL, &t.Status,
 		&t.ThumbnailURL, &t.PlaybackURL, &t.DurationSecs, &t.SessionMinutes,
 		&t.ViewCount, &t.DonationCount, &t.DonationTotal,
 		&t.ReviewNote, &t.SubmittedAt, &t.PublishedAt, &t.CreatedAt,
-		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL)
+		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL}
+}
+
+func scanTimelapse(row pgx.Row) (domain.Timelapse, error) {
+	var t domain.Timelapse
+	err := row.Scan(timelapseScanTargets(&t)...)
 	return t, err
 }
 
