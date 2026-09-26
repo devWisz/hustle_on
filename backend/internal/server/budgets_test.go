@@ -8,6 +8,12 @@ import (
 	"github.com/sardhana/backend/internal/ratelimit"
 )
 
+// okHandler is a handler that succeeds, for driving the guard directly.
+func okHandler(w http.ResponseWriter, r *http.Request) error {
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
 // Each budget is its own bucket: exhausting the upload allowance must leave
 // reading, writing and donating untouched. This is the whole reason the limit
 // is per endpoint rather than per API.
@@ -15,8 +21,8 @@ func TestBudgetsAreIndependent(t *testing.T) {
 	s := testServer()
 	s.budgets[budgetUpload].limiter = ratelimit.New(4) // burst of 1
 
-	upload := s.guard(s.budgets[budgetUpload], ok)
-	read := s.guard(s.budgets[budgetRead], ok)
+	upload := s.guard(s.budgets[budgetUpload], okHandler)
+	read := s.guard(s.budgets[budgetRead], okHandler)
 
 	rec := httptest.NewRecorder()
 	upload.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/uploads", nil))
@@ -43,7 +49,7 @@ func TestGuardPublishesTheBudget(t *testing.T) {
 	s := testServer()
 	b := s.budgets[budgetEngage]
 	b.limiter = ratelimit.New(4) // burst of 1
-	handler := s.guard(b, ok)
+	handler := s.guard(b, okHandler)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/timelapses/x/views", nil))
@@ -70,7 +76,7 @@ func TestGuardPublishesTheBudget(t *testing.T) {
 func TestSignInBudgetsIgnoreTheAccount(t *testing.T) {
 	s := testServer()
 	s.budgets[budgetAuth].limiter = ratelimit.New(4) // burst of 1
-	handler := s.guard(s.budgets[budgetAuth], ok)
+	handler := s.guard(s.budgets[budgetAuth], okHandler)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil), "user-a"))
@@ -91,7 +97,7 @@ func TestSignInBudgetsIgnoreTheAccount(t *testing.T) {
 func TestWriteBudgetIsChargedPerCaller(t *testing.T) {
 	s := testServer()
 	s.budgets[budgetWrite].limiter = ratelimit.New(4) // burst of 1
-	handler := s.guard(s.budgets[budgetWrite], ok)
+	handler := s.guard(s.budgets[budgetWrite], okHandler)
 
 	for _, id := range []string{"author-a", "author-b"} {
 		rec := httptest.NewRecorder()
@@ -112,5 +118,5 @@ func TestUnknownBudgetPanicsAtRegistration(t *testing.T) {
 			t.Fatal("a route with an unknown budget was registered without complaint")
 		}
 	}()
-	s.route("GET /v1/nope", "no-such-budget", ok)
+	s.route("GET /v1/nope", "no-such-budget", okHandler)
 }
