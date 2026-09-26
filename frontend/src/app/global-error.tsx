@@ -34,12 +34,13 @@ export default function GlobalError({
             >
               Try again
             </button>
-            <a
-              href="/"
+            <button
+              type="button"
+              onClick={() => window.location.assign("/")}
               className="flex h-12 items-center justify-center rounded-full border border-border px-6 text-[15px] font-medium"
             >
               Back home
-            </a>
+            </button>
           </div>
         </main>
       </body>
