@@ -1,7 +1,8 @@
 # Database
 
-Six migrations, eight tables. The schema is small because the product is one
-path, and every table on it earns its place.
+Eight migrations, eleven tables of product state (plus `schema_migrations`). The
+schema is small because the product is one path, and every table on it earns its
+place.
 
 ```
 users ──┬──< timelapses ──< timelapse_views
@@ -24,6 +25,8 @@ users ──┬──< timelapses ──< timelapse_views
 | `0004_donations` | `donations` |
 | `0005_engagement` | `bookmarks`, `timelapse_notes`, `note_votes` |
 | `0006_search_indexes` | `pg_trgm` and the trigram indexes the feed search needs |
+| `0007_maintenance` | Indexes for foreign keys that had none, `recount_totals()`, `purge_expired_auth()` |
+| `0008_security_hardening` | The `sardhana_app` role and its grants, role-level timeouts, the append-only audit trigger |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -137,6 +140,87 @@ is no prefix to seek to. `0006_search_indexes` adds `pg_trgm` and a GIN index pe
 matched column, turning a sequential scan into an index lookup. `handle` is
 `citext`, so its index is built over an explicit `::text` cast.
 
+## The application role
+
+The API does not connect as the database owner. Migrations need DDL and own the
+schema; the API needs to read and write rows and nothing else. `0008` creates a
+`sardhana_app` group role holding exactly the second set, and leaves the owner
+for migrations.
+
+Adopting it is two steps, done deliberately rather than as a side effect of
+applying a migration:
+
+```sql
+-- 1. A login role that inherits the group, with its own password.
+CREATE ROLE sardhana_api LOGIN PASSWORD 'generated-with-openssl-rand-base64-48'
+    IN ROLE sardhana_app;
+```
+
+```bash
+# 2. Point the API at it. The pooled endpoint, as before.
+DATABASE_URL="postgres://sardhana_api:<password>@<pooler-host>/sardhana?sslmode=require"
+```
+
+The new role owns nothing, so it can drop nothing. What it specifically cannot
+do, on top of the ordinary grants:
+
+| Object | Withheld | Why |
+| --- | --- | --- |
+| `users`, `timelapses`, `donations` | `DELETE` | The API never deletes them; withdrawal is `status = 'removed'`. Revoking it means no bug can erase creator history. |
+| `audit_log` | `UPDATE`, `DELETE` | See below. |
+| `schema_migrations` | everything | An API that could edit the ledger could convince the next deployment a migration had run. |
+| `recount_totals()`, `purge_expired_auth(interval)` | `EXECUTE` from `PUBLIC` | Maintenance is a deliberate operator action. |
+
+Everything else keeps the write access it actually uses. Consuming a sign-in link
+`UPDATE`s `magic_link_tokens`, consuming a wallet challenge `UPDATE`s
+`wallet_challenges`, and withdrawing a "helpful" mark `DELETE`s from
+`note_votes` — all three are narrow, intended writes, and revoking them would
+break sign-in and voting rather than harden anything.
+
+The role also carries session-level guards, set on the role because a pooled
+endpoint does not reliably forward connection-string parameters to whichever
+backend answers a connection:
+
+```sql
+ALTER ROLE sardhana_app SET statement_timeout = '10s';
+ALTER ROLE sardhana_app SET lock_timeout = '5s';
+ALTER ROLE sardhana_app SET idle_in_transaction_session_timeout = '30s';
+ALTER ROLE sardhana_app SET search_path = public, pg_catalog;
+ALTER ROLE sardhana_app CONNECTION LIMIT 40;
+```
+
+A query that has gone wrong is cancelled instead of holding a connection; a
+request waiting behind a migration gives up instead of hanging; a crashed request
+that left a transaction open releases its locks. Pinning `search_path` also drops
+the implicit `"$user"` schema, so a table created elsewhere cannot shadow one of
+ours. None of these values is reachable by a correct query.
+
+## The audit trail is append-only
+
+`audit_log` accepts `INSERT` and nothing else. That is enforced twice:
+
+- `UPDATE` and `DELETE` are revoked from `sardhana_app`, which stops the
+  application.
+- A `BEFORE UPDATE OR DELETE` trigger raises for **every** role, including the
+  owner, which stops a person with a `psql` prompt.
+
+The second is what makes the trail evidence rather than a log: a decision cannot
+be edited away, and the only way to remove one is to disable the trigger first —
+a statement recorded in the write-ahead log and visible to anyone reviewing it.
+The trigger's hint spells out the procedure for the legitimate case:
+
+```sql
+ALTER TABLE audit_log DISABLE TRIGGER audit_log_append_only;
+-- prune or repair, deliberately
+ALTER TABLE audit_log ENABLE TRIGGER audit_log_append_only;
+```
+
+One consequence worth knowing before it surprises you: `audit_log.actor_id` is
+`REFERENCES users(id) ON DELETE SET NULL`, and that `SET NULL` is itself an
+`UPDATE`. So an account cannot be hard-deleted while the trigger is armed. With
+it disarmed the delete succeeds and the account's decisions remain, attributed to
+nobody, which is the record `0002` intended.
+
 ## Running migrations
 
 ```bash
@@ -153,6 +237,28 @@ record of success.
 
 Migrations need `DATABASE_URL_DIRECT`, the unpooled endpoint: they take advisory
 locks and run DDL, neither of which survives a connection pooler.
+
+They also need to run as the **owner** — the role that `0008` recorded the
+default privileges against. A `GRANT` recorded by one role does not apply to
+tables a different role creates later, so a migration run as the application role
+would produce tables the API could not read.
+
+## Connection handling
+
+The pool is deliberately conservative, because Neon bills by activity and scales
+to zero when idle: a minimum of zero connections, a thirty-minute maximum
+lifetime with five minutes of jitter — without the jitter every connection is
+recycled at the same instant and shows up as a periodic stall — a five-minute
+idle timeout and a one-minute health check. Cold starts are absorbed by the ping
+at boot rather than by a user request.
+
+Statements are executed in `QueryExecModeExec`. Statement caching interacts badly
+with a pooler in transaction mode: a prepared statement may not exist on the
+backend the pooler hands out next.
+
+Every connection is tagged `application_name=sardhana-api`, so `pg_stat_activity`
+answers "who is holding this lock" during an incident instead of leaving it to a
+guess.
 
 ## Changing the schema
 
