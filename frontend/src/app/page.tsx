@@ -2,7 +2,7 @@ import Link from "next/link";
 import { apiServer } from "@/lib/api";
 import type { Page, SessionResponse, Stats, Timelapse } from "@/lib/types";
 import { isGuestPreview } from "@/lib/guest-server";
-import { SAMPLE_STATS, sampleFeed } from "@/lib/sample";
+import { SAMPLE_STATS, SAMPLE_TIMELAPSES, sampleFeed } from "@/lib/sample";
 import { formatCount } from "@/lib/format";
 import { TimelapseGrid } from "@/components/timelapse-card";
 import { ButtonLink, Container, EmptyState } from "@/components/ui";
@@ -10,7 +10,8 @@ import { EnterGuestButton, SampleTag } from "@/components/guest";
 import { CountUp } from "@/components/count-up";
 import { Reveal } from "@/components/reveal";
 import { FeedTabs, parseSort, type FeedSort } from "@/components/feed-tabs";
-import { HeroVisual } from "@/components/hero-visual";
+import { HeroShowcase } from "@/components/hero-showcase";
+import { ApiStatus } from "@/components/api-status";
 import {
   ArrowRightIcon,
   ShieldIcon,
@@ -38,21 +39,29 @@ export default async function HomePage({
   ]);
 
   const live = feed?.items ?? [];
-  // Sample records stand in only when a guest would otherwise be staring at an
-  // empty grid. Real content always wins, and a signed-out visitor who never
-  // asked for a preview sees the honest empty state.
-  const preview = guest && live.length === 0;
+  const apiDown = feed === null;
+  // The demo library stands in when a guest would otherwise be staring at an
+  // empty grid, and when the API cannot be reached at all — an outage should
+  // not leave the front page looking broken. Real content always wins, every
+  // demo record is labelled as one, and a signed-out visitor on a working but
+  // empty site still sees the honest empty state.
+  const preview = (guest || apiDown) && live.length === 0;
   const items = preview ? sampleFeed(sort) : live;
   const figures = stats && stats.publishedTimelapses > 0 ? stats : preview ? SAMPLE_STATS : null;
 
   return (
     <>
-      <Hero signedIn={Boolean(session?.authenticated)} guest={guest} />
+      <Hero
+        signedIn={Boolean(session?.authenticated)}
+        guest={guest}
+        reel={preview ? [] : live}
+        sample={preview}
+      />
       {figures ? <StatBand stats={figures} sample={preview} /> : null}
       <Container>
+        <Feed items={items} sort={sort} apiDown={apiDown} sample={preview} />
         <HowItWorks />
         <Principles />
-        <Feed items={items} sort={sort} apiReachable={feed !== null} sample={preview} />
         <ClosingCTA signedIn={Boolean(session?.authenticated)} guest={guest} />
       </Container>
     </>
@@ -64,33 +73,43 @@ export default async function HomePage({
 /**
  * The hero.
  *
- * The backdrop is a ruled grid that fades out rather than a coloured bloom:
- * it gives the section an edge without putting light where no light source
- * exists, and it costs nothing on a phone.
+ * Copy on the left, the product itself on the right: a reel of real sessions
+ * playing one after another. The backdrop is a ruled grid that fades out
+ * rather than a coloured bloom — structure instead of light.
  *
  * The second button is the one that matters for somebody who has just arrived.
  * Uploading needs an account; looking does not, and saying so next to the
  * action that would otherwise demand one is the only place that offer lands.
  */
-function Hero({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
+function Hero({
+  signedIn,
+  guest,
+  reel,
+  sample,
+}: {
+  signedIn: boolean;
+  guest: boolean;
+  reel: Timelapse[];
+  sample: boolean;
+}) {
   return (
     <div className="grid-backdrop border-b border-border">
-      <Container className="py-12 sm:py-20 lg:py-24">
-        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-14">
-          <section className="lg:col-span-7">
+      <Container width="wide" className="py-12 sm:py-16 lg:py-24">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          <section className="lg:col-span-6">
             <p className="animate-fade-in-down inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-[12px] font-medium text-fg-muted">
-              <ShieldIcon size={13} className="text-accent" />
-              Every upload read by a person before it goes up
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+              Timelapses of real work, reviewed by a person
             </p>
 
             <h1 className="animate-fade-in-up delay-1 text-display mt-6 font-semibold">
-              Timelapses of <span className="text-accent">real work</span>, funded by the
-              people who want to see more of it.
+              Your hustle should be <span className="text-accent">paid off</span>.
             </h1>
 
-            <p className="animate-fade-in-up delay-2 text-lede mt-6 max-w-xl text-fg-muted">
-              Record a session. Write down what you actually did. Anyone who thinks the work
-              was worth it sends you SOL directly — wallet to wallet, no cut taken.
+            <p className="animate-fade-in-up delay-2 text-lede mt-5 max-w-lg text-fg-muted">
+              Record the session, write down what you actually did, and publish it. The people who
+              watch it can sponsor you in SOL — wallet to wallet, no cut taken — or hire you for
+              the next one.
             </p>
 
             <div className="animate-fade-in-up delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -100,13 +119,8 @@ function Hero({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
               </ButtonLink>
 
               {signedIn || guest ? (
-                <ButtonLink
-                  href="/about"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                >
-                  How it works
+                <ButtonLink href="/#feed" variant="secondary" size="lg" className="w-full sm:w-auto">
+                  Browse the feed
                 </ButtonLink>
               ) : (
                 <EnterGuestButton
@@ -118,31 +132,29 @@ function Hero({ signedIn, guest }: { signedIn: boolean; guest: boolean }) {
               )}
             </div>
 
-            {!signedIn && !guest ? (
-              <p className="animate-fade-in-up delay-4 mt-3 text-[13px] text-fg-subtle">
-                No account needed to look — the whole product opens in preview mode.
-              </p>
-            ) : null}
-
-            <ul className="animate-fade-in-up delay-4 mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-fg-subtle">
-              <li className="flex items-center gap-1.5">
-                <WalletIcon size={14} /> No custody of your keys
-              </li>
-              <li className="flex items-center gap-1.5">
-                <TrendingIcon size={14} /> 0% platform cut
-              </li>
-              <li className="flex items-center gap-1.5">
-                <ShieldIcon size={14} /> Rejections carry a reason
-              </li>
+            <ul className="animate-fade-in-up delay-4 mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-border pt-6">
+              <HeroPoint icon={<TrendingIcon size={15} />} title="0% cut" body="Every lamport reaches you" />
+              <HeroPoint icon={<ShieldIcon size={15} />} title="Human review" body="Rejections carry a reason" />
+              <HeroPoint icon={<WalletIcon size={15} />} title="Your keys" body="We never hold custody" />
             </ul>
           </section>
 
-          <section className="animate-fade-in delay-2 lg:col-span-5">
-            <HeroVisual />
+          <section className="animate-scale-in delay-2 lg:col-span-6">
+            <HeroShowcase items={reel} fallback={SAMPLE_TIMELAPSES} sample={sample} />
           </section>
         </div>
       </Container>
     </div>
+  );
+}
+
+function HeroPoint({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <li>
+      <span className="text-accent">{icon}</span>
+      <p className="mt-2 text-[13.5px] font-semibold leading-tight">{title}</p>
+      <p className="mt-1 text-[12px] leading-snug text-fg-subtle">{body}</p>
+    </li>
   );
 }
 
@@ -326,36 +338,41 @@ function Principles() {
 function Feed({
   items,
   sort,
-  apiReachable,
+  apiDown,
   sample,
 }: {
   items: Timelapse[];
   sort: FeedSort;
-  apiReachable: boolean;
+  apiDown: boolean;
   sample: boolean;
 }) {
   return (
-    <section id="feed" className="mt-20 scroll-mt-24 sm:mt-28">
+    <section id="feed" className="mt-16 scroll-mt-24 sm:mt-24" aria-labelledby="feed-heading">
       <Reveal>
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-eyebrow">The feed</p>
-            <h2 className="text-title mt-3 font-semibold">
-              Published work
+            <p className="eyebrow-rule text-eyebrow">The feed</p>
+            <h2 id="feed-heading" className="text-title mt-4 font-semibold">
+              {sample ? "Demo sessions" : "Published work"}
               {items.length > 0 ? (
                 <span className="tnum ml-3 align-middle text-[15px] font-normal text-fg-subtle">
                   {formatCount(items.length)}
                 </span>
               ) : null}
             </h2>
+            <p className="mt-2 max-w-md text-[14px] leading-relaxed text-fg-muted">
+              Hover a card to preview it. Every session here was read by a person before it went up.
+            </p>
           </div>
           <FeedTabs active={sort} />
         </div>
       </Reveal>
 
-      {sample ? (
+      {apiDown ? (
+        <ApiStatus className="mt-6" />
+      ) : sample ? (
         <p className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
-          <SampleTag />
+          <SampleTag>Demo</SampleTag>
           Invented sessions, shown so the layout has something in it. Real submissions replace
           them the moment there are any.
         </p>
@@ -364,20 +381,11 @@ function Feed({
       <div className="mt-8">
         {items.length > 0 ? (
           <TimelapseGrid items={items} sample={sample} />
-        ) : apiReachable ? (
+        ) : (
           <EmptyState
             title="Nothing published yet"
             description="Every timelapse here has been through review. The first ones are on their way."
             action={<ButtonLink href="/upload">Upload the first one</ButtonLink>}
-          />
-        ) : (
-          // An unreachable API is a different situation from an empty feed, and
-          // telling somebody their work does not exist when the server is simply
-          // down is the wrong answer.
-          <EmptyState
-            title="The feed is not loading"
-            description="We could not reach the API just now. Nothing is lost — try again in a moment."
-            action={<ButtonLink href="/">Retry</ButtonLink>}
           />
         )}
       </div>
