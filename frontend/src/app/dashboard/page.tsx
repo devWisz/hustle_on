@@ -86,7 +86,7 @@ export default async function DashboardPage() {
             Submissions
           </h2>
           <div className="mt-4">
-            <Submissions items={items} linkable={!demo} />
+            <Submissions items={items} demo={demo} />
           </div>
           {demo ? (
             <DemoGate
