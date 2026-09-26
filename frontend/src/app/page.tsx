@@ -193,20 +193,24 @@ function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
 
 const STEPS = [
   {
-    title: "Record the session",
-    body: "A timelapse of the work itself. No editing expected. The clip is evidence, not a production.",
+    title: "Record yourself working",
+    body: "Hit record when you sit down to hustle on a project: code, design, hardware, anything. Screen, camera, or both.",
   },
   {
-    title: "Write down what you did",
-    body: "What you were trying to do, what went wrong, what you ended up with. Link the repo or the post so a reader can check.",
+    title: "Turn it into a timelapse",
+    body: "Speed the session up so hours of work fit into a minute or two. No editing expected. The clip is evidence, not a production.",
   },
   {
-    title: "A person reads it",
-    body: "Nothing publishes itself. A reviewer checks the write-up against the work, and a rejection always comes back with a reason.",
+    title: "Upload it with a write-up",
+    body: "Say what you set out to do, what went wrong and what you ended up with, and link the repo or post so anyone can check.",
   },
   {
-    title: "People fund what they want more of",
-    body: "SOL moves from their wallet to yours. No key is held, no cut is taken, and every transfer is verified on-chain.",
+    title: "An admin approves it",
+    body: "A reviewer compares the write-up with the recording before anything goes public. If it is sent back, you get a reason you can act on.",
+  },
+  {
+    title: "People sponsor your hustle",
+    body: "Viewers send SOL straight to your wallet, with no cut taken, or reach out to hire you for the next project.",
   },
 ];
 
@@ -219,12 +223,12 @@ function HowItWorks() {
             <div className="lg:sticky lg:top-28">
               <p className="text-eyebrow">How it works</p>
               <SplitHeading className="text-headline mt-4">
-                Four steps, and one of them is a person.
+                From work session to sponsorship, in five steps.
               </SplitHeading>
               <Reveal delay={0.2}>
                 <p className="mt-5 max-w-md text-[15px] leading-relaxed text-fg-muted">
-                  The review step is the product. Everything else is plumbing that gets the work in
-                  front of the right people.
+                  Every session is read by a person before it goes public, so what people fund is
+                  work that actually happened.
                 </p>
                 <ButtonLink href="/about" variant="secondary" className="mt-7">
                   Read the details

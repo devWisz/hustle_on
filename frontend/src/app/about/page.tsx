@@ -13,20 +13,24 @@ export const metadata: Metadata = {
 
 const STEPS = [
   {
-    title: "Record the session",
-    body: "A timelapse of the work itself. There is no quality bar and no editing expected. The clip is evidence, not a production.",
+    title: "Record yourself working",
+    body: "Hit record when you sit down to hustle on a project: code, design, hardware, writing, anything. Record your screen, your desk or both, for as long as the session takes. Check nothing private is in frame.",
   },
   {
-    title: "Write down what you did",
-    body: "The part nobody can get from watching: what you were trying to do, what went wrong, what you ended up with. Add the GitHub repository or the X post so a reader can check rather than take your word for it.",
+    title: "Turn it into a timelapse",
+    body: "Speed the session up so hours of work fit into a minute or two. No editing expected. The clip is evidence, not a production.",
   },
   {
-    title: "A person reviews it",
-    body: "Every submission is read before it goes up. If it is declined you get a written reason on your dashboard, and you can fix it and send it back. Nothing reaches the feed automatically.",
+    title: "Upload it with a write-up",
+    body: "Say what you set out to do, what went wrong and what you ended up with, and link the repo or post so anyone can check.",
   },
   {
-    title: "People fund what they want more of",
-    body: "Sponsorships are plain SOL transfers from a viewer's wallet to yours. Sardhana never holds the money and takes no cut. Every transfer shown on the site was read back off the chain before it was counted.",
+    title: "An admin approves it",
+    body: "A reviewer compares the write-up with the recording before anything goes public. If it is sent back, you get a reason you can act on.",
+  },
+  {
+    title: "People sponsor your hustle",
+    body: "Once it is live, anyone can watch it. Viewers who think the work was worth it send SOL straight from their wallet to yours. Sardhana never holds the money and takes no cut, and every transfer is verified on-chain. Some will reach out to hire you instead.",
   },
 ];
 

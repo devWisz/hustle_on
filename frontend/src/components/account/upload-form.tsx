@@ -275,7 +275,11 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
         <span>
           I recorded this session myself, it shows my own work, nothing private is visible in it,
           and I agree to the{" "}
-          <Link href="/terms" target="_blank" className="font-medium text-fg underline underline-offset-2">
+          <Link
+            href="/terms"
+            target="_blank"
+            className="font-medium text-fg underline underline-offset-2"
+          >
             Terms and Conditions
           </Link>
           .
