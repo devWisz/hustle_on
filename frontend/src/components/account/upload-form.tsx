@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api/client";
-import { formatDuration } from "@/lib/format";
+import { cx, formatDuration } from "@/lib/format";
 import type { Timelapse, Upload } from "@/lib/types";
 import { Button, Card, Field, Input, Textarea } from "../ui";
 import { UploadIcon } from "../ui/icons";
@@ -29,7 +29,19 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const [dragging, setDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const busy = stage !== "idle" && stage !== "done";
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   async function pickFile(chosen: File | null) {
     setFile(chosen);
@@ -44,7 +56,7 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
 
     if (preview) {
       setError(
-        "This is a preview, so nothing was sent. Sign in with an email link and this form submits for real.",
+        "This is the demo, so nothing was sent. Sign in and the same form submits for real.",
       );
       return;
     }
@@ -103,45 +115,62 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-8" noValidate>
-      <Card className="p-5">
-        <Field
-          label="Timelapse file"
+    <form onSubmit={submit} className="space-y-5" noValidate>
+      <Card className="p-5 sm:p-6">
+        <Step n={1} title="The recording" />
+        <input
+          ref={fileInput}
+          id="file"
+          type="file"
+          accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+          onChange={(e) => void pickFile(e.target.files?.[0] ?? null)}
+          className="sr-only"
+        />
+        <label
           htmlFor="file"
-          hint="MP4, MOV, WebM or MKV. The video itself uploads straight to storage."
-          error={fieldErrors.contentType ?? fieldErrors.sizeBytes}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const dropped = e.dataTransfer.files?.[0];
+            if (dropped && dropped.type.startsWith("video/")) void pickFile(dropped);
+          }}
+          className={cx(
+            "mt-5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[var(--radius-card)] border border-dashed px-6 py-10 text-center transition-colors",
+            dragging ? "border-accent bg-accent-soft" : "border-border-strong hover:border-fg-subtle hover:bg-surface-raised",
+            busy && "pointer-events-none opacity-60",
+          )}
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              ref={fileInput}
-              id="file"
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-              onChange={(e) => void pickFile(e.target.files?.[0] ?? null)}
-              className="sr-only"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => fileInput.current?.click()}
-              disabled={busy}
-            >
-              <UploadIcon size={16} />
-              {file ? "Choose a different file" : "Choose a file"}
-            </Button>
-            {file ? (
-              <span className="text-[13px] text-fg-muted">
-                {file.name} · {(file.size / 1_048_576).toFixed(1)} MB
-                {duration > 0 ? ` · ${formatDuration(duration)}` : ""}
-              </span>
-            ) : null}
-          </div>
-        </Field>
-
+          {previewUrl ? (
+            <video src={previewUrl} muted playsInline autoPlay loop className="aspect-video w-full max-w-md rounded-[var(--radius-control)] bg-black object-cover" />
+          ) : (
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-raised text-fg-muted">
+              <UploadIcon size={20} />
+            </span>
+          )}
+          <span className="text-[15px] font-medium">
+            {file ? file.name : "Drop your timelapse here, or choose a file"}
+          </span>
+          <span className="text-[13px] text-fg-subtle">
+            {file
+              ? `${(file.size / 1_048_576).toFixed(1)} MB${duration > 0 ? ` · ${formatDuration(duration)}` : ""} · click to replace`
+              : "MP4, MOV, WebM or MKV. Uploads straight to storage."}
+          </span>
+        </label>
+        {fieldErrors.contentType ?? fieldErrors.sizeBytes ? (
+          <p role="alert" className="mt-3 text-[13px] text-danger">
+            {fieldErrors.contentType ?? fieldErrors.sizeBytes}
+          </p>
+        ) : null}
         {stage === "uploading" ? <ProgressBar value={progress} /> : null}
       </Card>
 
-      <Card className="space-y-5 p-5">
+      <Card className="space-y-6 p-5 sm:p-6">
+        <Step n={2} title="The write-up" />
         <Field label="Title" htmlFor="title" error={fieldErrors.title}>
           <Input
             id="title"
@@ -194,10 +223,10 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
         </Field>
       </Card>
 
-      <Card className="space-y-5 p-5">
+      <Card className="space-y-6 p-5 sm:p-6">
         <div>
-          <h2 className="text-[15px] font-semibold">Where the work lives</h2>
-          <p className="mt-1 text-[13px] text-fg-muted">
+          <Step n={3} title="Where the work lives" />
+          <p className="mt-2 text-[13px] text-fg-muted">
             Both optional, but they are what let someone check the work rather than take your word
             for it.
           </p>
@@ -239,6 +268,17 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
         </p>
       </div>
     </form>
+  );
+}
+
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <h2 className="flex items-center gap-3 text-[16px] font-semibold">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-inverse font-mono text-[12px] text-inverse-fg">
+        {n}
+      </span>
+      {title}
+    </h2>
   );
 }
 
