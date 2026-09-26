@@ -12,6 +12,8 @@ verification.
 | The public feed | `requireAdmin` + `audit_log` | Unreviewed content published |
 | Donations | On-chain re-verification, `UNIQUE` signature | Fabricated totals |
 | Uploaded video | Presigned keys scoped to the owner | Cross-account writes |
+| Creator records | Least-privilege database role, no `DELETE` | Destructive writes |
+| The audit trail | Append-only trigger, no `UPDATE`/`DELETE` grant | Erased decisions |
 
 Note what is **not** on that list: nobody's SOL. The platform holds no private
 key. An attacker with full control of this API can lie about what the site
@@ -34,6 +36,28 @@ Full detail in [auth.md](auth.md). The properties that matter:
 - `next` must be a local path; absolute and protocol-relative values are
   rejected, or the emailed link becomes an open redirect.
 
+## Cookies
+
+Two cookies, with the flags each one needs rather than the same flags for both.
+
+| Cookie | HttpOnly | Why |
+| --- | --- | --- |
+| `sardhana_session` | **yes** | The credential. Unreachable from script, so an XSS bug cannot exfiltrate a session. |
+| `sardhana_session_csrf` | no, on purpose | The frontend must read it to echo it back in a header. It is not a credential: it is an HMAC of the session digest, so planting a value does not produce the matching token. |
+
+Both are `Secure` whenever the web app is served over https, `SameSite=Lax`,
+`Path=/`, and host-only unless `SESSION_COOKIE_DOMAIN` says otherwise —
+subdomains do not receive them by default. `SESSION_COOKIE_NAME` is validated as
+an RFC 6265 token at startup, because a name is written into a `Set-Cookie`
+header verbatim and a separator in it would turn the rest of the name into
+attributes.
+
+A session can outlive its CSRF cookie — a browser drops it, a stale tab holds an
+old copy — and every write would then fail with an opaque 403 until the user
+signed out and back in. When a valid session arrives without one, the API
+reissues the CSRF cookie on that response. The request that lacked the token is
+still refused; the next one works.
+
 ## CSRF
 
 Two independent checks, both required on every state-changing request:
@@ -43,19 +67,50 @@ Two independent checks, both required on every state-changing request:
 2. `X-Sardhana-CSRF` matching an HMAC of this session's digest under
    `SESSION_SECRET`.
 
-The CSRF cookie is readable by script on purpose — the frontend must echo it.
-That is safe because it is derived server-side: planting a cookie value does not
-produce the matching token.
+Both live behind **one middleware** that runs before any handler, so protection
+is a property of the API rather than of remembering to call a helper. A handler
+cannot be reached without having passed it — which is why the check is no longer
+repeated per endpoint.
+
+A request that carries no session is protected by the origin check alone: there
+is no session for a token to be bound to, and demanding one would make signing in
+impossible. This keeps cross-site form posts from creating donation intents or
+mailing sign-in links at a victim's expense, which the origin check alone stops.
 
 CORS reflects only allowlisted origins. Credentials are allowed, which is
 exactly why the origin is never reflected blindly.
 
-## SQL
+## SQL and the database role
 
 All SQL lives in `backend/internal/store`. Handlers call methods; they never
 build queries. Every statement uses bound parameters, and string interpolation
 into SQL is not permitted in the package. This is a structural property, not a
 review checklist.
+
+The API is also not the database owner. `0008_security_hardening` creates a
+`sardhana_app` group role holding exactly the privileges the API uses, and the
+deployment points `DATABASE_URL` at a login role that inherits it. On top of the
+blanket grants:
+
+- `DELETE` is revoked on `users`, `timelapses` and `donations`. Nothing in the
+  API deletes them — creators withdraw and the row stays, because donations and
+  audit lines reference it — so a bug or an injected statement cannot destroy
+  creator history. The worst it can do is mark something removed, which is
+  visible and reversible.
+- `UPDATE` and `DELETE` are revoked on `audit_log`, and a trigger refuses both
+  for every role including the owner.
+- `schema_migrations` is not readable or writable by the API at all. An API that
+  could edit it could convince the next deployment that a migration had run.
+- `EXECUTE` on `recount_totals` and `purge_expired_auth` is revoked from `PUBLIC`
+  — maintenance is a deliberate operator action.
+- `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout` and
+  a pinned `search_path` are set on the role, so they hold on every connection
+  rather than depending on which pooler backend answers.
+- The role has a connection limit, so a runaway process cannot occupy the
+  pooler's whole allowance.
+
+Detail, and the exact steps to adopt it, in
+[database.md](database.md#the-application-role).
 
 ## Uploads
 
@@ -114,18 +169,62 @@ The API returns JSON only, so its policy is as tight as it goes:
 
 ## Rate limiting
 
-60 requests per minute per address by default; 5 sign-in attempts; 5 links per
-email per hour.
+Each endpoint is charged against a named budget for its class of work — reading,
+engaging, writing, uploading, donating, signing in, verifying, administering —
+rather than every endpoint sharing one API-wide number. Without that split the
+budget has to be as generous as the busiest route, which lets the most expensive
+route to abuse (requesting a sign-in link, which sends mail) run at the same rate
+as reading the feed. The route table names the budget per route, so a new
+endpoint cannot be registered without one.
 
-`X-Forwarded-For` is honoured **only** when `TRUST_PROXY_HEADERS=true`, which
-defaults to false. Trusting it with nothing in front to overwrite it lets any
-client claim any address and walk past every per-address limit.
+Sign-in and sign-in-token budgets are charged to the **address** even for a
+signed-in caller; the rest are charged to the account id when there is a session
+and to the address otherwise. A per-address ceiling wraps session resolution
+itself, bounding the work one address can cause before we know who is asking, and
+is deliberately loose so an office or a carrier NAT is not treated as one abusive
+client.
+
+Every budget is also capped per email address for link requests
+(`MaxLinksPerHour`), so a distributed attempt on one inbox is still bounded.
+
+Limits are per process, in memory: they are the last line of defence behind an
+edge limiter, and a multi-instance deployment should also limit at the edge.
+
+`X-Forwarded-For` is honoured **only** when `TRUST_PROXY_HOPS` is set to the
+number of proxies you operate (or the older `TRUST_PROXY_HEADERS=true`, meaning
+one). It defaults to zero, which means the TCP peer and no forwarded headers at
+all. Trusting the header with nothing in front to overwrite it lets any client
+claim any address and walk past every per-address limit. When it is trusted, the
+*rightmost* entry is read, because everything to its left was supplied by the
+client.
+
+## Bounded responses
+
+Every list endpoint is paginated and every `?limit=` has a maximum, so no request
+can ask for an unbounded amount of work or an unbounded response body. Without a
+cap, a single cheap request could return the entire table — a denial of service
+that needs no payload at all.
+
+The cursor is opaque and scoped to the query that issued it: a cursor from
+another endpoint, or one that has been edited, is a `400` rather than a request
+served from an arbitrary position. Paging is keyset, so page fifty costs what
+page one costs.
+
+The one exception is `/v1/admin/activity`, and it is bounded by its own `?days=`
+window (7–90) instead.
 
 ## Production refuses to degrade
 
 `config.Load` will not start in production without a Resend key, without storage
-credentials, or on any cluster other than `mainnet-beta`. A missing variable
-fails loudly rather than silently weakening the deployment.
+credentials, on any cluster other than `mainnet-beta`, or with a `DATABASE_URL`
+whose `sslmode` would let the connection fall back to plaintext. Session digests,
+emails and payout addresses cross that connection, so TLS is required rather than
+negotiated. A missing variable fails loudly rather than silently weakening the
+deployment.
+
+The same validation rejects a `SESSION_COOKIE_NAME` that is not a valid cookie
+token and any rate-limit budget below 1 — a `0` is not "unlimited" here, it is a
+value the operator did not intend.
 
 ## Reporting a vulnerability
 
