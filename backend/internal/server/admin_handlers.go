@@ -140,22 +140,22 @@ func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) error {
 	if _, err := requireAdmin(r); err != nil {
 		return err
 	}
-	entries, err := s.store.RecentAudit(r.Context(), queryInt(r, "limit", 50, 1, 200))
+	page, err := s.store.RecentAudit(r.Context(), pageQuery(r, 50, 200))
 	if err != nil {
-		return storeErr(err, "Audit log")
+		return listErr(err, "Audit log")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": entries})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 func (s *Server) handleMembers(w http.ResponseWriter, r *http.Request) error {
 	if _, err := requireAdmin(r); err != nil {
 		return err
 	}
-	items, err := s.store.Members(r.Context(), queryString(r, "q", 80), queryInt(r, "limit", 100, 1, 500))
+	page, err := s.store.Members(r.Context(), queryString(r, "q", 80), pageQuery(r, 50, 200))
 	if err != nil {
-		return storeErr(err, "Members")
+		return listErr(err, "Members")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 type memberStatusBody struct {
@@ -225,13 +225,18 @@ func (s *Server) handleLedger(w http.ResponseWriter, r *http.Request) error {
 	default:
 		return apierr.BadRequest("Unknown status filter.")
 	}
-	items, err := s.store.Ledger(r.Context(), status, queryInt(r, "limit", 200, 1, 500))
+	page, err := s.store.Ledger(r.Context(), status, pageQuery(r, 100, 200))
 	if err != nil {
-		return storeErr(err, "Ledger")
+		return listErr(err, "Ledger")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
+// handleActivity returns one row per day for a bounded window.
+//
+// It is the one list endpoint without a cursor, and deliberately so: the window
+// is capped at 90 days, so the response is bounded by the request itself rather
+// than by a page size.
 func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) error {
 	if _, err := requireAdmin(r); err != nil {
 		return err
