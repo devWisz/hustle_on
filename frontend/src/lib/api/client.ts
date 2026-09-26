@@ -27,6 +27,23 @@ function csrfToken(): string {
   return hit ? decodeURIComponent(hit.slice(prefix.length)) : "";
 }
 
+/**
+ * The CSRF header, for the rare request that does not go through `api()`.
+ *
+ * A video upload is sent with XMLHttpRequest so the form can show progress, and
+ * in local development the storage endpoint is part of our own API. When that URL
+ * is same-origin the browser attaches the session cookie, which means the API
+ * will demand the double-submit token — so this request has to carry it, exactly
+ * like every other state-changing call.
+ *
+ * Returns an empty object rather than a blank header when there is no token, so a
+ * signed-out caller sends nothing instead of sending nothing useful.
+ */
+export function csrfHeader(): Record<string, string> {
+  const token = csrfToken();
+  return token ? { "X-Sardhana-CSRF": token } : {};
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
 }
