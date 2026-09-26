@@ -128,7 +128,11 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			h := w.Header()
 			h.Set("Access-Control-Allow-Origin", origin)
 			h.Set("Access-Control-Allow-Credentials", "true")
-			h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			// PUT is listed because saving a bookmark is a PUT — it is
+			// idempotent by design — and a preflight that does not name the
+			// method makes the browser refuse to send it. The list has to keep
+			// up with the verbs the route table uses.
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			h.Set("Access-Control-Allow-Headers", "Content-Type, "+auth.CSRFHeader)
 			h.Set("Access-Control-Max-Age", "600")
 			// Vary: Origin is set once, by cacheHeaders, which runs outside this
