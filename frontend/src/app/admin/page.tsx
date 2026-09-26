@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAdmin } from "@/lib/data";
-import { formatSol, timeAgo } from "@/lib/format";
+import { formatSol } from "@/lib/format";
 import { formatWait, reviewFlags, waitingMinutes } from "@/lib/review";
 import { ActivityChart } from "@/components/admin/activity-chart";
 import { AuditRow } from "@/components/admin/audit-log";
@@ -150,7 +150,6 @@ export default async function AdminOverview() {
                 );
               })}
             </ol>
-            <p className="mt-4 text-[12px] text-fg-subtle">Last activity {timeAgo(data.members[0]?.lastActiveAt ?? new Date().toISOString())}.</p>
           </Card>
         </Reveal>
       ) : null}
