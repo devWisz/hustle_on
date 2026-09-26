@@ -49,6 +49,13 @@ type Config struct {
 
 	RateLimitAnon int
 	RateLimitAuth int
+	// The per-endpoint budgets. Each route is charged against one of these
+	// rather than against a single API-wide number; see server/budgets.go.
+	RateLimitEngage int
+	RateLimitWrite  int
+	RateLimitUpload int
+	RateLimitDonate int
+	RateLimitAdmin  int
 	// RateLimitIPCeiling is a deliberately generous per-address ceiling applied
 	// before the session is resolved. It exists only to bound the work an
 	// address can cause ahead of authentication; the meaningful budget is the
@@ -140,6 +147,15 @@ func Load() (Config, error) {
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 300),
 		// Sign-in attempts get their own, far tighter budget than page traffic.
 		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
+		// Per-endpoint budgets. A feed read is cheap and a page render can fan
+		// out into several, so read/write stay generous; issuing an upload URL,
+		// recording a sponsorship and consuming a sign-in token are the
+		// expensive paths and are budgeted tightly.
+		RateLimitEngage: envInt("RATE_LIMIT_ENGAGE", 60),
+		RateLimitWrite:  envInt("RATE_LIMIT_WRITE", 60),
+		RateLimitUpload: envInt("RATE_LIMIT_UPLOAD", 10),
+		RateLimitDonate: envInt("RATE_LIMIT_DONATE", 10),
+		RateLimitAdmin:  envInt("RATE_LIMIT_ADMIN", 240),
 		// Ten times the per-caller budget: an office or a shared connection
 		// should not be throttled as if it were one person, but a single
 		// address still cannot make unbounded work.

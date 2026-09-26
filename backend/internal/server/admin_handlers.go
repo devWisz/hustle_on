@@ -165,9 +165,6 @@ func (s *Server) handleMemberStatus(status string) handler {
 		if err != nil {
 			return err
 		}
-		if err := s.checkCSRF(r); err != nil {
-			return err
-		}
 		id := r.PathValue("id")
 		if !validate.IsUUID(id) {
 			return apierr.NotFound("Member")
