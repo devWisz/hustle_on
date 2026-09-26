@@ -44,10 +44,16 @@ func TestCursorArityIsEnforced(t *testing.T) {
 
 func TestMalformedKeysetCursorsAreRejected(t *testing.T) {
 	bad := []string{
-		"not-base64!!",       // does not decode
-		encodeKeyset("only"), // too few fields
-		encodeKeyset(""),     // an empty field
-		encodeKeyset("|"),    // two empty fields
+		"not-base64!!",        // does not decode
+		encodeKeyset("only"),  // too few fields
+		encodeKeyset("a", ""), // an empty field
+		encodeKeyset("", "b"), // an empty field in the other slot
+		encodeKeyset("|"),     // two empty fields
+	}
+	// A blank cursor is not malformed: it is how a caller asks for the first
+	// page, and decodeKeyset reports that as "no cursor" rather than an error.
+	if parts, err := decodeKeyset("", 2); err != nil || parts != nil {
+		t.Errorf("the empty cursor gave (%v, %v), want (nil, nil)", parts, err)
 	}
 	for _, cursor := range bad {
 		if _, err := decodeKeyset(cursor, 2); !errors.Is(err, ErrBadCursor) {
