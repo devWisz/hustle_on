@@ -156,3 +156,37 @@ type Page[T any] struct {
 	Items      []T    `json:"items"`
 	NextCursor string `json:"nextCursor,omitempty"`
 }
+
+// AdminMember is an account as the admin console lists it.
+type AdminMember struct {
+	PublicUser
+	Email          string    `json:"email"`
+	Role           string    `json:"role"`
+	Status         string    `json:"status"`
+	PayoutVerified bool      `json:"payoutVerified"`
+	InReview       int       `json:"inReview"`
+	Rejected       int       `json:"rejected"`
+	LastActiveAt   time.Time `json:"lastActiveAt"`
+}
+
+// LedgerSession names the session a sponsorship was sent to.
+type LedgerSession struct {
+	Slug  string `json:"slug"`
+	Title string `json:"title"`
+}
+
+// LedgerEntry is one sponsorship with the people and session around it.
+type LedgerEntry struct {
+	Donation
+	Timelapse LedgerSession `json:"timelapse"`
+	Recipient Creator       `json:"recipient"`
+}
+
+// ActivityDay is one day of review and sponsorship activity.
+type ActivityDay struct {
+	Date      time.Time `json:"date"`
+	Submitted int       `json:"submitted"`
+	Approved  int       `json:"approved"`
+	Rejected  int       `json:"rejected"`
+	Lamports  int64     `json:"lamports"`
+}
