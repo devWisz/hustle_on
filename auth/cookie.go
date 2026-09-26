@@ -43,12 +43,17 @@ func (s *Service) ClearCookie() *http.Cookie {
 	}
 }
 
+// CSRFCookieName is the name of the double-submit cookie. It is derived from the
+// session cookie name rather than configured separately, so the two can never be
+// pointed at different prefixes by mistake.
+func (s *Service) CSRFCookieName() string { return s.cfg.CookieName + "_csrf" }
+
 // CSRFCookie carries the CSRF token. It is intentionally *not* HttpOnly: the
 // frontend must read it to echo the value back in a header, which is the whole
 // point of the double-submit pattern.
 func (s *Service) CSRFCookie(token string, ttl time.Duration) *http.Cookie {
 	return &http.Cookie{
-		Name:     s.cfg.CookieName + "_csrf",
+		Name:     s.CSRFCookieName(),
 		Value:    token,
 		Path:     "/",
 		Domain:   s.cfg.CookieDomain,
