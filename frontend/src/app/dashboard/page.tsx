@@ -15,11 +15,6 @@ import { ArrowRightIcon, CheckIcon, UploadIcon, WalletIcon } from "@/components/
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-function greeting(): string {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
 export default async function DashboardPage() {
   const data = await getDashboard();
   if (data === "signin") redirect("/login?next=/dashboard");
@@ -45,7 +40,7 @@ export default async function DashboardPage() {
         <div>
           <p className="text-eyebrow">Creator dashboard</p>
           <SplitHeading as="h1" onScroll={false} className="text-headline mt-4">
-            {`${greeting()}, ${me.displayName.split(" ")[0]}.`}
+            {`Welcome back, ${me.displayName.split(" ")[0]}.`}
           </SplitHeading>
         </div>
         <Reveal immediate delay={0.2} className="flex gap-2">

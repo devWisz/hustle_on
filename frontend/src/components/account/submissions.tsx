@@ -96,7 +96,7 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
             return (
               <li key={t.id} className="p-4 sm:p-5">
                 <div className="flex gap-4">
-                  <span className="relative hidden aspect-video w-32 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-raised sm:block">
+                  <span className="relative aspect-video w-24 shrink-0 self-start overflow-hidden rounded-lg border border-border bg-surface-raised sm:w-36">
                     {t.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -170,7 +170,7 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
                               </Button>
                             </>
                           ) : (
-                            <Button size="sm" variant="ghost" onClick={() => setConfirming(t.id)}>
+                            <Button size="sm" variant="secondary" onClick={() => setConfirming(t.id)}>
                               Withdraw
                             </Button>
                           )
