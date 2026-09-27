@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Timelapse } from "@/lib/types";
-import { cx, formatSession } from "@/lib/format";
+import { cx, formatDuration, formatSession } from "@/lib/format";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
 import { ArrowRightIcon, PlayIcon } from "../ui/icons";
 import { compression } from "./card";
@@ -107,7 +107,8 @@ export function Showcase({
             </span>
             {ratio ? (
               <span className="rounded-full bg-black/45 px-3 py-1.5 tabular-nums backdrop-blur-md">
-                {ratio}x speed
+                {formatSession(current.sessionMinutes).replace(" of work", "")} in{" "}
+                {formatDuration(current.durationSeconds)}
               </span>
             ) : null}
           </div>
