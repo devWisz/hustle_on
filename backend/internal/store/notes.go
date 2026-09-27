@@ -247,6 +247,7 @@ func (s *Store) Bookmarks(ctx context.Context, userID string, q PageQuery) (doma
 		if err := rows.Scan(targets...); err != nil {
 			return domain.Page[domain.Timelapse]{}, normalize(err)
 		}
+		resolveTimelapseMedia(&row.Timelapse)
 		saved = append(saved, row)
 	}
 	if err := rows.Err(); err != nil {

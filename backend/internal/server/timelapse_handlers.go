@@ -309,7 +309,7 @@ func (s *Server) handleMarkUploaded(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	if err := s.store.MarkUploaded(r.Context(), id, user.ID,
-		s.media.PublicURL(key), body.SizeBytes, body.DurationSeconds); err != nil {
+		s.media.PlaybackRef(key), body.SizeBytes, body.DurationSeconds); err != nil {
 		return storeErr(err, "Timelapse")
 	}
 	updated, err := s.store.ByID(r.Context(), id)

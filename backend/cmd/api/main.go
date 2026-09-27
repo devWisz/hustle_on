@@ -88,6 +88,7 @@ func run() error {
 		MaxBytes:  cfg.UploadMaxBytes,
 		URLTTL:    cfg.UploadURLTTL,
 	})
+	store.SetMediaResolver(storage.Resolve)
 
 	hops, _ := strconv.Atoi(os.Getenv("TRUSTED_PROXY_HOPS"))
 	if hops == 0 && os.Getenv("TRUST_PROXY_HEADERS") == "true" {
