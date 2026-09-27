@@ -24,6 +24,20 @@ export function Library({ initial }: { initial: Timelapse[] }) {
   );
   const rows = creator === "all" ? items : items.filter((t) => t.creator.handle === creator);
 
+  async function toggleFeatured(t: Timelapse) {
+    setBusy(`feature:${t.id}`);
+    try {
+      await api(`/v1/admin/timelapses/${t.id}/feature`, { method: t.featured ? "DELETE" : "POST" });
+      setItems((list) => list.map((x) => (x.id === t.id ? { ...x, featured: !t.featured } : x)));
+      toast.success(t.featured ? "Removed from the front page." : "Featured on the front page.");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "That did not go through.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function takeDown(t: Timelapse) {
     setBusy(t.id);
     try {
@@ -95,6 +109,23 @@ export function Library({ initial }: { initial: Timelapse[] }) {
       csv: (t) => t.donationTotalLamports / 1e9,
       cell: (t) => (
         <span className="font-mono tabular-nums">{formatSol(t.donationTotalLamports)}</span>
+      ),
+    },
+    {
+      key: "featured",
+      header: "Front page",
+      sort: (t) => (t.featured ? 1 : 0),
+      csv: (t) => (t.featured ? "featured" : ""),
+      cell: (t) => (
+        <Button
+          size="sm"
+          variant={t.featured ? "inverse" : "secondary"}
+          loading={busy === `feature:${t.id}`}
+          onClick={() => void toggleFeatured(t)}
+          aria-pressed={Boolean(t.featured)}
+        >
+          {t.featured ? "Featured" : "Feature"}
+        </Button>
       ),
     },
     {
