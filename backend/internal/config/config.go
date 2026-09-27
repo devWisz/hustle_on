@@ -4,8 +4,8 @@
 package config
 
 import (
-	"net/netip"
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"

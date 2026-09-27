@@ -172,3 +172,32 @@ func (s *Store) Activity(ctx context.Context, days int) ([]domain.ActivityDay, e
 	}
 	return out, normalize(rows.Err())
 }
+
+// RecentNotes lists the newest notes across every session, for moderation.
+func (s *Store) RecentNotes(ctx context.Context, limit int) ([]domain.AdminNote, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT n.id::text, n.body, n.timestamp_seconds, n.helpful_count, n.created_at,
+		       u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, ''),
+		       t.slug, t.title
+		FROM timelapse_notes n
+		JOIN users u ON u.id = n.author_id
+		JOIN timelapses t ON t.id = n.timelapse_id
+		ORDER BY n.created_at DESC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, normalize(err)
+	}
+	defer rows.Close()
+
+	out := []domain.AdminNote{}
+	for rows.Next() {
+		var n domain.AdminNote
+		if err := rows.Scan(&n.ID, &n.Body, &n.TimestampSeconds, &n.HelpfulCount, &n.CreatedAt,
+			&n.Author.ID, &n.Author.Handle, &n.Author.DisplayName, &n.Author.AvatarURL,
+			&n.Timelapse.Slug, &n.Timelapse.Title); err != nil {
+			return nil, normalize(err)
+		}
+		out = append(out, n)
+	}
+	return out, normalize(rows.Err())
+}

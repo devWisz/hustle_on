@@ -190,3 +190,14 @@ type ActivityDay struct {
 	Rejected  int       `json:"rejected"`
 	Lamports  int64     `json:"lamports"`
 }
+
+// AdminNote is a note as the moderation list shows it, with its session.
+type AdminNote struct {
+	ID               string        `json:"id"`
+	Body             string        `json:"body"`
+	TimestampSeconds *int          `json:"timestampSeconds,omitempty"`
+	HelpfulCount     int           `json:"helpfulCount"`
+	Author           Creator       `json:"author"`
+	Timelapse        LedgerSession `json:"timelapse"`
+	CreatedAt        time.Time     `json:"createdAt"`
+}
