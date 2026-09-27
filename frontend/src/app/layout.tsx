@@ -62,7 +62,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
-        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }}
+        />
       </head>
       <body className="flex min-h-dvh flex-col">
         <HydrationMark />

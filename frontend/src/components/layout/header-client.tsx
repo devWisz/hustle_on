@@ -37,7 +37,7 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
   ];
   if (user || demo)
     nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
-  if (user?.role === "admin" || demo)
+  if (user?.role === "admin")
     nav.push({ href: "/admin", label: "Admin", match: (p) => p.startsWith("/admin") });
 
   useEffect(() => setOpen(false), [pathname]);

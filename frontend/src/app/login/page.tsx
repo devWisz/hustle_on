@@ -93,14 +93,6 @@ export default async function LoginPage({
                 <ButtonLink href="/dashboard" size="lg" className="w-full sm:w-auto">
                   Open the dashboard
                 </ButtonLink>
-                <ButtonLink
-                  href="/admin"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                >
-                  Open the admin console
-                </ButtonLink>
               </div>
             ) : (
               <EnterDemoButton

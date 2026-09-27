@@ -202,12 +202,16 @@ export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
         icon: <GridIcon size={15} />,
         run: () => go("/dashboard"),
       },
-      {
-        id: "admin",
-        label: "Open the admin console",
-        icon: <InboxIcon size={15} />,
-        run: () => go("/admin"),
-      },
+      ...(isAdmin
+        ? [
+            {
+              id: "admin",
+              label: "Open the admin console",
+              icon: <InboxIcon size={15} />,
+              run: () => go("/admin"),
+            },
+          ]
+        : []),
       {
         id: "settings",
         label: "Account settings",
