@@ -46,6 +46,10 @@ func run() error {
 	}
 	defer pool.Close()
 	log.Info("database connected", "max_conns", cfg.DatabaseMaxConns)
+	if cfg.IsProduction() && cfg.SolanaCluster != "mainnet-beta" {
+		log.Warn("payments: running production on a test Solana cluster; sponsorships move test SOL only",
+			"cluster", cfg.SolanaCluster)
+	}
 
 	st := store.New(pool)
 
