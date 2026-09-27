@@ -7,136 +7,147 @@ export function isSampleSlug(slug: string): boolean {
   return slug.startsWith(SAMPLE_PREFIX);
 }
 
-export function ago(minutes: number): string {
+function ago(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
 
-export function sol(amount: number): number {
+function sol(amount: number): number {
   return Math.round(amount * LAMPORTS_PER_SOL);
 }
 
-export const DEMO_SECONDS = 18;
+const CLIPS = {
+  painting: { file: "painting-studio", seconds: 12 },
+  wood: { file: "wood-workshop", seconds: 15 },
+  sewing: { file: "sewing-studio", seconds: 16 },
+  code: { file: "late-night-code", seconds: 14 },
+  office: { file: "office-sprint", seconds: 9 },
+  desk: { file: "writing-desk", seconds: 12 },
+} as const;
 
-export function demoMedia(name: string): Pick<Timelapse, "playbackUrl" | "thumbnailUrl"> {
-  return { playbackUrl: `/demo/${name}.mp4`, thumbnailUrl: `/demo/${name}.jpg` };
+function clip(name: keyof typeof CLIPS): Pick<Timelapse, "playbackUrl" | "thumbnailUrl" | "durationSeconds"> {
+  const c = CLIPS[name];
+  return {
+    playbackUrl: `/demo/${c.file}.mp4`,
+    thumbnailUrl: `/demo/${c.file}.jpg`,
+    durationSeconds: c.seconds,
+  };
 }
 
-export const CREATORS = {
-  mira: { id: "s-c1", handle: "mira", displayName: "Mira Okonkwo" },
-  theo: { id: "s-c2", handle: "theo", displayName: "Theo Lindqvist" },
-  ana: { id: "s-c3", handle: "ana", displayName: "Ana Ruiz" },
-  kenji: { id: "s-c4", handle: "kenji", displayName: "Kenji Watanabe" },
-  priya: { id: "s-c5", handle: "priya", displayName: "Priya Raman" },
-  dan: { id: "s-c6", handle: "dan", displayName: "Dan Whitfield" },
+const CREATORS = {
+  ana: { id: "s-c1", handle: "ana", displayName: "Ana Ruiz" },
+  kenji: { id: "s-c2", handle: "kenji", displayName: "Kenji Watanabe" },
+  priya: { id: "s-c3", handle: "priya", displayName: "Priya Raman" },
+  theo: { id: "s-c4", handle: "theo", displayName: "Theo Lindqvist" },
+  dan: { id: "s-c5", handle: "dan", displayName: "Dan Whitfield" },
+  mira: { id: "s-c6", handle: "mira", displayName: "Mira Okonkwo" },
 } as const;
+
+const SAMPLE_BIOS: Record<string, string> = {
+  ana: "Painter. I record whole commissions, from the first wash to the last signature.",
+  kenji: "Furniture maker working out of a small shared workshop. Hardwoods, hand tools, one table at a time.",
+  priya: "Pattern cutter and seamstress building a small clothing label, one prototype at a time.",
+  theo: "Software engineer who does his best work after midnight. Mostly data tools and dashboards.",
+  dan: "Co-founder of a four-person startup. I film launch days so the team can see how the day actually went.",
+  mira: "Freelance designer and developer. Portfolios, landing pages and the small sites nobody else wants to build.",
+};
 
 export const SAMPLE_TIMELAPSES: Timelapse[] = [
   {
     id: "s-1",
-    slug: "sample-borrow-checker-pass",
-    ...demoMedia("borrow-checker"),
-    title: "Rewriting the borrow-checker pass",
+    slug: "sample-portrait-commission",
+    ...clip("painting"),
+    title: "Finishing a portrait commission in one sitting",
     summary:
-      "Spent the session replacing the recursive walk in our lifetime inference with an explicit worklist. The recursion was blowing the stack on generated code — one file in the test corpus nests closures fourteen deep and it died every time.\n\nThe worklist version is uglier to read and about four times faster, which was not the point but I will take it. Two tests still fail on early-return borrows; I left them failing rather than papering over them, and the commit says so.",
-    githubUrl: "https://github.com/example/lang/pull/812",
+      "A client asked for a large abstract portrait for their studio. This session is the final six hours: blocking the colour fields, building up the face in layers, and fixing the left side twice after it read as flat from across the room.\n\nThe timelapse shows every false start. The finished piece shipped the next morning.",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
-    sessionMinutes: 331,
+    sessionMinutes: 372,
     viewCount: 4820,
     donationCount: 14,
     donationTotalLamports: sol(6.42),
-    creator: CREATORS.mira,
+    creator: CREATORS.ana,
     publishedAt: ago(96),
     createdAt: ago(150),
   },
   {
     id: "s-2",
-    slug: "sample-payment-reconciler",
-    ...demoMedia("payment-reconciler"),
-    title: "A payment reconciler that survives a double refund",
+    slug: "sample-walnut-side-table",
+    ...clip("wood"),
+    title: "Building a walnut side table from rough boards",
     summary:
-      "Our reconciler assumed a refund could only happen once per charge. It cannot. A support agent and a webhook retry did it simultaneously last Tuesday and the ledger went negative.\n\nThis session is the rewrite: every mutation now carries an idempotency key derived from the provider's event id, and the ledger is append-only with a computed balance instead of a stored one. The interesting bit starts around the eleven-minute mark, where I reproduce the original bug on purpose before fixing it.",
-    githubUrl: "https://github.com/example/ledger",
-    xUrl: "https://x.com/example",
+      "Started with two rough-sawn walnut boards and ended with a finished side table. Most of the session is milling: flattening, jointing and planing until the boards were square, then cutting the joinery by hand.\n\nOne leg came out a millimetre short and I had to recut all four to match. It is in the recording.",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 488,
     viewCount: 9310,
     donationCount: 31,
     donationTotalLamports: sol(12.8),
-    creator: CREATORS.theo,
+    creator: CREATORS.kenji,
     publishedAt: ago(310),
     createdAt: ago(400),
   },
   {
     id: "s-3",
-    slug: "sample-sqlite-index-hunt",
-    ...demoMedia("index-hunt"),
-    title: "Four hours finding one missing index",
+    slug: "sample-jacket-prototype",
+    ...clip("sewing"),
+    title: "Sewing the first prototype of a lined jacket",
     summary:
-      "A report page took nine seconds to load and nobody could say why. The session is mostly reading query plans and being wrong.\n\nIt turned out to be a correlated subquery in a view, three levels down, that nobody had opened since 2022. The fix is one index and two deleted lines. I kept the dead ends in the recording because the dead ends were the work.",
-    githubUrl: "https://github.com/example/reports",
+      "The first physical sample for my label's autumn jacket. The session covers cutting the shell and lining, setting the sleeves, and a long stretch redoing the collar after it twisted on the first attempt.\n\nThe pattern is on my site for anyone who wants to follow along.",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 247,
     viewCount: 6140,
     donationCount: 22,
     donationTotalLamports: sol(4.15),
-    creator: CREATORS.ana,
+    creator: CREATORS.priya,
     publishedAt: ago(1180),
     createdAt: ago(1300),
   },
   {
     id: "s-4",
-    slug: "sample-typography-pass",
-    ...demoMedia("typography-pass"),
-    title: "A typography pass on a dense settings screen",
+    slug: "sample-late-night-dashboard",
+    ...clip("code"),
+    title: "A late-night push on a live trading dashboard",
     summary:
-      "No new features. The settings screen had eleven type sizes on it and read like a form someone had lost an argument with.\n\nThis session cuts it to four, sets everything on a four-point rhythm, and moves the destructive actions into their own group at the bottom. Half of the recording is me undoing changes that looked better in isolation and worse in the page.",
-    xUrl: "https://x.com/example",
+      "The dashboard was lagging seconds behind the market feed. This session moves the chart updates off the main thread and batches them, then load-tests it against a replay of a busy morning.\n\nThe lag went from four seconds to under a hundred milliseconds. The pull request is linked.",
+    githubUrl: "https://github.com/example/dashboard",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
-    sessionMinutes: 196,
+    sessionMinutes: 331,
     viewCount: 3270,
     donationCount: 9,
     donationTotalLamports: sol(2.05),
-    creator: CREATORS.priya,
+    creator: CREATORS.theo,
     publishedAt: ago(2600),
     createdAt: ago(2700),
   },
   {
     id: "s-5",
-    slug: "sample-firmware-bringup",
-    ...demoMedia("firmware-bringup"),
-    title: "Bringing up a board with no working UART",
+    slug: "sample-launch-day",
+    ...clip("office"),
+    title: "Launch day with a four-person team",
     summary:
-      "The debug serial line was dead, so the entire session is done by blinking one LED in morse. It is as slow as it sounds.\n\nBy the end the clock tree is configured, the bootloader hands off correctly, and the UART turns out to have been fine all along — the pin was muxed to the wrong peripheral in a header nobody had regenerated. The last twenty minutes are just relief.",
-    githubUrl: "https://github.com/example/board-bringup",
+      "We launched the public beta of our booking app. The recording covers the whole working day in the office: final bug fixes in the morning, the release at noon, and the afternoon answering the first wave of support messages.\n\nThe write-up lists what broke and what we changed the next day.",
+    xUrl: "https://x.com/example",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 615,
     viewCount: 11240,
     donationCount: 47,
     donationTotalLamports: sol(19.6),
-    creator: CREATORS.kenji,
+    creator: CREATORS.dan,
     publishedAt: ago(4300),
     createdAt: ago(4500),
   },
   {
     id: "s-6",
-    slug: "sample-migration-rollback",
-    ...demoMedia("migration-rollback"),
-    title: "Writing the rollback before the migration",
+    slug: "sample-portfolio-rebuild",
+    ...clip("desk"),
+    title: "Rebuilding my portfolio site in an afternoon",
     summary:
-      "We are splitting a table that forty services read from. The session is spent writing the down-migration first and proving it on a branch of production data, because the only migration worth trusting is the one you have already reversed once.\n\nThe forward migration takes six minutes. The rollback takes nine. Both are in the repository, both are tested, and neither has been run in anger yet.",
-    githubUrl: "https://github.com/example/platform",
+      "My old portfolio took eight seconds to load on a phone. This session rebuilds it from scratch: a simpler layout, compressed images, and a contact form that actually sends.\n\nThe new site loads in under a second and I have linked the before and after.",
+    githubUrl: "https://github.com/example/portfolio",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 402,
     viewCount: 5480,
     donationCount: 18,
     donationTotalLamports: sol(7.3),
-    creator: CREATORS.dan,
+    creator: CREATORS.mira,
     publishedAt: ago(7200),
     createdAt: ago(7400),
   },
@@ -161,8 +172,7 @@ export function sampleFeed(sort: string): Timelapse[] {
       return items.sort((a, b) => b.sessionMinutes - a.sessionMinutes);
     default:
       return items.sort(
-        (a, b) =>
-          Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
+        (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
       );
   }
 }
@@ -185,23 +195,14 @@ export function findSampleCreator(handle: string): PublicUser | undefined {
   };
 }
 
-const SAMPLE_BIOS: Record<string, string> = {
-  mira: "Compiler internals, mostly lifetimes. I record the sessions where I am wrong for longer than I am right.",
-  theo: "Payments infrastructure. Ledgers that balance, or an explanation of why they did not.",
-  ana: "Databases and the queries people regret. Four hours of query plans, condensed.",
-  kenji: "Firmware and board bring-up. Everything here was recorded at a bench.",
-  priya: "Interface work on products that are already shipped and already dense.",
-  dan: "Platform migrations, written down so the next person does not have to guess.",
-};
-
 export function sampleNotes(slug: string): Note[] {
   const timelapse = findSampleTimelapse(slug);
   if (!timelapse) return [];
   return [
     {
       id: `${timelapse.id}-n1`,
-      body: "The part around the middle is worth watching twice — the fixpoint is computed over the dominator tree rather than the CFG, which is why the nested case stops miscompiling.",
-      timestampSeconds: 12,
+      body: "The part around the middle is worth watching twice. Seeing where you stopped, stepped back and changed approach taught me more than the finished result.",
+      timestampSeconds: 6,
       helpfulCount: 14,
       viewerHasVoted: false,
       viewerCanDelete: false,
@@ -210,17 +211,17 @@ export function sampleNotes(slug: string): Note[] {
     },
     {
       id: `${timelapse.id}-n2`,
-      body: "Notice how the region inference pass was walking the graph twice before this change. That redundant traversal is the actual bug, and the rewrite is what removes it.",
-      timestampSeconds: 5,
+      body: "Good call redoing that step instead of hiding it. I would have kept going and regretted it later.",
+      timestampSeconds: 3,
       helpfulCount: 9,
       viewerHasVoted: false,
       viewerCanDelete: false,
-      author: { id: "s-n2", handle: "elena_dev", displayName: "Elena Rostova" },
+      author: { id: "s-n2", handle: "elena", displayName: "Elena Rostova" },
       createdAt: ago(240),
     },
     {
       id: `${timelapse.id}-n3`,
-      body: "Leaving the two failing tests in rather than skipping them is the right call, and the commit message saying so is better than a green suite that lies.",
+      body: "Leaving the mistakes in is what makes these worth watching. Please keep doing that.",
       helpfulCount: 6,
       viewerHasVoted: false,
       viewerCanDelete: false,
@@ -246,7 +247,7 @@ export function sampleDonations(slug: string): Donation[] {
     {
       id: `${timelapse.id}-d2`,
       amountLamports: sol(0.5),
-      message: "Watched this twice before touching our own reconciler.",
+      message: "Watched this twice before starting my own project.",
       status: "confirmed",
       donor: { id: "s-d2", handle: "rafa", displayName: "Rafa Mendes" },
       confirmedAt: ago(190),
@@ -262,16 +263,16 @@ export function sampleDonations(slug: string): Donation[] {
   ];
 }
 
+const SELF = { id: "s-me", handle: "alex", displayName: "Alex Morgan" };
+
 export const SAMPLE_SELF: SelfUser = {
-  id: "s-me",
-  handle: "you",
-  displayName: "Your name",
-  email: "you@example.com",
+  ...SELF,
+  email: "alex@example.com",
   emailVerified: true,
   role: "member",
   bio: "",
   payoutVerified: false,
-  timelapseCount: 2,
+  timelapseCount: 1,
   donationCount: 9,
   donationTotalLamports: sol(3.1),
   joinedAt: ago(60 * 24 * 96),
@@ -280,52 +281,49 @@ export const SAMPLE_SELF: SelfUser = {
 export const SAMPLE_SUBMISSIONS: Timelapse[] = [
   {
     id: "s-sub-1",
-    slug: "sample-your-parser-session",
-    ...demoMedia("index-hunt"),
-    title: "Replacing the hand-written parser with a generated one",
-    summary: "Six hours of grammar wrangling, plus the two tests it broke.",
+    slug: "sample-your-bookshelf",
+    ...clip("wood"),
+    title: "Building a bookshelf for the studio",
+    summary: "Six hours of cutting, sanding and fitting shelves, plus the two that came out crooked.",
     status: "published",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 372,
     viewCount: 2140,
     donationCount: 7,
     donationTotalLamports: sol(2.4),
-    creator: { id: "s-me", handle: "you", displayName: "Your name" },
+    creator: SELF,
     publishedAt: ago(1500),
     submittedAt: ago(1700),
     createdAt: ago(1720),
   },
   {
     id: "s-sub-2",
-    slug: "sample-your-cache-session",
-    ...demoMedia("payment-reconciler"),
-    title: "Caching the expensive route",
-    summary: "Added a read-through cache and the invalidation that goes with it.",
+    slug: "sample-your-poster-series",
+    ...clip("painting"),
+    title: "Painting a series of three gig posters",
+    summary: "Sketch to final colour for three posters for a local venue, done in one long session.",
     status: "in_review",
-    durationSeconds: DEMO_SECONDS,
     sessionMinutes: 164,
     viewCount: 0,
     donationCount: 0,
     donationTotalLamports: 0,
-    creator: { id: "s-me", handle: "you", displayName: "Your name" },
+    creator: SELF,
     submittedAt: ago(180),
     createdAt: ago(210),
   },
   {
     id: "s-sub-3",
-    slug: "sample-your-refactor-session",
-    ...demoMedia("typography-pass"),
-    title: "Tidying the settings module",
-    summary: "Moved some files around.",
+    slug: "sample-your-work-session",
+    ...clip("desk"),
+    title: "Work session",
+    summary: "Worked on some stuff for a few hours.",
     status: "rejected",
     reviewNote:
-      "The write-up does not say what changed or why, and there is no link to the result. Tell us what the module looked like before, what you moved and what that fixed, then send it back — the recording itself is fine.",
-    durationSeconds: DEMO_SECONDS,
+      "The write-up does not say what you worked on or what came out of it. Tell viewers what you set out to do, what you finished, and link the result if it is online, then send it back. The recording itself is fine.",
     sessionMinutes: 48,
     viewCount: 0,
     donationCount: 0,
     donationTotalLamports: 0,
-    creator: { id: "s-me", handle: "you", displayName: "Your name" },
+    creator: SELF,
     submittedAt: ago(2600),
     createdAt: ago(2700),
   },
@@ -335,7 +333,7 @@ export const SAMPLE_RECEIVED: Donation[] = [
   {
     id: "s-r1",
     amountLamports: sol(1.2),
-    message: "The invalidation section saved me a day.",
+    message: "The joinery section saved me a weekend.",
     status: "confirmed",
     donor: { id: "s-d4", handle: "noor", displayName: "Noor Haddad" },
     confirmedAt: ago(300),
