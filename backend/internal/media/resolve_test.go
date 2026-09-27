@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func testStorage() *Storage {
+func privateStorage() *Storage {
 	return New(Config{
 		Endpoint:  "https://br-x.storage.example.neon.tech",
 		Bucket:    "recordings",
@@ -17,14 +17,14 @@ func testStorage() *Storage {
 }
 
 func TestPrivateBucketStoresAReference(t *testing.T) {
-	ref := testStorage().PlaybackRef("uploads/u/2026/09/abc.mp4")
+	ref := privateStorage().PlaybackRef("uploads/u/2026/09/abc.mp4")
 	if ref != "storage:uploads/u/2026/09/abc.mp4" {
 		t.Fatalf("got %q", ref)
 	}
 }
 
 func TestResolveSignsPrivateReferences(t *testing.T) {
-	signed := testStorage().Resolve("storage:uploads/u/2026/09/abc.mp4")
+	signed := privateStorage().Resolve("storage:uploads/u/2026/09/abc.mp4")
 	u, err := url.Parse(signed)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestResolveSignsPrivateReferences(t *testing.T) {
 }
 
 func TestResolveLeavesPlainURLsAlone(t *testing.T) {
-	s := testStorage()
+	s := privateStorage()
 	for _, in := range []string{"/demo/wood-workshop.mp4", "https://cdn.example/x.mp4", ""} {
 		if got := s.Resolve(in); got != in {
 			t.Fatalf("%q became %q", in, got)
