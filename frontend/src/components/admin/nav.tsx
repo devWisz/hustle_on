@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "@/lib/format";
 import {
+  AlertIcon,
   CoinsIcon,
   FilmIcon,
   GridIcon,
