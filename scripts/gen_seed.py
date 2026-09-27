@@ -63,7 +63,7 @@ donations = [
  (2, 5, 0.75, None, 30, "confirmed"),
  (3, 2, 0.5, "Keeping this for the next time a report page is slow.", 70, "confirmed"),
  (5, 7, 3.2, "Morse-code debugging deserves funding on principle.", 150, "confirmed"),
- (5, 6, 1.0, None, 100, "confirmed"),
+ (5, 4, 1.0, None, 100, "confirmed"),
  (6, 3, 1.25, "Rollback first. Taking that to my team.", 200, "confirmed"),
  (4, 8, 0.4, None, 2, "pending"),
 ]
