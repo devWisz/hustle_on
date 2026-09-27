@@ -194,7 +194,6 @@ export interface AdminData {
   ledger: LedgerEntry[];
   activity: ActivityDay[];
   stats: Stats;
-  demo: boolean;
 }
 
 export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
