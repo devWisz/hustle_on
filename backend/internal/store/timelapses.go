@@ -37,9 +37,24 @@ func timelapseScanTargets(t *domain.Timelapse) []any {
 		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL}
 }
 
+// resolveMedia turns stored media references into loadable URLs. It is set at
+// startup to the storage signer; the default leaves values untouched.
+var resolveMedia = func(ref string) string { return ref }
+
+// SetMediaResolver installs the function that signs private media references.
+func SetMediaResolver(f func(string) string) { resolveMedia = f }
+
+func resolveTimelapseMedia(t *domain.Timelapse) {
+	t.PlaybackURL = resolveMedia(t.PlaybackURL)
+	t.ThumbnailURL = resolveMedia(t.ThumbnailURL)
+}
+
 func scanTimelapse(row pgx.Row) (domain.Timelapse, error) {
 	var t domain.Timelapse
 	err := row.Scan(timelapseScanTargets(&t)...)
+	if err == nil {
+		resolveTimelapseMedia(&t)
+	}
 	return t, err
 }
 

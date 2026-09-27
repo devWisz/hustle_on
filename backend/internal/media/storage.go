@@ -128,6 +128,12 @@ func (s *Storage) PublicURL(key string) string {
 
 // presignPut builds an AWS Signature Version 4 query-string signature.
 func (s *Storage) presignPut(key, contentType string, now time.Time) (string, error) {
+	return s.presign("PUT", key, contentType, s.cfg.URLTTL, now)
+}
+
+// presign builds a SigV4 query-signed URL. A PUT also signs the content type,
+// so the browser can only upload the kind of file the API agreed to.
+func (s *Storage) presign(method, key, contentType string, ttl time.Duration, now time.Time) (string, error) {
 	endpoint, err := url.Parse(s.cfg.Endpoint)
 	if err != nil {
 		return "", fmt.Errorf("media: parse endpoint: %w", err)
@@ -139,22 +145,26 @@ func (s *Storage) presignPut(key, contentType string, now time.Time) (string, er
 	datestamp := now.Format("20060102")
 	scope := strings.Join([]string{datestamp, s.cfg.Region, "s3", "aws4_request"}, "/")
 
+	signedHeaders := "host"
+	canonicalHeaders := "host:" + host + "\n"
+	if contentType != "" {
+		signedHeaders = "content-type;host"
+		canonicalHeaders = "content-type:" + contentType + "\n" + canonicalHeaders
+	}
+
 	q := url.Values{}
 	q.Set("X-Amz-Algorithm", "AWS4-HMAC-SHA256")
 	q.Set("X-Amz-Credential", s.cfg.AccessKey+"/"+scope)
 	q.Set("X-Amz-Date", stamp)
-	q.Set("X-Amz-Expires", strconv.Itoa(int(s.cfg.URLTTL.Seconds())))
-	// content-type is signed, so the uploaded object cannot be relabelled as
-	// something the allowlist would have rejected.
-	q.Set("X-Amz-SignedHeaders", "content-type;host")
+	q.Set("X-Amz-Expires", strconv.Itoa(int(ttl.Seconds())))
+	q.Set("X-Amz-SignedHeaders", signedHeaders)
 
-	canonicalHeaders := "content-type:" + contentType + "\nhost:" + host + "\n"
 	canonicalRequest := strings.Join([]string{
-		"PUT",
+		method,
 		canonicalURI,
 		encodeQuery(q),
 		canonicalHeaders,
-		"content-type;host",
+		signedHeaders,
 		"UNSIGNED-PAYLOAD",
 	}, "\n")
 
@@ -176,6 +186,36 @@ func (s *Storage) presignPut(key, contentType string, now time.Time) (string, er
 	q.Set("X-Amz-Signature", hex.EncodeToString(hmacSHA256(signingKey, []byte(stringToSign))))
 
 	return endpoint.Scheme + "://" + host + canonicalURI + "?" + encodeQuery(q), nil
+}
+
+// storagePrefix marks a stored reference to a private object. It is resolved to
+// a short-lived signed link each time it leaves the API.
+const storagePrefix = "storage:"
+
+// playbackTTL is how long a signed playback link works.
+const playbackTTL = 2 * time.Hour
+
+// PlaybackRef is what gets stored for an uploaded object: a public URL when the
+// bucket is served publicly or locally, otherwise a private reference.
+func (s *Storage) PlaybackRef(key string) string {
+	if s.IsLocal() || s.cfg.PublicURL != "" {
+		return s.PublicURL(key)
+	}
+	return storagePrefix + key
+}
+
+// Resolve turns a stored reference into something a browser can load. Plain
+// URLs pass through unchanged; private references become signed GET links.
+func (s *Storage) Resolve(ref string) string {
+	key, ok := strings.CutPrefix(ref, storagePrefix)
+	if !ok || key == "" || s.IsLocal() {
+		return ref
+	}
+	signed, err := s.presign("GET", key, "", playbackTTL, time.Now().UTC())
+	if err != nil {
+		return ""
+	}
+	return signed
 }
 
 // encodeQuery sorts and encodes parameters the way SigV4 requires.
