@@ -18,7 +18,8 @@ const timelapseColumns = `t.id::text, t.slug, t.title, t.summary,
 	COALESCE(t.duration_seconds, 0), COALESCE(t.session_minutes, 0),
 	t.view_count, t.donation_count, t.donation_total_lamports,
 	COALESCE(t.review_note, ''), t.submitted_at, t.published_at, t.created_at,
-	u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, '')`
+	u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, ''),
+	t.featured_at IS NOT NULL`
 
 const timelapseFrom = ` FROM timelapses t JOIN users u ON u.id = t.user_id`
 
@@ -34,7 +35,8 @@ func timelapseScanTargets(t *domain.Timelapse) []any {
 		&t.ThumbnailURL, &t.PlaybackURL, &t.DurationSecs, &t.SessionMinutes,
 		&t.ViewCount, &t.DonationCount, &t.DonationTotal,
 		&t.ReviewNote, &t.SubmittedAt, &t.PublishedAt, &t.CreatedAt,
-		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL}
+		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL,
+		&t.Featured}
 }
 
 // resolveMedia turns stored media references into loadable URLs. It is set at

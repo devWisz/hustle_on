@@ -69,6 +69,7 @@ type Timelapse struct {
 
 	// ReviewNote is only ever populated for the creator's own view of their
 	// submission and for an admin. It is empty on every public payload.
+	Featured    bool       `json:"featured,omitempty"`
 	ReviewNote  string     `json:"reviewNote,omitempty"`
 	SubmittedAt *time.Time `json:"submittedAt,omitempty"`
 	PublishedAt *time.Time `json:"publishedAt,omitempty"`
@@ -200,4 +201,34 @@ type AdminNote struct {
 	Author           Creator       `json:"author"`
 	Timelapse        LedgerSession `json:"timelapse"`
 	CreatedAt        time.Time     `json:"createdAt"`
+}
+
+// Report is something a member flagged for an admin to look at.
+type Report struct {
+	ID          string        `json:"id"`
+	SubjectType string        `json:"subjectType"`
+	Reason      string        `json:"reason"`
+	Details     string        `json:"details,omitempty"`
+	Status      string        `json:"status"`
+	Reporter    *Creator      `json:"reporter,omitempty"`
+	Timelapse   ReportSubject `json:"timelapse"`
+	Note        *ReportNote   `json:"note,omitempty"`
+	ResolvedAt  *time.Time    `json:"resolvedAt,omitempty"`
+	CreatedAt   time.Time     `json:"createdAt"`
+}
+
+// ReportSubject is the session a report is about.
+type ReportSubject struct {
+	ID      string  `json:"id"`
+	Slug    string  `json:"slug"`
+	Title   string  `json:"title"`
+	Status  string  `json:"status"`
+	Creator Creator `json:"creator"`
+}
+
+// ReportNote is the note a report is about, when it is about a note.
+type ReportNote struct {
+	ID     string  `json:"id"`
+	Body   string  `json:"body"`
+	Author Creator `json:"author"`
 }
