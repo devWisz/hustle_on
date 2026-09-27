@@ -29,7 +29,7 @@ export default async function QueuePage({
             </p>
           </Card>
         ) : (
-          <ReviewDesk initial={data.queue} demo={data.demo} initialId={item} />
+          <ReviewDesk initial={data.queue} initialId={item} />
         )}
       </div>
     </div>

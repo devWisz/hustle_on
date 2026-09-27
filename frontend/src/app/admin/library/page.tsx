@@ -14,7 +14,7 @@ export default async function LibraryPage() {
         description="Everything currently on the public feed. A takedown removes it immediately and is written to the audit trail."
       />
       <div className="mt-6">
-        <Library initial={data.library} demo={data.demo} />
+        <Library initial={data.library} />
       </div>
     </div>
   );

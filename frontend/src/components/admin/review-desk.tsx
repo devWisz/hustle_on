@@ -26,15 +26,7 @@ const CHECKS = [
 
 type Sort = "oldest" | "newest" | "longest";
 
-export function ReviewDesk({
-  initial,
-  demo,
-  initialId,
-}: {
-  initial: Timelapse[];
-  demo: boolean;
-  initialId?: string;
-}) {
+export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initialId?: string }) {
   const router = useRouter();
   const toast = useToast();
   const [queue, setQueue] = useState(initial);
@@ -104,12 +96,10 @@ export function ReviewDesk({
       if (action === "reject" && note.trim().length < 10) return;
       setBusy(true);
       try {
-        if (!demo) {
-          await api(`/v1/admin/timelapses/${current.id}/${action}`, {
-            method: "POST",
-            body: action === "reject" ? { note: note.trim() } : undefined,
-          });
-        }
+        await api(`/v1/admin/timelapses/${current.id}/${action}`, {
+          method: "POST",
+          body: action === "reject" ? { note: note.trim() } : undefined,
+        });
         const next = visible[index + 1] ?? visible[index - 1];
         setQueue((q) => q.filter((t) => t.id !== current.id));
         setSelectedId(next?.id);
@@ -119,20 +109,16 @@ export function ReviewDesk({
             d[action === "approve" ? "approved" : "rejected"] + 1,
         }));
         toast.success(
-          demo
-            ? `Demo: ${action === "approve" ? "approved" : "sent back"} in this view only.`
-            : action === "approve"
-              ? "Published."
-              : "Sent back to the creator with your note.",
+          action === "approve" ? "Published." : "Sent back to the creator with your note.",
         );
-        if (!demo) router.refresh();
+        router.refresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "That decision did not go through.");
       } finally {
         setBusy(false);
       }
     },
-    [current, busy, note, demo, visible, index, toast, router],
+    [current, busy, note, visible, index, toast, router],
   );
 
   useEffect(() => {

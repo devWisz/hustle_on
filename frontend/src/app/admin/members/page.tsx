@@ -17,7 +17,7 @@ export default async function MembersPage() {
       />
       <div className="mt-6">
         {data.members.length ? (
-          <Members initial={data.members} demo={data.demo} />
+          <Members initial={data.members} />
         ) : (
           <EmptyState
             icon={<UsersIcon size={18} />}

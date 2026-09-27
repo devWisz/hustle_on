@@ -11,7 +11,7 @@ import { Button, Select } from "../ui";
 import { FilmIcon } from "../ui/icons";
 import { DataTable, type Column } from "./data-table";
 
-export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean }) {
+export function Library({ initial }: { initial: Timelapse[] }) {
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initial);
@@ -27,12 +27,10 @@ export function Library({ initial, demo }: { initial: Timelapse[]; demo: boolean
   async function takeDown(t: Timelapse) {
     setBusy(t.id);
     try {
-      if (!demo) await api(`/v1/admin/timelapses/${t.id}`, { method: "DELETE" });
+      await api(`/v1/admin/timelapses/${t.id}`, { method: "DELETE" });
       setItems((list) => list.filter((x) => x.id !== t.id));
-      toast.success(
-        demo ? "Demo: removed from this view only." : "Taken down. It is off the feed.",
-      );
-      if (!demo) router.refresh();
+      toast.success("Taken down. It is off the feed.");
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "That takedown did not go through.");
     } finally {

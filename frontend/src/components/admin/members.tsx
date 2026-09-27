@@ -11,7 +11,7 @@ import { Avatar, Badge, Button, Select } from "../ui";
 import { CheckIcon, UsersIcon } from "../ui/icons";
 import { DataTable, type Column } from "./data-table";
 
-export function Members({ initial, demo }: { initial: AdminMember[]; demo: boolean }) {
+export function Members({ initial }: { initial: AdminMember[] }) {
   const toast = useToast();
   const router = useRouter();
   const [members, setMembers] = useState(initial);
@@ -28,17 +28,13 @@ export function Members({ initial, demo }: { initial: AdminMember[]; demo: boole
     const next = m.status === "active" ? "suspended" : "active";
     setBusy(m.id);
     try {
-      if (!demo) {
-        await api(`/v1/admin/members/${m.id}/${next === "active" ? "reinstate" : "suspend"}`, {
-          method: "POST",
-        });
-      }
+      await api(`/v1/admin/members/${m.id}/${next === "active" ? "reinstate" : "suspend"}`, {
+        method: "POST",
+      });
       setMembers((list) => list.map((x) => (x.id === m.id ? { ...x, status: next } : x)));
       const verb = next === "active" ? "reinstated" : "suspended and signed out everywhere";
-      toast.success(
-        demo ? `Demo: ${m.displayName} ${verb} in this view only.` : `${m.displayName} ${verb}.`,
-      );
-      if (!demo) router.refresh();
+      toast.success(`${m.displayName} ${verb}.`);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "That change did not go through.");
     } finally {

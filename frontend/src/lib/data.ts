@@ -222,8 +222,13 @@ export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
       members: members?.items ?? [],
       ledger: ledger?.items ?? [],
       activity: activity?.items ?? [],
-      stats: stats ?? { creators: 0, publishedTimelapses: 0, sessionMinutesRecorded: 0, confirmedDonations: 0, donationTotalLamports: 0 },
-      demo: false,
+      stats: stats ?? {
+        creators: 0,
+        publishedTimelapses: 0,
+        sessionMinutesRecorded: 0,
+        confirmedDonations: 0,
+        donationTotalLamports: 0,
+      },
     };
   }
   if (viewer.uncertain && !viewer.user) signInOrRetry(viewer);
