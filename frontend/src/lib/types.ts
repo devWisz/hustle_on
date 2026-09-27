@@ -122,9 +122,22 @@ export interface ApiErrorBody {
   requestId?: string;
 }
 
+export type AdminAccess = "ok" | "reauth_required" | "network_blocked";
+
 export interface SessionResponse {
   authenticated: boolean;
   user?: SelfUser;
+  adminAccess?: AdminAccess;
+}
+
+export interface AdminNote {
+  id: string;
+  body: string;
+  timestampSeconds?: number;
+  helpfulCount: number;
+  author: Creator;
+  timelapse: { slug: string; title: string };
+  createdAt: string;
 }
 
 export interface AdminMember extends PublicUser {

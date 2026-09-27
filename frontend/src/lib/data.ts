@@ -17,6 +17,8 @@ import {
 } from "./demo/content";
 import type {
   ActivityDay,
+  AdminAccess,
+  AdminNote,
   AdminMember,
   AuditEntry,
   Donation,
@@ -32,6 +34,7 @@ import type {
 
 export interface Viewer {
   user?: SelfUser;
+  adminAccess?: AdminAccess;
   online: boolean;
   demo: boolean;
   uncertain: boolean;
@@ -47,7 +50,13 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   const online = session.status !== 0;
   const uncertain = online && session.data === null;
   const user = session.data?.authenticated ? session.data.user : undefined;
-  return { user, online, uncertain, demo: !user && (cookie || !online) };
+  return {
+    user,
+    adminAccess: session.data?.adminAccess,
+    online,
+    uncertain,
+    demo: !user && (cookie || !online),
+  };
 });
 
 class ApiUnavailableError extends Error {
@@ -193,23 +202,28 @@ export interface AdminData {
   members: AdminMember[];
   ledger: LedgerEntry[];
   activity: ActivityDay[];
+  notes: AdminNote[];
   stats: Stats;
 }
 
-export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
+export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbidden"> => {
   const viewer = await getViewer();
 
+  if (viewer.user?.role === "admin" && viewer.adminAccess && viewer.adminAccess !== "ok") {
+    return viewer.adminAccess;
+  }
   if (viewer.user?.role === "admin") {
     // The console is the one surface that needs the whole set rather than a
     // page of it, so these walk the API's cursor to the end instead of asking
     // for one very large page — the server keeps its bound either way.
-    const [queue, audit, library, members, ledger, activity, stats] = await Promise.all([
+    const [queue, audit, library, members, ledger, activity, notes, stats] = await Promise.all([
       apiServerAllPages<Timelapse>("/v1/admin/queue?limit=100", 0),
       apiServerAllPages<AuditEntry>("/v1/admin/audit?limit=100", 0),
       apiServerAllPages<Timelapse>("/v1/timelapses?limit=50", 0),
       apiServerAllPages<AdminMember>("/v1/admin/members?limit=200", 0),
       apiServerAllPages<LedgerEntry>("/v1/admin/ledger?limit=200", 0),
       apiServer<Page<ActivityDay>>("/v1/admin/activity?days=30", 0),
+      apiServer<Page<AdminNote>>("/v1/admin/notes?limit=200", 0),
       liveStats(),
     ]);
     return {
@@ -221,6 +235,7 @@ export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
       members: members?.items ?? [],
       ledger: ledger?.items ?? [],
       activity: activity?.items ?? [],
+      notes: notes?.items ?? [],
       stats: stats ?? {
         creators: 0,
         publishedTimelapses: 0,

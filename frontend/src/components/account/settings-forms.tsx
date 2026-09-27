@@ -162,21 +162,21 @@ export function WalletForm({ user }: { user: SelfUser }) {
   );
 }
 
-export function SignOutButton() {
+export function SignOutButton({ everywhere = false }: { everywhere?: boolean }) {
   const [busy, setBusy] = useState(false);
 
   async function signOut() {
     setBusy(true);
     try {
-      await api("/v1/auth/logout", { method: "POST" });
+      await api(everywhere ? "/v1/auth/logout-all" : "/v1/auth/logout", { method: "POST" });
     } finally {
       window.location.assign("/");
     }
   }
 
   return (
-    <Button onClick={signOut} loading={busy} variant="ghost">
-      Sign out
+    <Button onClick={signOut} loading={busy} variant={everywhere ? "secondary" : "ghost"}>
+      {everywhere ? "Sign out everywhere" : "Sign out"}
     </Button>
   );
 }
