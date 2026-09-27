@@ -41,7 +41,7 @@ export interface Timelapse {
   donationCount: number;
   donationTotalLamports: number;
   creator: Creator;
-
+  featured?: boolean;
   reviewNote?: string;
   submittedAt?: string;
   publishedAt?: string;
@@ -161,4 +161,25 @@ export interface ActivityDay {
   approved: number;
   rejected: number;
   lamports: number;
+}
+
+export type ReportReason =
+  | "spam"
+  | "not_their_work"
+  | "misleading"
+  | "inappropriate"
+  | "harassment"
+  | "other";
+
+export interface Report {
+  id: string;
+  subjectType: "timelapse" | "note";
+  reason: ReportReason;
+  details?: string;
+  status: "open" | "resolved" | "dismissed";
+  reporter?: Creator;
+  timelapse: { id: string; slug: string; title: string; status: TimelapseStatus; creator: Creator };
+  note?: { id: string; body: string; author: Creator };
+  resolvedAt?: string;
+  createdAt: string;
 }

@@ -19,6 +19,7 @@ import type {
   ActivityDay,
   AdminAccess,
   AdminNote,
+  Report,
   AdminMember,
   AuditEntry,
   Donation,
@@ -78,6 +79,11 @@ export interface Sourced<T> {
 }
 
 export const FEED_PAGE_SIZE = 12;
+
+export const getFeatured = cache(async (): Promise<Timelapse[]> => {
+  const page = await apiServer<Page<Timelapse>>("/v1/featured?limit=6", 60);
+  return page?.items ?? [];
+});
 
 export async function getStats(): Promise<Sourced<Stats> | null> {
   const [stats, viewer] = await Promise.all([liveStats(), getViewer()]);
@@ -206,6 +212,7 @@ export interface AdminData {
   ledger: LedgerEntry[];
   activity: ActivityDay[];
   notes: AdminNote[];
+  reports: Report[];
   stats: Stats;
 }
 
@@ -219,7 +226,7 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
     // The console is the one surface that needs the whole set rather than a
     // page of it, so these walk the API's cursor to the end instead of asking
     // for one very large page — the server keeps its bound either way.
-    const [queue, audit, library, members, ledger, activity, notes, stats] = await Promise.all([
+    const [queue, audit, library, members, ledger, activity, notes, reports, stats] = await Promise.all([
       apiServerAllPages<Timelapse>("/v1/admin/queue?limit=100", 0),
       apiServerAllPages<AuditEntry>("/v1/admin/audit?limit=100", 0),
       apiServerAllPages<Timelapse>("/v1/timelapses?limit=50", 0),
@@ -227,6 +234,7 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
       apiServerAllPages<LedgerEntry>("/v1/admin/ledger?limit=200", 0),
       apiServer<Page<ActivityDay>>("/v1/admin/activity?days=30", 0),
       apiServer<Page<AdminNote>>("/v1/admin/notes?limit=200", 0),
+      apiServer<Page<Report>>("/v1/admin/reports?limit=300", 0),
       liveStats(),
     ]);
     return {
@@ -239,6 +247,7 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
       ledger: ledger?.items ?? [],
       activity: activity?.items ?? [],
       notes: notes?.items ?? [],
+      reports: reports?.items ?? [],
       stats: stats ?? {
         creators: 0,
         publishedTimelapses: 0,
