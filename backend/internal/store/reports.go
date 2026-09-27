@@ -23,11 +23,20 @@ func (s *Store) CreateReport(ctx context.Context, in NewReport) error {
 	if in.NoteID != "" {
 		subject = "note"
 	}
-	_, err := s.pool.Exec(ctx, `
+	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO reports (reporter_id, subject_type, timelapse_id, note_id, reason, details)
-		VALUES ($1, $2, $3, NULLIF($4, '')::uuid, $5::report_reason, NULLIF($6, ''))`,
+		SELECT $1, $2, $3, NULLIF($4, '')::uuid, $5::report_reason, NULLIF($6, '')
+		WHERE $4 = '' OR EXISTS (
+			SELECT 1 FROM timelapse_notes WHERE id = NULLIF($4, '')::uuid AND timelapse_id = $3
+		)`,
 		in.ReporterID, subject, in.TimelapseID, in.NoteID, in.Reason, in.Details)
-	return normalize(err)
+	if err != nil {
+		return normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // Reports lists reports with the session and note they point at, newest first.

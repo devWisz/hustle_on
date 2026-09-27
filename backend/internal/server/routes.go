@@ -28,6 +28,8 @@ func (s *Server) routes() {
 	s.route("GET /v1/creators/{handle}", budgetRead, s.handleCreator)
 	s.route("GET /v1/creators/{handle}/timelapses", budgetRead, s.handleCreatorTimelapses)
 	s.route("GET /v1/stats", budgetRead, s.handleStats)
+	s.route("GET /v1/featured", budgetRead, s.handleFeatured)
+	s.route("POST /v1/reports", budgetEngage, s.handleCreateReport)
 
 	// --- authentication --------------------------------------------------
 	// Sign-in gets its own tight budgets, charged by address rather than by
@@ -82,6 +84,10 @@ func (s *Server) routes() {
 	s.route("GET /v1/admin/ledger", budgetAdmin, s.handleLedger)
 	s.route("GET /v1/admin/activity", budgetAdmin, s.handleActivity)
 	s.route("GET /v1/admin/notes", budgetAdmin, s.handleAdminNotes)
+	s.route("GET /v1/admin/reports", budgetAdmin, s.handleAdminReports)
+	s.route("POST /v1/admin/reports/{id}/resolve", budgetAdmin, s.handleResolveReport)
+	s.route("POST /v1/admin/timelapses/{id}/feature", budgetAdmin, s.handleFeature(true))
+	s.route("DELETE /v1/admin/timelapses/{id}/feature", budgetAdmin, s.handleFeature(false))
 
 	// --- local object storage (development only) -------------------------
 	// Registered only when no real bucket is configured, so a production

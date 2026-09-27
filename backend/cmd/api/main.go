@@ -108,6 +108,7 @@ func run() error {
 	go worker.PurgeExpiredAuth(ctx, log, st)
 
 	api := server.New(cfg, log, st, authSvc, chain, storage)
+	api.SetMailer(mailer)
 	return api.ListenAndServe(ctx)
 }
 
