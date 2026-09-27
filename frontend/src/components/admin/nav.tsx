@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "@/lib/format";
-import { CoinsIcon, FilmIcon, GridIcon, InboxIcon, ListIcon, UsersIcon } from "../ui/icons";
+import {
+  CoinsIcon,
+  FilmIcon,
+  GridIcon,
+  InboxIcon,
+  ListIcon,
+  MessageSquareIcon,
+  UsersIcon,
+} from "../ui/icons";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: GridIcon, key: "overview" },
@@ -11,6 +19,7 @@ const ITEMS = [
   { href: "/admin/library", label: "Library", icon: FilmIcon, key: "library" },
   { href: "/admin/members", label: "Members", icon: UsersIcon, key: "members" },
   { href: "/admin/ledger", label: "Ledger", icon: CoinsIcon, key: "ledger" },
+  { href: "/admin/notes", label: "Notes", icon: MessageSquareIcon, key: "notes" },
   { href: "/admin/audit", label: "Audit trail", icon: ListIcon, key: "audit" },
 ] as const;
 
