@@ -6,6 +6,8 @@ import { TimelapseGrid } from "@/components/timelapse/grid";
 import { Container } from "@/components/ui";
 import { ArrowRightIcon } from "@/components/ui/icons";
 
+export const metadata = { title: "Page not found", robots: { index: false, follow: false } };
+
 const PLACES = [
   { href: "/#feed", title: "Browse the feed", body: "Sessions people funded and watched most." },
   { href: "/about", title: "How it works", body: "From recording to review to sponsorship." },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "./api/client";
+import { api } from "./api/client";
 import type { Timelapse } from "./types";
 
 const STORAGE_KEY = "sardhana-bookmarks";
@@ -78,15 +78,27 @@ function cacheLocally(items: SavedTimelapse[]) {
   window.dispatchEvent(new CustomEvent(EVENT_NAME));
 }
 
-async function fetchServerBookmarks(): Promise<SavedTimelapse[] | null> {
+let serverLoad: Promise<SavedTimelapse[] | null> | null = null;
+
+async function loadServerBookmarks(): Promise<SavedTimelapse[] | null> {
   try {
+    const session = await api<{ authenticated: boolean }>("/v1/auth/session");
+    if (!session.authenticated) return null;
     const page = await api<{ items: Timelapse[] }>("/v1/me/bookmarks");
     const now = new Date().toISOString();
     return page.items.map((t) => toSaved(t, now));
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) return null;
+  } catch {
     return null;
   }
+}
+
+function fetchServerBookmarks(): Promise<SavedTimelapse[] | null> {
+  serverLoad ??= loadServerBookmarks().finally(() => {
+    setTimeout(() => {
+      serverLoad = null;
+    }, 30_000);
+  });
+  return serverLoad;
 }
 
 export function useBookmarks() {

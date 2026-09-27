@@ -102,7 +102,7 @@ export interface WatchData {
   demo: boolean;
 }
 
-export async function getWatch(slug: string): Promise<WatchData | null> {
+async function loadWatch(slug: string): Promise<WatchData | null> {
   const [live, viewer] = await Promise.all([
     apiServer<Timelapse>(`/v1/timelapses/${slug}`),
     getViewer(),
@@ -138,7 +138,7 @@ export async function getWatch(slug: string): Promise<WatchData | null> {
   };
 }
 
-export async function getCreator(
+async function loadCreator(
   handle: string,
 ): Promise<Sourced<{ creator: PublicUser; items: Timelapse[] }> | null> {
   const [live, items, viewer] = await Promise.all([
@@ -161,6 +161,9 @@ export interface DashboardData {
   donations: Donation[];
   demo: boolean;
 }
+
+export const getWatch = cache(loadWatch);
+export const getCreator = cache(loadCreator);
 
 export async function getDashboard(): Promise<DashboardData | "signin"> {
   const viewer = await getViewer();
