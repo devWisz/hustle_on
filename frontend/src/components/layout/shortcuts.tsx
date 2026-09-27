@@ -13,12 +13,11 @@ const SHORTCUTS: { keys: string[]; description: string }[] = [
   { keys: ["G", "H"], description: "Go home" },
   { keys: ["G", "D"], description: "Go to your dashboard" },
   { keys: ["G", "U"], description: "Go to upload" },
-  { keys: ["G", "A"], description: "Go to the admin console" },
   { keys: ["T"], description: "Toggle light and dark" },
   { keys: ["?"], description: "Show this list" },
 ];
 
-const ROUTES: Record<string, string> = { h: "/", d: "/dashboard", u: "/upload", a: "/admin" };
+const ROUTES: Record<string, string> = { h: "/", d: "/dashboard", u: "/upload" };
 
 function isTyping(): boolean {
   const el = document.activeElement as HTMLElement | null;

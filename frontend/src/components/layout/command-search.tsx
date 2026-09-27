@@ -48,7 +48,7 @@ function localSearch(term: string): Timelapse[] {
   ).slice(0, 6);
 }
 
-export function CommandSearch() {
+export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -217,7 +217,7 @@ export function CommandSearch() {
     ];
     return [...recent, ...pages];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, results, recents, go]);
+  }, [query, results, recents, go, isAdmin]);
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") close();

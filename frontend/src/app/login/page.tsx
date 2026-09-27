@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const DEMO_INCLUDES = [
   "The feed, watch pages and creator profiles",
   "A creator dashboard with a decision on every submission",
-  "The full admin console: review desk, members, ledger and audit trail",
+  "Account settings and the upload form, exactly as creators see them",
 ];
 
 export default async function LoginPage({

@@ -52,6 +52,11 @@ async function OfflineWatcher() {
   return viewer.online ? null : <ApiWatcher />;
 }
 
+async function Search() {
+  const viewer = await getViewer();
+  return <CommandSearch isAdmin={viewer.user?.role === "admin"} />;
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
@@ -80,7 +85,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Footer />
           <ScrollTop />
           <Shortcuts />
-          <CommandSearch />
+          <Suspense fallback={null}>
+            <Search />
+          </Suspense>
           <Suspense fallback={null}>
             <OfflineWatcher />
           </Suspense>
