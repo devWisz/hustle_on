@@ -113,7 +113,7 @@ func (s *Store) OpenReportCount(ctx context.Context) (int, error) {
 func (s *Store) SetFeatured(ctx context.Context, id string, featured bool, at time.Time) (string, error) {
 	var title string
 	err := s.pool.QueryRow(ctx, `
-		UPDATE timelapses SET featured_at = CASE WHEN $2 THEN $3 ELSE NULL END
+		UPDATE timelapses SET featured_at = CASE WHEN $2::boolean THEN $3::timestamptz ELSE NULL END
 		WHERE id = $1 AND status = 'published'
 		RETURNING title`, id, featured, at).Scan(&title)
 	return title, normalize(err)
