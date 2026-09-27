@@ -54,7 +54,7 @@ export default async function HomePage({
               title={
                 <span id="feed-heading">Real sessions, read by a person before they went up</span>
               }
-              description="Hover a session to preview it. Filter by topic, or sort by what people funded and watched most."
+              description="Filter by the kind of work, or sort by what people funded and watched most."
             />
           </Reveal>
           <div className="mt-10">

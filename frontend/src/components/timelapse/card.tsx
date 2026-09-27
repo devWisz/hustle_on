@@ -45,10 +45,7 @@ export function TimelapseCard({
           />
           <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 font-mono text-[11px] text-white">
             <span className="rounded-md bg-black/55 px-1.5 py-0.5 backdrop-blur-sm">
-              {ratio ? `${ratio}x` : "Real time"}
-              {t.sessionMinutes > 0
-                ? ` · ${formatSession(t.sessionMinutes).replace(" of work", "")}`
-                : ""}
+              {t.sessionMinutes > 0 ? `${formatSession(t.sessionMinutes).replace(" of work", "")} of work` : "Real time"}
             </span>
             {t.durationSeconds > 0 ? (
               <span className="rounded-md bg-black/55 px-1.5 py-0.5 tabular-nums backdrop-blur-sm">

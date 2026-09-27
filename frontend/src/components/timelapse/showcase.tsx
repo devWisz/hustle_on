@@ -71,7 +71,7 @@ export function Showcase({
   return (
     <figure className="w-full">
       <div className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-black shadow-[var(--shadow-lifted)]">
-        <div className="relative aspect-[16/10] sm:aspect-video">
+        <div className="relative aspect-[4/5] sm:aspect-video">
           <video
             ref={video}
             src={current.playbackUrl}
