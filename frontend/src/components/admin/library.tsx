@@ -148,7 +148,7 @@ export function Library({ initial }: { initial: Timelapse[] }) {
             </Button>
           </span>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => setConfirming(t.id)}>
+          <Button size="sm" variant="secondary" onClick={() => setConfirming(t.id)}>
             Take down
           </Button>
         ),
