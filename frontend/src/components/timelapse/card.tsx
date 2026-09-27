@@ -22,7 +22,6 @@ export function TimelapseCard({
   timelapse: Timelapse;
   demo?: boolean;
 }) {
-  const ratio = compression(t);
 
   return (
     <article className="group relative">
