@@ -330,7 +330,56 @@ func requireAdmin(r *http.Request) (auth.User, error) {
 	if u.Role != roleAdmin {
 		return auth.User{}, apierr.Forbidden("")
 	}
+	switch adminAccess(r) {
+	case adminBlocked:
+		return auth.User{}, apierr.Forbidden("The admin console is not available from this network.")
+	case adminStale:
+		return auth.User{}, apierr.Forbidden("For security, sign in again to use the admin console.").WithCode("reauth_required")
+	}
 	return u, nil
+}
+
+const (
+	adminOK      = "ok"
+	adminStale   = "reauth_required"
+	adminBlocked = "network_blocked"
+)
+
+var (
+	adminMaxSessionAge  time.Duration
+	adminAllowedNetwork []netip.Prefix
+)
+
+// SetAdminPolicy limits the admin console to sessions younger than maxAge (0
+// disables the check) and, when networks is non-empty, to those addresses.
+func SetAdminPolicy(maxAge time.Duration, networks []netip.Prefix) {
+	adminMaxSessionAge = maxAge
+	adminAllowedNetwork = networks
+}
+
+// adminAccess reports whether this request may use the admin console, on top
+// of the account holding the admin role.
+func adminAccess(r *http.Request) string {
+	if len(adminAllowedNetwork) > 0 {
+		ip := clientIP(r)
+		allowed := false
+		for _, n := range adminAllowedNetwork {
+			if n.Contains(ip) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return adminBlocked
+		}
+	}
+	if adminMaxSessionAge > 0 {
+		sess, ok := r.Context().Value(sessionKey).(auth.Session)
+		if !ok || time.Since(sess.CreatedAt) > adminMaxSessionAge {
+			return adminStale
+		}
+	}
+	return adminOK
 }
 
 // randomSuffix returns a short token used to widen a slug that is already

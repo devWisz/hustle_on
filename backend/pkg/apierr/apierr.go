@@ -112,3 +112,11 @@ func From(err error) *Error {
 	}
 	return Internal(err)
 }
+
+// WithCode returns a copy of the error with a more specific machine-readable
+// code, so a client can react to one kind of refusal differently.
+func (e *Error) WithCode(code string) *Error {
+	out := *e
+	out.Code = code
+	return &out
+}
