@@ -63,6 +63,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PRIVATE.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
   return response;
 }
