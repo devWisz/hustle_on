@@ -226,5 +226,6 @@ export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
       demo: false,
     };
   }
-  return viewer.uncertain && !viewer.user ? signInOrRetry(viewer) : "forbidden";
+  if (viewer.uncertain && !viewer.user) signInOrRetry(viewer);
+  return "forbidden";
 });
