@@ -191,7 +191,7 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
-            placeholder="Rewriting the borrow-checker pass"
+            placeholder="Building a walnut side table from rough boards"
             required
           />
         </Field>

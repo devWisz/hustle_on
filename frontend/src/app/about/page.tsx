@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const STEPS = [
   {
     title: "Record yourself working",
-    body: "Hit record when you sit down to hustle on a project: code, design, hardware, writing, anything. Record your screen, your desk or both, for as long as the session takes. Check nothing private is in frame.",
+    body: "Hit record when you sit down to work on something: painting, woodwork, sewing, code, a launch, an exam. Film yourself, your desk or your screen, for as long as the session takes. Check nothing private is in frame.",
   },
   {
     title: "Turn it into a timelapse",
@@ -22,7 +22,7 @@ const STEPS = [
   },
   {
     title: "Upload it with a write-up",
-    body: "Say what you set out to do, what went wrong and what you ended up with, and link the repo or post so anyone can check.",
+    body: "Say what you set out to do, what went wrong and what you ended up with, and link the finished result so anyone can check.",
   },
   {
     title: "An admin approves it",

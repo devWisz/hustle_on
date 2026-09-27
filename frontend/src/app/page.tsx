@@ -196,7 +196,7 @@ function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
 const STEPS = [
   {
     title: "Record yourself working",
-    body: "Hit record when you sit down to hustle on a project: code, design, hardware, anything. Screen, camera, or both.",
+    body: "Hit record when you sit down to work on something: a painting, a table, a jacket, an app, a launch. Film yourself, your desk or your screen.",
   },
   {
     title: "Turn it into a timelapse",
@@ -204,7 +204,7 @@ const STEPS = [
   },
   {
     title: "Upload it with a write-up",
-    body: "Say what you set out to do, what went wrong and what you ended up with, and link the repo or post so anyone can check.",
+    body: "Say what you set out to do, what went wrong and what you ended up with, and link the finished result so anyone can check.",
   },
   {
     title: "An admin approves it",

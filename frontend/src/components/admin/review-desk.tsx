@@ -13,7 +13,7 @@ import { ArrowLeftIcon, CheckIcon, ExternalIcon, GitHubIcon, InboxIcon, XIcon } 
 
 const TEMPLATES = [
   "The write-up does not say what changed or why. Describe what you set out to do and what you ended up with.",
-  "There is no link to the result. Add the repository, commit or post so a reviewer can check the work.",
+  "There is no link to the result. Add a link to the finished result so a reviewer can check the work.",
   "The recording does not appear to match the write-up. Make sure the clip shows the session described.",
   "The session length looks off compared to the recording. Give the real time spent on the work.",
 ];

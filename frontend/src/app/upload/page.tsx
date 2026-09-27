@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 const CHECKLIST = [
   "Say what you were trying to do, and what changed",
   "Mention what went wrong, not only what worked",
-  "Link the repo, commit or post a reviewer can check",
+  "Link the finished result, repo or post a reviewer can check",
   "Give the real session length, not the clip length",
 ];
 
