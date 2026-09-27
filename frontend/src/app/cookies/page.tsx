@@ -5,7 +5,8 @@ import { LegalPage } from "@/components/layout/legal";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
-  description: "Every cookie and stored preference Sardhana uses, what it is for and how long it lasts.",
+  description:
+    "Every cookie and stored preference Sardhana uses, what it is for and how long it lasts.",
 };
 
 const sections = [

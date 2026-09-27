@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GitHubIcon, LogoMark, XIcon } from "../ui/icons";
+import { CookieSettingsButton } from "./cookie-settings-button";
 
 const CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
 
@@ -86,7 +87,10 @@ export function Footer() {
         </p>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
-          <p>Your hustle should be paid off.</p>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span>Your hustle should be paid off.</span>
+            <CookieSettingsButton variant="link" />
+          </p>
           <p className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />

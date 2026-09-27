@@ -24,7 +24,9 @@ const CLIPS = {
   desk: { file: "writing-desk", seconds: 12 },
 } as const;
 
-function clip(name: keyof typeof CLIPS): Pick<Timelapse, "playbackUrl" | "thumbnailUrl" | "durationSeconds"> {
+function clip(
+  name: keyof typeof CLIPS,
+): Pick<Timelapse, "playbackUrl" | "thumbnailUrl" | "durationSeconds"> {
   const c = CLIPS[name];
   return {
     playbackUrl: `/demo/${c.file}.mp4`,
@@ -44,7 +46,8 @@ const CREATORS = {
 
 const SAMPLE_BIOS: Record<string, string> = {
   ana: "Painter. I record whole commissions, from the first wash to the last signature.",
-  kenji: "Furniture maker working out of a small shared workshop. Hardwoods, hand tools, one table at a time.",
+  kenji:
+    "Furniture maker working out of a small shared workshop. Hardwoods, hand tools, one table at a time.",
   priya: "Pattern cutter and seamstress building a small clothing label, one prototype at a time.",
   theo: "Software engineer who does his best work after midnight. Mostly data tools and dashboards.",
   dan: "Co-founder of a four-person startup. I film launch days so the team can see how the day actually went.",
@@ -172,7 +175,8 @@ export function sampleFeed(sort: string): Timelapse[] {
       return items.sort((a, b) => b.sessionMinutes - a.sessionMinutes);
     default:
       return items.sort(
-        (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
+        (a, b) =>
+          Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt),
       );
   }
 }
@@ -284,7 +288,8 @@ export const SAMPLE_SUBMISSIONS: Timelapse[] = [
     slug: "sample-your-bookshelf",
     ...clip("wood"),
     title: "Building a bookshelf for the studio",
-    summary: "Six hours of cutting, sanding and fitting shelves, plus the two that came out crooked.",
+    summary:
+      "Six hours of cutting, sanding and fitting shelves, plus the two that came out crooked.",
     status: "published",
     sessionMinutes: 372,
     viewCount: 2140,
@@ -300,7 +305,8 @@ export const SAMPLE_SUBMISSIONS: Timelapse[] = [
     slug: "sample-your-poster-series",
     ...clip("painting"),
     title: "Painting a series of three gig posters",
-    summary: "Sketch to final colour for three posters for a local venue, done in one long session.",
+    summary:
+      "Sketch to final colour for three posters for a local venue, done in one long session.",
     status: "in_review",
     sessionMinutes: 164,
     viewCount: 0,

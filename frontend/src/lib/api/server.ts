@@ -70,9 +70,7 @@ export async function apiServerAllPages<T>(
 
   for (let page = 0; page < maxPages; page++) {
     const separator = path.includes("?") ? "&" : "?";
-    const url = cursor
-      ? `${path}${separator}cursor=${encodeURIComponent(cursor)}`
-      : path;
+    const url = cursor ? `${path}${separator}cursor=${encodeURIComponent(cursor)}` : path;
     const result = await apiServerResult<Page<T>>(url, revalidate);
     if (!result.data) return page === 0 ? null : { items };
 

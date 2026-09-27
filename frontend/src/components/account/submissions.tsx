@@ -170,7 +170,11 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
                               </Button>
                             </>
                           ) : (
-                            <Button size="sm" variant="secondary" onClick={() => setConfirming(t.id)}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setConfirming(t.id)}
+                            >
                               Withdraw
                             </Button>
                           )

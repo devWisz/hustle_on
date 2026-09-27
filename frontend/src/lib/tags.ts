@@ -9,22 +9,68 @@ export const CATEGORIES: Category[] = [
   {
     id: "software",
     label: "Software",
-    keywords: ["code", "coding", "app", "dashboard", "website", "site", "api", "bug", "pull request", "deploy", "software", "program"],
+    keywords: [
+      "code",
+      "coding",
+      "app",
+      "dashboard",
+      "website",
+      "site",
+      "api",
+      "bug",
+      "pull request",
+      "deploy",
+      "software",
+      "program",
+    ],
   },
   {
     id: "art",
     label: "Art & design",
-    keywords: ["paint", "portrait", "canvas", "poster", "illustration", "design", "logo", "drawing", "sketch", "colour", "color"],
+    keywords: [
+      "paint",
+      "portrait",
+      "canvas",
+      "poster",
+      "illustration",
+      "design",
+      "logo",
+      "drawing",
+      "sketch",
+      "colour",
+      "color",
+    ],
   },
   {
     id: "craft",
     label: "Making & craft",
-    keywords: ["wood", "walnut", "table", "furniture", "joinery", "workshop", "bookshelf", "build", "hardware", "3d print"],
+    keywords: [
+      "wood",
+      "walnut",
+      "table",
+      "furniture",
+      "joinery",
+      "workshop",
+      "bookshelf",
+      "build",
+      "hardware",
+      "3d print",
+    ],
   },
   {
     id: "fashion",
     label: "Fashion & textiles",
-    keywords: ["sew", "sewing", "jacket", "pattern", "fabric", "garment", "stitch", "knit", "clothing"],
+    keywords: [
+      "sew",
+      "sewing",
+      "jacket",
+      "pattern",
+      "fabric",
+      "garment",
+      "stitch",
+      "knit",
+      "clothing",
+    ],
   },
   {
     id: "startups",
@@ -34,11 +80,24 @@ export const CATEGORIES: Category[] = [
   {
     id: "study",
     label: "Study & writing",
-    keywords: ["study", "exam", "notes", "writing", "essay", "thesis", "research", "course", "learning"],
+    keywords: [
+      "study",
+      "exam",
+      "notes",
+      "writing",
+      "essay",
+      "thesis",
+      "research",
+      "course",
+      "learning",
+    ],
   },
 ];
 
-export function matchesCategory(t: { title: string; summary: string }, categoryId: string): boolean {
+export function matchesCategory(
+  t: { title: string; summary: string },
+  categoryId: string,
+): boolean {
   if (!categoryId || categoryId === "all") return true;
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   if (!cat) return true;
