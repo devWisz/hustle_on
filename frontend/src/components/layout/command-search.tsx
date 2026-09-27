@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { API_URL } from "@/lib/api/client";
+import { canRemember } from "@/lib/consent";
 import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
 import { cx, formatSession } from "@/lib/format";
 import type { Page, Timelapse } from "@/lib/types";
@@ -146,7 +147,7 @@ export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
     const next = [trimmed, ...recents.filter((r) => r !== trimmed)].slice(0, 5);
     setRecents(next);
     try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      if (canRemember()) localStorage.setItem(RECENT_KEY, JSON.stringify(next));
     } catch {
       return;
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { canRemember } from "@/lib/consent";
 import { MoonIcon, SunIcon } from "../ui/icons";
 
 export const THEME_EVENT = "sardhana:theme";
@@ -19,7 +20,7 @@ export function ThemeToggle() {
       const next = current === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", next);
       try {
-        localStorage.setItem("theme", next);
+        if (canRemember()) localStorage.setItem("theme", next);
       } catch {
         return next;
       }

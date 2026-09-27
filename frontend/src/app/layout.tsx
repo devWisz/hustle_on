@@ -6,6 +6,7 @@ import { getViewer } from "@/lib/data";
 import { DemoBanner } from "@/components/demo/demo";
 import { ApiWatcher } from "@/components/layout/api-watcher";
 import { CommandSearch } from "@/components/layout/command-search";
+import { CookieBanner } from "@/components/layout/cookie-banner";
 import { Footer } from "@/components/layout/footer";
 import { Header, HeaderFallback } from "@/components/layout/header";
 import { ScrollTop } from "@/components/layout/scroll-top";
@@ -89,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Footer />
           <ScrollTop />
           <Shortcuts />
+          <CookieBanner />
           <Suspense fallback={null}>
             <Search />
           </Suspense>

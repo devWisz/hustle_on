@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api/client";
+import { canRemember } from "./consent";
 import type { Timelapse } from "./types";
 
 const STORAGE_KEY = "sardhana-bookmarks";
@@ -65,6 +66,7 @@ export function getBookmarks(): SavedTimelapse[] {
 
 function persist(items: SavedTimelapse[]): boolean {
   try {
+    if (!canRemember()) return false;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     return true;
   } catch {
