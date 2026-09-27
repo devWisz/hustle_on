@@ -14,6 +14,10 @@ const ACTIONS: Record<string, { label: string; tone: Tone }> = {
   "note.delete": { label: "Note removed", tone: "neutral" },
   "member.suspend": { label: "Suspended", tone: "danger" },
   "member.reinstate": { label: "Reinstated", tone: "success" },
+  "report.resolve": { label: "Report resolved", tone: "success" },
+  "report.dismiss": { label: "Report dismissed", tone: "neutral" },
+  "timelapse.feature": { label: "Featured", tone: "accent" },
+  "timelapse.unfeature": { label: "Unfeatured", tone: "neutral" },
 };
 
 function meta(action: string) {

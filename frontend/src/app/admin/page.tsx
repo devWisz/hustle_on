@@ -24,11 +24,17 @@ export default async function AdminOverview() {
     .sort((a, b) => b.donationTotalLamports - a.donationTotalLamports)
     .slice(0, 5);
 
+  const openReports = data.reports.filter((r) => r.status === "open").length;
   const kpis = [
     {
       label: "Waiting for review",
       value: <CountUp value={data.queue.length} format="plain" />,
       hint: oldest[0] ? `Oldest ${formatWait(waitingMinutes(oldest[0]))}` : "Queue is clear",
+    },
+    {
+      label: "Open reports",
+      value: <CountUp value={openReports} format="plain" />,
+      hint: openReports ? "Waiting in the reports inbox" : "Nothing flagged",
     },
     {
       label: "Approval rate · 30d",
@@ -68,7 +74,7 @@ export default async function AdminOverview() {
         as="dl"
         stagger={0.06}
         immediate
-        className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4"
+        className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5"
       >
         {kpis.map((k) => (
           <div

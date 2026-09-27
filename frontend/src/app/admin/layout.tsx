@@ -37,6 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminNav
             counts={{
               queue: data.queue.length,
+              reports: data.reports.filter((r) => r.status === "open").length || undefined,
               library: data.library.length,
               members: data.members.length || undefined,
               ledger: data.ledger.length || undefined,

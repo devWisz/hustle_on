@@ -16,6 +16,7 @@ import {
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: GridIcon, key: "overview" },
   { href: "/admin/queue", label: "Review desk", icon: InboxIcon, key: "queue" },
+  { href: "/admin/reports", label: "Reports", icon: AlertIcon, key: "reports" },
   { href: "/admin/library", label: "Library", icon: FilmIcon, key: "library" },
   { href: "/admin/members", label: "Members", icon: UsersIcon, key: "members" },
   { href: "/admin/ledger", label: "Ledger", icon: CoinsIcon, key: "ledger" },
