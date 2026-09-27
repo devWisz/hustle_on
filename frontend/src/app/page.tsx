@@ -1,4 +1,4 @@
-import { FEED_PAGE_SIZE, getFeed, getStats, getViewer } from "@/lib/data";
+import { FEED_PAGE_SIZE, getFeatured, getFeed, getStats, getViewer } from "@/lib/data";
 import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
 import type { Stats } from "@/lib/types";
 import { EnterDemoButton } from "@/components/demo/demo";
@@ -22,7 +22,14 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sort = parseSort((await searchParams).sort);
-  const [feed, stats, viewer] = await Promise.all([getFeed(sort), getStats(), getViewer()]);
+  const [feed, stats, viewer, featured] = await Promise.all([
+    getFeed(sort),
+    getStats(),
+    getViewer(),
+    getFeatured(),
+  ]);
+  const featuredIds = new Set(featured.map((t) => t.id));
+  const reel = [...featured, ...feed.data.filter((t) => !featuredIds.has(t.id))];
   const signedIn = Boolean(viewer.user);
 
   return (
@@ -32,7 +39,7 @@ export default async function HomePage({
       <Container width="wide" className="-mt-2 sm:mt-0">
         <ScrollScale>
           <Showcase
-            items={feed.demo ? [] : feed.data}
+            items={feed.demo ? [] : reel}
             fallback={SAMPLE_TIMELAPSES}
             demo={feed.demo}
           />
