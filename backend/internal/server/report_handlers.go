@@ -39,7 +39,7 @@ func (s *Server) handleCreateReport(w http.ResponseWriter, r *http.Request) erro
 	details := validate.CleanText(body.Details)
 	v := validate.New().Length("details", details, 0, 1000)
 	if !reportReasons[body.Reason] {
-		v = v.WithField("reason", "Choose a reason from the list.")
+		v.Add("reason", "Choose a reason from the list.")
 	}
 	if body.NoteID != "" && !validate.IsUUID(body.NoteID) {
 		return apierr.NotFound("Note")
