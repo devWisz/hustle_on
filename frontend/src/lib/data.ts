@@ -15,14 +15,6 @@ import {
   sampleFeed,
   sampleNotes,
 } from "./demo/content";
-import {
-  DEMO_ACTIVITY,
-  DEMO_ADMIN,
-  DEMO_AUDIT,
-  DEMO_LEDGER,
-  DEMO_MEMBERS,
-  DEMO_QUEUE,
-} from "./demo/admin";
 import type {
   ActivityDay,
   AdminMember,
@@ -205,7 +197,7 @@ export interface AdminData {
   demo: boolean;
 }
 
-export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidden"> => {
+export const getAdmin = cache(async (): Promise<AdminData | "forbidden"> => {
   const viewer = await getViewer();
 
   if (viewer.user?.role === "admin") {
@@ -234,19 +226,5 @@ export const getAdmin = cache(async (): Promise<AdminData | "signin" | "forbidde
       demo: false,
     };
   }
-  if (viewer.user) return "forbidden";
-  if (!viewer.demo) return signInOrRetry(viewer);
-
-  return {
-    operator: DEMO_ADMIN,
-    queue: DEMO_QUEUE,
-    queueFailed: false,
-    library: SAMPLE_TIMELAPSES,
-    audit: DEMO_AUDIT,
-    members: DEMO_MEMBERS,
-    ledger: DEMO_LEDGER,
-    activity: DEMO_ACTIVITY,
-    stats: SAMPLE_STATS,
-    demo: true,
-  };
+  return viewer.uncertain && !viewer.user ? signInOrRetry(viewer) : "forbidden";
 });
