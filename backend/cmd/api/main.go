@@ -95,6 +95,7 @@ func run() error {
 	}
 	server.SetTrustedProxyHops(hops)
 	server.SetInternalProxySecret(cfg.InternalProxySecret)
+	server.SetAdminPolicy(cfg.AdminSessionMaxAge, cfg.AdminNetworks)
 
 	// Settles donations whose confirmation call never reached us, so a donor
 	// who closed the tab after signing is still credited.

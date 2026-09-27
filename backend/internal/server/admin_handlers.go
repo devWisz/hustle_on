@@ -241,3 +241,14 @@ func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) error {
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
+
+func (s *Server) handleAdminNotes(w http.ResponseWriter, r *http.Request) error {
+	if _, err := requireAdmin(r); err != nil {
+		return err
+	}
+	items, err := s.store.RecentNotes(r.Context(), queryInt(r, "limit", 100, 1, 200))
+	if err != nil {
+		return storeErr(err, "Notes")
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}

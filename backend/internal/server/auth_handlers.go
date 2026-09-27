@@ -108,7 +108,26 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"authenticated": true, "user": self})
+	out := map[string]any{"authenticated": true, "user": self}
+	if self.Role == roleAdmin {
+		out["adminAccess"] = adminAccess(r)
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// handleLogoutAll ends every session the account has, on every device, and
+// clears this browser's cookies.
+func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) error {
+	u, err := requireUser(r)
+	if err != nil {
+		return err
+	}
+	if err := s.auth.RevokeAll(r.Context(), u.ID); err != nil {
+		return apierr.Internal(err)
+	}
+	http.SetCookie(w, s.auth.ClearCookie())
+	http.SetCookie(w, s.auth.CSRFCookie("", -time.Hour))
+	return noContent(w)
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) error {

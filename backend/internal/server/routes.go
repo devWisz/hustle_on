@@ -35,6 +35,7 @@ func (s *Server) routes() {
 	s.route("POST /v1/auth/request-link", budgetAuth, s.handleRequestLink)
 	s.route("POST /v1/auth/verify", budgetVerify, s.handleVerifyLink)
 	s.route("POST /v1/auth/logout", budgetEngage, s.handleLogout)
+	s.route("POST /v1/auth/logout-all", budgetEngage, s.handleLogoutAll)
 	s.route("GET /v1/auth/session", budgetRead, s.handleSession)
 
 	// --- the signed-in account -------------------------------------------
@@ -80,6 +81,7 @@ func (s *Server) routes() {
 	s.route("POST /v1/admin/members/{id}/reinstate", budgetAdmin, s.handleMemberStatus("active"))
 	s.route("GET /v1/admin/ledger", budgetAdmin, s.handleLedger)
 	s.route("GET /v1/admin/activity", budgetAdmin, s.handleActivity)
+	s.route("GET /v1/admin/notes", budgetAdmin, s.handleAdminNotes)
 
 	// --- local object storage (development only) -------------------------
 	// Registered only when no real bucket is configured, so a production

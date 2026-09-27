@@ -165,11 +165,22 @@ func (s *Server) handleDeleteNote(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	asAdmin := u.Role == roleAdmin && note.Author.ID != u.ID
+	if asAdmin {
+		if _, err := requireAdmin(r); err != nil {
+			return err
+		}
+	}
 	if err := s.store.DeleteNote(r.Context(), noteID, u.ID, asAdmin); err != nil {
 		return storeErr(err, "Note")
 	}
 	if asAdmin {
-		s.audit(r, u.ID, "note.delete", "note", noteID, map[string]any{"authorId": note.Author.ID})
+		excerpt := note.Body
+		if len(excerpt) > 140 {
+			excerpt = excerpt[:140] + "…"
+		}
+		s.audit(r, u.ID, "note.delete", "note", noteID, map[string]any{
+			"authorId": note.Author.ID, "title": note.Author.DisplayName, "note": excerpt,
+		})
 	}
 	return noContent(w)
 }

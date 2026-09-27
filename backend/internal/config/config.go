@@ -4,6 +4,7 @@
 package config
 
 import (
+	"net/netip"
 	"fmt"
 	"os"
 	"strconv"
@@ -28,6 +29,8 @@ type Config struct {
 	SessionCookieName   string
 	CookieDomain        string
 	InternalProxySecret string
+	AdminSessionMaxAge  time.Duration
+	AdminNetworks       []netip.Prefix
 	SessionTTL          time.Duration
 	MagicLinkTTL        time.Duration
 
@@ -125,6 +128,7 @@ func Load() (Config, error) {
 		SessionCookieName:   env("SESSION_COOKIE_NAME", "sardhana_session"),
 		CookieDomain:        strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
 		InternalProxySecret: os.Getenv("INTERNAL_PROXY_SECRET"),
+		AdminSessionMaxAge:  time.Duration(envInt("ADMIN_SESSION_MAX_AGE_HOURS", 12)) * time.Hour,
 		SessionTTL:          time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
 		MagicLinkTTL:        time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
@@ -168,6 +172,12 @@ func Load() (Config, error) {
 			c.AllowedOrigins = append(c.AllowedOrigins, o)
 		}
 	}
+
+	networks, err := parseNetworks(os.Getenv("ADMIN_ALLOWED_IPS"))
+	if err != nil {
+		return c, err
+	}
+	c.AdminNetworks = networks
 
 	return c, c.validate()
 }
@@ -304,4 +314,29 @@ func envInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+// parseNetworks reads a comma-separated list of addresses and CIDR ranges.
+func parseNetworks(raw string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if strings.Contains(part, "/") {
+			p, err := netip.ParsePrefix(part)
+			if err != nil {
+				return nil, fmt.Errorf("ADMIN_ALLOWED_IPS: %q is not a valid range", part)
+			}
+			out = append(out, p.Masked())
+			continue
+		}
+		a, err := netip.ParseAddr(part)
+		if err != nil {
+			return nil, fmt.Errorf("ADMIN_ALLOWED_IPS: %q is not a valid address", part)
+		}
+		out = append(out, netip.PrefixFrom(a.Unmap(), a.Unmap().BitLen()))
+	}
+	return out, nil
 }
