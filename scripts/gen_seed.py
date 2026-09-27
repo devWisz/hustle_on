@@ -26,14 +26,10 @@ wallets = {u[0]: b58(44) for u in users if u[5]}
 sessions = [
  # n, user, slug, title, summary, github, x, video, seconds, minutes, status, submitted_h, published_h, views
  (1, 2, "portrait-commission", "Finishing a portrait commission in one sitting",
-  "A client asked for a large abstract portrait for their studio. This session is the final six hours: blocking the colour fields, building up the face in layers, and fixing the left side twice after it read as flat from across the room.
-
-The timelapse shows every false start. The finished piece shipped the next morning.",
+  "A client asked for a large abstract portrait for their studio. This session is the final six hours: blocking the colour fields, building up the face in layers, and fixing the left side twice after it read as flat from across the room.\n\nThe timelapse shows every false start. The finished piece shipped the next morning.",
   None, "https://x.com/ana", "painting-studio", 12, 372, "published", 30, 26, 4820),
  (2, 3, "walnut-side-table", "Building a walnut side table from rough boards",
-  "Started with two rough-sawn walnut boards and ended with a finished side table. Most of the session is milling: flattening, jointing and planing until the boards were square, then cutting the joinery by hand.
-
-One leg came out a millimetre short and I had to recut all four to match. It is in the recording.",
+  "Started with two rough-sawn walnut boards and ended with a finished side table. Most of the session is milling: flattening, jointing and planing until the boards were square, then cutting the joinery by hand.\n\nOne leg came out a millimetre short and I had to recut all four to match. It is in the recording.",
   None, None, "wood-workshop", 15, 488, "published", 60, 52, 9310),
  (3, 4, "lined-jacket-prototype", "Sewing the first prototype of a lined jacket",
   "The first physical sample for my label's autumn jacket. The session covers cutting the shell and lining, setting the sleeves, and a long stretch redoing the collar after it twisted on the first attempt.",
