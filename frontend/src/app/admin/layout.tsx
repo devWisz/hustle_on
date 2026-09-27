@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const data = await getAdmin();
   if (data === "forbidden") notFound();
-  if (typeof data === "string") return <AdminLocked reason={data} />;
+  if (data === "reauth_required" || data === "network_blocked") return <AdminLocked reason={data} />;
+  if (typeof data === "string") notFound();
 
   return (
     <Container width="wide" className="pt-8 sm:pt-10">
