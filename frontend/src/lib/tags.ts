@@ -5,43 +5,43 @@ interface Category {
 }
 
 export const CATEGORIES: Category[] = [
-  { id: "all", label: "All topics", keywords: [] },
-  { id: "rust", label: "Rust", keywords: ["rust", "borrow-checker", "lifetime", "cargo", "tokio"] },
+  { id: "all", label: "All work", keywords: [] },
   {
-    id: "compilers",
-    label: "Compilers",
-    keywords: ["compiler", "pass", "parsing", "cfg", "dominator", "ast", "lexer", "tree-diff"],
+    id: "software",
+    label: "Software",
+    keywords: ["code", "coding", "app", "dashboard", "website", "site", "api", "bug", "pull request", "deploy", "software", "program"],
   },
   {
-    id: "audio",
-    label: "Audio / DSP",
-    keywords: ["synth", "oscillator", "audio", "polyphony", "wavetable", "dsp", "buffer", "sample"],
+    id: "art",
+    label: "Art & design",
+    keywords: ["paint", "portrait", "canvas", "poster", "illustration", "design", "logo", "drawing", "sketch", "colour", "color"],
   },
   {
-    id: "systems",
-    label: "Systems",
-    keywords: ["kernel", "memory", "allocator", "network", "protocol", "concurrency", "systems"],
-  },
-  { id: "go", label: "Go", keywords: ["golang", "go ", "goroutine", "channel"] },
-  {
-    id: "frontend",
-    label: "UI & Web",
-    keywords: ["react", "ui", "css", "next.js", "frontend", "animation", "layout", "web"],
+    id: "craft",
+    label: "Making & craft",
+    keywords: ["wood", "walnut", "table", "furniture", "joinery", "workshop", "bookshelf", "build", "hardware", "3d print"],
   },
   {
-    id: "algorithms",
-    label: "Algorithms",
-    keywords: ["algorithm", "data structure", "inference", "optimization", "graph", "tree"],
+    id: "fashion",
+    label: "Fashion & textiles",
+    keywords: ["sew", "sewing", "jacket", "pattern", "fabric", "garment", "stitch", "knit", "clothing"],
+  },
+  {
+    id: "startups",
+    label: "Startups & teams",
+    keywords: ["launch", "startup", "team", "founder", "customers", "beta", "office", "support"],
+  },
+  {
+    id: "study",
+    label: "Study & writing",
+    keywords: ["study", "exam", "notes", "writing", "essay", "thesis", "research", "course", "learning"],
   },
 ];
 
-export function matchesCategory(
-  t: { title: string; summary: string },
-  categoryId: string,
-): boolean {
+export function matchesCategory(t: { title: string; summary: string }, categoryId: string): boolean {
   if (!categoryId || categoryId === "all") return true;
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   if (!cat) return true;
   const text = `${t.title} ${t.summary}`.toLowerCase();
-  return cat.keywords.some((k) => text.includes(k.toLowerCase()));
+  return cat.keywords.some((k) => text.includes(k));
 }
