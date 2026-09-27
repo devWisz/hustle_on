@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/data";
 import { AdminNav } from "@/components/admin/nav";
-import { DemoTag } from "@/components/demo/tag";
 import { Avatar, Container } from "@/components/ui";
 import { ShieldIcon } from "@/components/ui/icons";
 
@@ -14,7 +13,6 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const data = await getAdmin();
-  if (data === "signin") redirect("/login?next=/admin");
   if (data === "forbidden") notFound();
 
   return (
@@ -39,13 +37,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               ledger: data.ledger.length || undefined,
             }}
           />
-          {data.demo ? (
-            <p className="mt-5 hidden rounded-[var(--radius-control)] border border-border p-3 text-[12px] leading-relaxed text-fg-muted lg:block">
-              <DemoTag className="mb-2" />
-              <br />
-              Sample data. Decisions change this view only and are never sent anywhere.
-            </p>
-          ) : null}
         </aside>
         <div className="min-w-0">{children}</div>
       </div>
