@@ -39,6 +39,7 @@ function proxyToApi(request: NextRequest): NextResponse {
 }
 const rpcOrigin = origin(process.env.NEXT_PUBLIC_SOLANA_RPC_URL, "https://api.devnet.solana.com");
 const rpcSocket = rpcOrigin.replace(/^http/, "ws");
+const uploadOrigin = process.env.UPLOAD_ORIGIN ? origin(process.env.UPLOAD_ORIGIN, "http://localhost") : "";
 
 function contentSecurityPolicy(nonce: string): string {
   return [
@@ -47,7 +48,7 @@ function contentSecurityPolicy(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     `media-src 'self' blob: https:${isDev ? " http://localhost:*" : ""}`,
-    `connect-src 'self' ${apiOrigin} ${rpcOrigin} ${rpcSocket}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+    `connect-src 'self' ${apiOrigin} ${rpcOrigin} ${rpcSocket} ${uploadOrigin}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
     "font-src 'self' data:",
     "frame-src 'none'",
     "frame-ancestors 'none'",
