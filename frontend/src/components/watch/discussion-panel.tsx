@@ -9,6 +9,7 @@ import { Avatar, Button, Textarea } from "../ui";
 import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 import { usePlayerSeek } from "../timelapse/player-seek";
+import { ReportButton } from "./report-button";
 import { DemoNote, DemoTag } from "../demo/tag";
 
 export function DiscussionPanel({
@@ -266,6 +267,9 @@ export function DiscussionPanel({
                     <span className="tabular-nums">{note.helpfulCount}</span>
                   </button>
 
+                  {!note.viewerCanDelete ? (
+                    <ReportButton slug={slug} noteId={note.id} signedIn={signedIn} demo={demo} compact />
+                  ) : null}
                   {note.viewerCanDelete ? (
                     <button
                       type="button"

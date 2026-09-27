@@ -14,6 +14,7 @@ import { ShareButton } from "@/components/timelapse/share-button";
 import { DiscussionPanel } from "@/components/watch/discussion-panel";
 import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/watch/donate-panel";
 import { ShareCard } from "@/components/watch/share-card";
+import { ReportButton } from "@/components/watch/report-button";
 import { UpNext } from "@/components/watch/up-next";
 import { Avatar, Card, Container } from "@/components/ui";
 import { ArrowLeftIcon, ExternalIcon, GitHubIcon, XIcon } from "@/components/ui/icons";
@@ -100,6 +101,7 @@ export default async function WatchPage({ params }: Props) {
                       path={`/watch/${t.slug}`}
                     />
                     <BookmarkButton timelapse={t} variant="inline" />
+                    <ReportButton slug={t.slug} signedIn={data.signedIn} />
                   </div>
                 )}
               </div>
