@@ -74,7 +74,10 @@ function signInOrRetry(viewer: Viewer): "signin" {
 export interface Sourced<T> {
   data: T;
   demo: boolean;
+  nextCursor?: string;
 }
+
+export const FEED_PAGE_SIZE = 12;
 
 export async function getStats(): Promise<Sourced<Stats> | null> {
   const [stats, viewer] = await Promise.all([liveStats(), getViewer()]);
@@ -83,14 +86,14 @@ export async function getStats(): Promise<Sourced<Stats> | null> {
 }
 
 export async function getFeed(sort: string): Promise<Sourced<Timelapse[]>> {
-  const query = sort ? `?limit=24&sort=${sort}` : "?limit=24";
+  const query = `?limit=${FEED_PAGE_SIZE}${sort ? `&sort=${sort}` : ""}`;
   const [page, viewer] = await Promise.all([
     apiServer<Page<Timelapse>>(`/v1/timelapses${query}`),
     getViewer(),
   ]);
   const live = page?.items ?? [];
   if (live.length === 0 && viewer.demo) return { data: sampleFeed(sort), demo: true };
-  return { data: live, demo: false };
+  return { data: live, demo: false, nextCursor: page?.nextCursor };
 }
 
 export interface WatchData {

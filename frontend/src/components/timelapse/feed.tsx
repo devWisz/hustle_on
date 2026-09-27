@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "@/lib/api/client";
 import { Flip } from "gsap/Flip";
-import type { Timelapse } from "@/lib/types";
+import type { Page, Timelapse } from "@/lib/types";
 import { CATEGORIES, matchesCategory } from "@/lib/tags";
 import { cx } from "@/lib/format";
 import { FEED_SORTS, type FeedSort } from "@/lib/feed";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
+import { Button } from "../ui/button";
 import { EmptyState } from "../ui/layout";
 import { FilmIcon } from "../ui/icons";
 import { TimelapseCard } from "./card";
@@ -15,16 +17,49 @@ import { TimelapseCard } from "./card";
 if (typeof window !== "undefined") gsap.registerPlugin(Flip);
 
 export function Feed({
-  items,
+  items: firstPage,
   sort,
   demo,
+  nextCursor: firstCursor,
+  pageSize,
   emptyAction,
 }: {
   items: Timelapse[];
   sort: FeedSort;
   demo: boolean;
+  nextCursor?: string;
+  pageSize: number;
   emptyAction?: React.ReactNode;
 }) {
+  const [items, setItems] = useState(firstPage);
+  const [cursor, setCursor] = useState(firstCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    setItems(firstPage);
+    setCursor(firstCursor);
+  }, [firstPage, firstCursor]);
+
+  async function loadMore() {
+    if (!cursor) return;
+    setLoadingMore(true);
+    setLoadError(false);
+    try {
+      const params = new URLSearchParams({ limit: String(pageSize), cursor });
+      if (sort) params.set("sort", sort);
+      const page = await api<Page<Timelapse>>(`/v1/timelapses?${params}`);
+      setItems((current) => {
+        const seen = new Set(current.map((t) => t.id));
+        return [...current, ...page.items.filter((t) => !seen.has(t.id))];
+      });
+      setCursor(page.nextCursor);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
   const [topic, setTopic] = useState("all");
   const grid = useRef<HTMLDivElement>(null);
   const flipState = useRef<Flip.FlipState | null>(null);
