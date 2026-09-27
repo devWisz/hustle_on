@@ -1,4 +1,4 @@
-import { getFeed, getStats, getViewer } from "@/lib/data";
+import { FEED_PAGE_SIZE, getFeed, getStats, getViewer } from "@/lib/data";
 import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
 import type { Stats } from "@/lib/types";
 import { EnterDemoButton } from "@/components/demo/demo";
@@ -59,6 +59,8 @@ export default async function HomePage({
               items={feed.data}
               sort={sort}
               demo={feed.demo}
+              nextCursor={feed.nextCursor}
+              pageSize={FEED_PAGE_SIZE}
               emptyAction={<ButtonLink href="/upload">Upload the first one</ButtonLink>}
             />
           </div>

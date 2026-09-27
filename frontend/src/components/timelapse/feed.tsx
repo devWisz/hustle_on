@@ -102,16 +102,22 @@ export function Feed({
           return;
         }
         gsap.set(el, { autoAlpha: 1 });
-        gsap.set(el.children, { autoAlpha: 0 });
-        ScrollTrigger.batch(el.children, {
+        const fresh = Array.from(el.children).filter(
+          (child) => !(child as HTMLElement).dataset.shown,
+        );
+        if (fresh.length === 0) return;
+        gsap.set(fresh, { autoAlpha: 0 });
+        ScrollTrigger.batch(fresh, {
           start: "top 92%",
           once: true,
-          onEnter: (batch) =>
+          onEnter: (batch) => {
+            batch.forEach((child) => ((child as HTMLElement).dataset.shown = "1"));
             gsap.fromTo(
               batch,
               { autoAlpha: 0, y: 40 },
               { autoAlpha: 1, y: 0, stagger: 0.08, duration: 0.9, clearProps: "transform" },
-            ),
+            );
+          },
         });
       });
     },
@@ -205,6 +211,24 @@ export function Feed({
             action={emptyAction}
           />
         )}
+
+        {!demo && cursor ? (
+          <div className="mt-14 flex flex-col items-center gap-3">
+            <Button
+              variant="secondary"
+              size="lg"
+              loading={loadingMore}
+              onClick={() => void loadMore()}
+            >
+              Load more sessions
+            </Button>
+            {loadError ? (
+              <p role="alert" className="text-[13px] text-danger">
+                More sessions could not be loaded. Try again.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
