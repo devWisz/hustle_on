@@ -311,12 +311,12 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
         }`}
       >
         {compressionRatio && compressionRatio > 1 ? (
-          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
-            <ZapIcon size={12} className="text-accent" />
+          <div className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md sm:flex">
+            <ZapIcon size={12} className="text-white/70" />
             <span>
               {formatSession(timelapse.sessionMinutes)} compressed to {formatDuration(duration)}
             </span>
-            <span className="rounded bg-accent/20 px-1 py-0.2 font-mono text-[10px] text-accent">
+            <span className="rounded bg-white/15 px-1 font-mono text-[10px] text-white/80">
               {compressionRatio}x
             </span>
           </div>
@@ -372,7 +372,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               type="button"
               onClick={() => skip(-5)}
               aria-label="Skip back 5 seconds (j / ←)"
-              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+              className="press hidden h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white sm:flex"
             >
               <SkipBackIcon size={15} />
             </button>
@@ -381,7 +381,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               type="button"
               onClick={() => skip(5)}
               aria-label="Skip forward 5 seconds (l / →)"
-              className="press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white"
+              className="press hidden h-8 w-8 items-center justify-center rounded-[var(--radius-control)] text-white/80 hover:bg-white/15 hover:text-white sm:flex"
             >
               <SkipForwardIcon size={15} />
             </button>
@@ -395,7 +395,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               {muted ? <VolumeXIcon size={15} /> : <VolumeIcon size={15} />}
             </button>
 
-            <div className="ml-1 font-mono text-[11px] tabular-nums text-white/80">
+            <div className="ml-1 whitespace-nowrap font-mono text-[11px] tabular-nums text-white/80">
               {formatDuration(currentTime)} / {formatDuration(duration)}
             </div>
           </div>
