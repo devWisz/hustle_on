@@ -38,11 +38,7 @@ export default async function HomePage({
 
       <Container width="wide" className="-mt-2 sm:mt-0">
         <ScrollScale>
-          <Showcase
-            items={feed.demo ? [] : reel}
-            fallback={SAMPLE_TIMELAPSES}
-            demo={feed.demo}
-          />
+          <Showcase items={feed.demo ? [] : reel} fallback={SAMPLE_TIMELAPSES} demo={feed.demo} />
         </ScrollScale>
       </Container>
 

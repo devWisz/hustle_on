@@ -268,7 +268,13 @@ export function DiscussionPanel({
                   </button>
 
                   {!note.viewerCanDelete ? (
-                    <ReportButton slug={slug} noteId={note.id} signedIn={signedIn} demo={demo} compact />
+                    <ReportButton
+                      slug={slug}
+                      noteId={note.id}
+                      signedIn={signedIn}
+                      demo={demo}
+                      compact
+                    />
                   ) : null}
                   {note.viewerCanDelete ? (
                     <button

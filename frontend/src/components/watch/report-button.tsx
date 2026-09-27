@@ -82,10 +82,14 @@ export function ReportButton({
     <>
       <button
         type="button"
-        onClick={() => (demo ? toast.success("Reports are switched off in the demo.") : setOpen(true))}
+        onClick={() =>
+          demo ? toast.success("Reports are switched off in the demo.") : setOpen(true)
+        }
         className={cx(
           "press inline-flex items-center gap-1.5 text-fg-subtle transition-colors hover:text-danger",
-          compact ? "rounded-full p-1 text-[11px]" : "h-8 rounded-full px-3 text-[13px] font-medium",
+          compact
+            ? "rounded-full p-1 text-[11px]"
+            : "h-8 rounded-full px-3 text-[13px] font-medium",
         )}
         aria-label={`Report this ${subject}`}
         title={`Report this ${subject}`}
@@ -97,7 +101,11 @@ export function ReportButton({
       {open
         ? createPortal(
             <div className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-4">
-              <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} aria-hidden />
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={() => setOpen(false)}
+                aria-hidden
+              />
               <div
                 ref={panel}
                 role="dialog"
@@ -143,7 +151,9 @@ export function ReportButton({
                           key={r.value}
                           className={cx(
                             "flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border p-3 transition-colors",
-                            reason === r.value ? "border-fg bg-surface-raised" : "border-border hover:border-border-strong",
+                            reason === r.value
+                              ? "border-fg bg-surface-raised"
+                              : "border-border hover:border-border-strong",
                           )}
                         >
                           <input
@@ -174,7 +184,12 @@ export function ReportButton({
                       <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
                         Cancel
                       </Button>
-                      <Button variant="danger" onClick={() => void submit()} loading={busy} disabled={!reason}>
+                      <Button
+                        variant="danger"
+                        onClick={() => void submit()}
+                        loading={busy}
+                        disabled={!reason}
+                      >
                         Send report
                       </Button>
                     </div>

@@ -47,7 +47,9 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
   async function close(report: Report, status: "resolved" | "dismissed", note = "") {
     await api(`/v1/admin/reports/${report.id}/resolve`, { method: "POST", body: { status, note } });
     setReports((list) =>
-      list.map((r) => (r.id === report.id ? { ...r, status, resolvedAt: new Date().toISOString() } : r)),
+      list.map((r) =>
+        r.id === report.id ? { ...r, status, resolvedAt: new Date().toISOString() } : r,
+      ),
     );
   }
 
@@ -55,9 +57,12 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
     setBusy(`${report.id}:${kind}`);
     try {
       if (kind === "remove-note" && report.note) {
-        await api(`/v1/timelapses/${encodeURIComponent(report.timelapse.slug)}/notes/${report.note.id}`, {
-          method: "DELETE",
-        });
+        await api(
+          `/v1/timelapses/${encodeURIComponent(report.timelapse.slug)}/notes/${report.note.id}`,
+          {
+            method: "DELETE",
+          },
+        );
         await close(report, "resolved", "Note removed");
         toast.success("Note removed and the report resolved.");
       } else if (kind === "take-down") {
@@ -79,9 +84,14 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
 
   return (
     <div>
-      <div role="tablist" aria-label="Filter reports" className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0">
+      <div
+        role="tablist"
+        aria-label="Filter reports"
+        className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0"
+      >
         {FILTERS.map((f) => {
-          const count = f.id === "all" ? reports.length : reports.filter((r) => r.status === f.id).length;
+          const count =
+            f.id === "all" ? reports.length : reports.filter((r) => r.status === f.id).length;
           return (
             <button
               key={f.id}
@@ -91,7 +101,9 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
               onClick={() => setFilter(f.id)}
               className={cx(
                 "press shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
-                filter === f.id ? "bg-inverse text-inverse-fg" : "text-fg-muted hover:bg-surface-raised hover:text-fg",
+                filter === f.id
+                  ? "bg-inverse text-inverse-fg"
+                  : "text-fg-muted hover:bg-surface-raised hover:text-fg",
               )}
             >
               {f.label}
@@ -114,15 +126,23 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
             const isOpen = r.status === "open";
             const pending = (kind: string) => busy === `${r.id}:${kind}`;
             return (
-              <li key={r.id} className="rounded-[var(--radius-card)] border border-border bg-surface p-4 sm:p-5">
+              <li
+                key={r.id}
+                className="rounded-[var(--radius-card)] border border-border bg-surface p-4 sm:p-5"
+              >
                 <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
                   <Badge tone={STATUS_TONE[r.status]} dot>
-                    {r.status === "open" ? "Open" : r.status === "resolved" ? "Resolved" : "Dismissed"}
+                    {r.status === "open"
+                      ? "Open"
+                      : r.status === "resolved"
+                        ? "Resolved"
+                        : "Dismissed"}
                   </Badge>
                   <Badge tone="danger">{REASON_LABEL[r.reason]}</Badge>
                   <span className="text-fg-subtle">
                     {r.subjectType === "note" ? "Note" : "Session"} reported by{" "}
-                    {r.reporter ? r.reporter.displayName : "a deleted account"} · {timeAgo(r.createdAt)}
+                    {r.reporter ? r.reporter.displayName : "a deleted account"} ·{" "}
+                    {timeAgo(r.createdAt)}
                   </span>
                 </div>
 
@@ -135,7 +155,9 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
                 </Link>
                 <p className="mt-0.5 text-[12.5px] text-fg-subtle">
                   by {r.timelapse.creator.displayName}
-                  {r.timelapse.status !== "published" ? ` · currently ${r.timelapse.status.replace("_", " ")}` : ""}
+                  {r.timelapse.status !== "published"
+                    ? ` · currently ${r.timelapse.status.replace("_", " ")}`
+                    : ""}
                 </p>
 
                 {r.note ? (
@@ -143,7 +165,9 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
                     <Avatar name={r.note.author.displayName} size={24} />
                     <div className="min-w-0">
                       <p className="text-[12.5px] font-medium">{r.note.author.displayName}</p>
-                      <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-fg-muted">{r.note.body}</p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-fg-muted">
+                        {r.note.body}
+                      </p>
                     </div>
                   </div>
                 ) : null}
@@ -172,15 +196,25 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
                       </>
                     ) : (
                       <>
-                        {(r.note || r.timelapse.status === "published") ? (
+                        {r.note || r.timelapse.status === "published" ? (
                           <Button size="sm" variant="danger" onClick={() => setConfirming(r.id)}>
                             {r.note ? "Remove note" : "Take down session"}
                           </Button>
                         ) : null}
-                        <Button size="sm" variant="secondary" loading={pending("resolve")} onClick={() => void act(r, "resolve")}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          loading={pending("resolve")}
+                          onClick={() => void act(r, "resolve")}
+                        >
                           Mark resolved
                         </Button>
-                        <Button size="sm" variant="ghost" loading={pending("dismiss")} onClick={() => void act(r, "dismiss")}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={pending("dismiss")}
+                          onClick={() => void act(r, "dismiss")}
+                        >
                           Dismiss
                         </Button>
                       </>

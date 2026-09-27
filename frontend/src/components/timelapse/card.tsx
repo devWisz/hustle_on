@@ -58,6 +58,10 @@ export function TimelapseCard({
           </span>
           {demo ? (
             <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90" />
+          ) : t.featured ? (
+            <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90 text-fg">
+              Featured
+            </DemoTag>
           ) : null}
         </Link>
         {demo ? null : (

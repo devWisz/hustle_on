@@ -164,12 +164,7 @@ export interface ActivityDay {
 }
 
 export type ReportReason =
-  | "spam"
-  | "not_their_work"
-  | "misleading"
-  | "inappropriate"
-  | "harassment"
-  | "other";
+  "spam" | "not_their_work" | "misleading" | "inappropriate" | "harassment" | "other";
 
 export interface Report {
   id: string;
