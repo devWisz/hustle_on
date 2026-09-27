@@ -79,10 +79,14 @@ export default async function SettingsPage() {
               <div>
                 <h2 className="text-[16px] font-semibold">Session</h2>
                 <p className="mt-1 text-[13.5px] text-fg-muted">
-                  Signed in as {me.email}. Every sign-in is a fresh emailed link.
+                  Signed in as {me.email}. If you used a shared or lost device, sign out everywhere
+                  to end every session at once.
                 </p>
               </div>
-              <SignOutButton />
+              <div className="flex flex-wrap gap-2">
+                <SignOutButton />
+                <SignOutButton everywhere />
+              </div>
             </Card>
           </>
         )}
