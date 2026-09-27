@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const isDev = process.env.NODE_ENV !== "production";
 
 function origin(url: string | undefined, fallback: string): string {
+  if (url?.startsWith("/")) return "";
   try {
     return new URL(url ?? fallback).origin;
   } catch {
@@ -11,6 +12,29 @@ function origin(url: string | undefined, fallback: string): string {
 }
 
 const apiOrigin = origin(process.env.NEXT_PUBLIC_API_URL, "http://localhost:8085");
+const proxyTarget = process.env.API_ORIGIN?.replace(/\/+$/, "") ?? "";
+const proxySecret = process.env.INTERNAL_PROXY_SECRET ?? "";
+const PROXYABLE = /^\/(v1\/|health(\/ready)?$)/;
+
+function proxyToApi(request: NextRequest): NextResponse {
+  const { pathname, search } = request.nextUrl;
+  const rest = pathname.slice("/api".length);
+  if (!proxyTarget || !PROXYABLE.test(rest)) {
+    return NextResponse.json(
+      { error: { code: "not_found", message: "No such endpoint." } },
+      { status: 404 },
+    );
+  }
+  const headers = new Headers(request.headers);
+  headers.delete("x-sardhana-client-ip");
+  headers.delete("x-sardhana-proxy-key");
+  const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (proxySecret && ip) {
+    headers.set("x-sardhana-client-ip", ip);
+    headers.set("x-sardhana-proxy-key", proxySecret);
+  }
+  return NextResponse.rewrite(new URL(`${rest}${search}`, proxyTarget), { request: { headers } });
+}
 const rpcOrigin = origin(process.env.NEXT_PUBLIC_SOLANA_RPC_URL, "https://api.devnet.solana.com");
 const rpcSocket = rpcOrigin.replace(/^http/, "ws");
 
@@ -48,6 +72,8 @@ const STATIC_HEADERS: Record<string, string> = {
 const PRIVATE = ["/admin", "/dashboard", "/settings", "/upload", "/auth", "/login"];
 
 export function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) return proxyToApi(request);
+
   const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(nonce);
 

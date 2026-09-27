@@ -4,6 +4,7 @@ import { API_URL } from "./client";
 import type { Page } from "../types";
 
 const SERVER_TIMEOUT_MS = 6000;
+const SERVER_API_URL = process.env.API_ORIGIN?.replace(/\/+$/, "") || API_URL;
 const PROXY_SECRET = process.env.INTERNAL_PROXY_SECRET ?? "";
 
 export interface ApiResult<T> {
@@ -28,7 +29,7 @@ async function requestHeaders(): Promise<Record<string, string>> {
 
 export async function apiServerResult<T>(path: string, revalidate = 30): Promise<ApiResult<T>> {
   try {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetch(`${SERVER_API_URL}${path}`, {
       headers: await requestHeaders(),
       next: { revalidate },
       signal: AbortSignal.timeout(SERVER_TIMEOUT_MS),
