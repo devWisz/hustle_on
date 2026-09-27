@@ -118,7 +118,8 @@ func (s *Server) handleResolveReport(w http.ResponseWriter, r *http.Request) err
 	if note != "" {
 		meta["note"] = note
 	}
-	s.audit(r, admin.ID, "report."+strings.TrimSuffix(body.Status, "d"), "report", id, meta)
+	action := map[string]string{"resolved": "report.resolve", "dismissed": "report.dismiss"}[body.Status]
+	s.audit(r, admin.ID, action, "report", id, meta)
 	return noContent(w)
 }
 
