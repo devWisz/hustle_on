@@ -32,7 +32,7 @@ export function ShareCard({ timelapse, siteUrl }: { timelapse: Timelapse; siteUr
       <div className="mt-4 space-y-3">
         {[
           { label: "link", value: watchUrl, rows: 1 },
-          { label: "Markdown badge", value: markdown, rows: 3 },
+          { label: "Markdown badge", value: markdown, rows: 4 },
         ].map((s) => (
           <div key={s.label}>
             <div className="flex items-center justify-between gap-2">
@@ -48,6 +48,7 @@ export function ShareCard({ timelapse, siteUrl }: { timelapse: Timelapse; siteUr
             </div>
             <textarea
               readOnly
+              wrap={s.rows === 1 ? "off" : "soft"}
               rows={s.rows}
               value={s.value}
               aria-label={`${s.label} to copy`}

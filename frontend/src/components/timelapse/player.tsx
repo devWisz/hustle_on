@@ -437,7 +437,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
               onClick={toggleLoop}
               aria-label={loop ? "Disable loop (r)" : "Enable loop (r)"}
               aria-pressed={loop}
-              className={`press flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] transition-colors ${
+              className={`press hidden h-8 w-8 items-center justify-center rounded-[var(--radius-control)] transition-colors sm:flex ${
                 loop
                   ? "border border-accent/40 bg-accent/20 text-accent"
                   : "text-white/80 hover:bg-white/15 hover:text-white"

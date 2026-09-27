@@ -138,7 +138,7 @@ export function DiscussionPanel({
       </div>
 
       <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-fg-muted">
-        Observations on the implementation, the architecture or a specific moment in{" "}
+        What stood out: the technique, a decision, or a specific moment in{" "}
         <span className="font-medium text-fg">{title}</span>. Click a timestamp to jump the video to
         it.
       </p>
@@ -155,7 +155,7 @@ export function DiscussionPanel({
         >
           <Textarea
             rows={3}
-            placeholder="Share an observation on the implementation, architecture or technique…"
+            placeholder="Share what stood out: a technique, a decision, a moment worth rewatching"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={2000}

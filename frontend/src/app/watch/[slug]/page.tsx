@@ -55,7 +55,7 @@ export default async function WatchPage({ params }: Props) {
           : "Not given",
     },
     { label: "Playback", value: formatDuration(t.durationSeconds) },
-    { label: "Speed-up", value: ratio ? `${ratio}x` : "Real time" },
+    { label: "Sped up", value: ratio ? `${ratio}×` : "Real time" },
     { label: "Views", value: formatCount(t.viewCount) },
   ];
 
@@ -123,14 +123,6 @@ export default async function WatchPage({ params }: Props) {
               </div>
               <WorkLinks githubUrl={t.githubUrl} xUrl={t.xUrl} />
             </Reveal>
-
-            <DiscussionPanel
-              slug={t.slug}
-              title={t.title}
-              initialNotes={data.notes}
-              signedIn={data.signedIn}
-              demo={demo}
-            />
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -176,6 +168,18 @@ export default async function WatchPage({ params }: Props) {
               <UpNext items={data.upNext} demo={demo} />
             </Reveal>
           </aside>
+        </div>
+
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+          <div className="min-w-0">
+            <DiscussionPanel
+              slug={t.slug}
+              title={t.title}
+              initialNotes={data.notes}
+              signedIn={data.signedIn}
+              demo={demo}
+            />
+          </div>
         </div>
       </Container>
     </PlayerSeekProvider>
