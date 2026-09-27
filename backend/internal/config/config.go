@@ -30,6 +30,7 @@ type Config struct {
 	CookieDomain        string
 	InternalProxySecret string
 	AdminSessionMaxAge  time.Duration
+	AllowTestCluster    bool
 	AdminNetworks       []netip.Prefix
 	SessionTTL          time.Duration
 	MagicLinkTTL        time.Duration
@@ -129,6 +130,7 @@ func Load() (Config, error) {
 		CookieDomain:        strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
 		InternalProxySecret: os.Getenv("INTERNAL_PROXY_SECRET"),
 		AdminSessionMaxAge:  time.Duration(envInt("ADMIN_SESSION_MAX_AGE_HOURS", 12)) * time.Hour,
+		AllowTestCluster:    os.Getenv("SOLANA_ALLOW_TEST_CLUSTER") == "true",
 		SessionTTL:          time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
 		MagicLinkTTL:        time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
@@ -248,8 +250,8 @@ func (c Config) validate() error {
 		if c.StorageBucket == "" || c.StorageKeyID == "" {
 			problems = append(problems, "object storage credentials are required in production")
 		}
-		if c.SolanaCluster != "mainnet-beta" {
-			problems = append(problems, "SOLANA_CLUSTER must be mainnet-beta in production")
+		if c.SolanaCluster != "mainnet-beta" && !c.AllowTestCluster {
+			problems = append(problems, "SOLANA_CLUSTER must be mainnet-beta in production (or set SOLANA_ALLOW_TEST_CLUSTER=true during a beta)")
 		}
 		// Creator records, donations and session digests cross this connection.
 		// pgx would happily negotiate TLS if the server offered it and fall back
