@@ -166,8 +166,8 @@ slug is an unpublished draft is not something an anonymous caller can probe.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/v1/donations` | Records the intent. Signing in is optional |
-| `POST` | `/v1/donations/{id}/confirm` | `{ signature }`. Verified against the chain |
+| `POST` | `/v1/donations` | Records the intent. Requires a signed-in account |
+| `POST` | `/v1/donations/{id}/confirm` | `{ signature }`. Only the donor who recorded the intent. Verified against the chain |
 
 `confirm` answers `202 { status: "submitted" }` while the transaction is not yet
 finalized, or when the RPC cannot be reached. Retry; nothing is lost either way,

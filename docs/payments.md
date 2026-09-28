@@ -5,6 +5,11 @@ There is no on-chain program, no escrow, no platform fee, and no custody.
 Sardhana's only role is to know which address to send to and to check afterwards
 that the transfer really happened.
 
+Sponsoring requires an account. Both calls below answer `401` to a signed-out
+caller, every intent records its donor, and only that donor can confirm it. The
+watch page shows a signed-out visitor a prompt to sign in instead of the form,
+and the sign-in link returns them to the sponsor panel.
+
 ## The flow
 
 ```
