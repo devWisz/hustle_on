@@ -8,7 +8,8 @@ import { cx } from "@/lib/format";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
 import { Avatar } from "../ui/avatar";
 import { buttonClass } from "../ui/button";
-import { CloseIcon, LogoMark, MenuIcon, SearchIcon } from "../ui/icons";
+import { CloseIcon, LogoMark, MenuIcon, SearchIcon, UploadIcon } from "../ui/icons";
+import { AccountMenu } from "./account-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { openCommandSearch } from "./command-search";
 
@@ -37,8 +38,20 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
   ];
   if (user || demo)
     nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
-  if (user?.role === "admin")
-    nav.push({ href: "/admin", label: "Admin", match: (p) => p.startsWith("/admin") });
+
+  // The phone menu has no account dropdown, so everything it holds is listed here.
+  const menuNav: NavItem[] = [
+    ...nav,
+    ...(user || demo
+      ? [
+          { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
+          { href: "/settings", label: "Settings", match: (p: string) => p === "/settings" },
+        ]
+      : []),
+    ...(user?.role === "admin"
+      ? [{ href: "/admin", label: "Admin", match: (p: string) => p.startsWith("/admin") }]
+      : []),
+  ];
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -151,27 +164,26 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
           </button>
           <ThemeToggle />
 
-          {user ? (
-            <>
-              <Link
-                href="/upload"
-                className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}
-              >
-                Upload
-              </Link>
-              <Link
-                href={`/creator/${user.handle}`}
-                aria-label={`Your profile, ${user.displayName}`}
-                className="rounded-full ring-offset-2 ring-offset-bg transition hover:ring-2 hover:ring-border-strong"
-              >
-                <Avatar name={user.displayName} src={user.avatarUrl} size={32} />
-              </Link>
-            </>
-          ) : (
-            <Link href="/login" className={buttonClass("inverse", "sm", "hidden sm:inline-flex")}>
+          {user ? null : (
+            <Link
+              href="/login"
+              className={buttonClass("ghost", "sm", "hidden md:inline-flex")}
+            >
               Sign in
             </Link>
           )}
+          <Link
+            href="/upload"
+            className={buttonClass("inverse", "sm", "ml-1 hidden sm:inline-flex")}
+          >
+            <UploadIcon size={14} />
+            Upload
+          </Link>
+          {user ? (
+            <span className="ml-1 hidden md:block">
+              <AccountMenu user={user} />
+            </span>
+          ) : null}
 
           <button
             type="button"
@@ -214,19 +226,7 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
               </div>
 
               <nav aria-label="Menu" className="mt-8 flex flex-col">
-                {[
-                  ...nav,
-                  ...(user || demo
-                    ? [
-                        { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
-                        {
-                          href: "/settings",
-                          label: "Settings",
-                          match: (p: string) => p === "/settings",
-                        },
-                      ]
-                    : []),
-                ].map((item) => (
+                {menuNav.map((item) => (
                   <div key={item.href} className="overflow-hidden border-b border-border">
                     <Link
                       data-menu-item
@@ -248,14 +248,27 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
                 {user ? (
                   <Link
                     href={`/creator/${user.handle}`}
-                    className={buttonClass("secondary", "lg", "w-full")}
+                    className="flex items-center gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-3"
                   >
-                    Your profile
+                    <Avatar name={user.displayName} src={user.avatarUrl} size={40} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold">
+                        {user.displayName}
+                      </span>
+                      <span className="block truncate text-[13px] text-fg-muted">
+                        View your profile
+                      </span>
+                    </span>
                   </Link>
                 ) : (
-                  <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
-                    Sign in
-                  </Link>
+                  <>
+                    <Link href="/upload" className={buttonClass("secondary", "lg", "w-full")}>
+                      Upload a timelapse
+                    </Link>
+                    <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
+                      Sign in or create an account
+                    </Link>
+                  </>
                 )}
               </div>
             </div>,
