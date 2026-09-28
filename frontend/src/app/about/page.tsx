@@ -30,7 +30,7 @@ const STEPS = [
   },
   {
     title: "People sponsor your hustle",
-    body: "Once it is live, anyone can watch it. Viewers who think the work was worth it send SOL straight from their wallet to yours. Sardhana never holds the money and takes no cut, and every transfer is verified on-chain. Some will reach out to hire you instead.",
+    body: "Once it is live, anyone can watch it. Viewers who think the work was worth it sign in and send SOL straight from their wallet to yours, so you can see who backed you. Sardhana never holds the money and takes no cut, and every transfer is verified on-chain. Some will reach out to hire you instead.",
   },
 ];
 

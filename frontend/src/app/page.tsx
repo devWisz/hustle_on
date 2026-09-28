@@ -215,7 +215,7 @@ const STEPS = [
   },
   {
     title: "People sponsor your hustle",
-    body: "Viewers send SOL straight to your wallet, with no cut taken, or reach out to hire you for the next project.",
+    body: "Signed-in viewers send SOL straight to your wallet, with no cut taken, or reach out to hire you for the next project.",
   },
 ];
 
@@ -344,7 +344,11 @@ function Closing({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
               variant="ghost"
               className="w-full text-inverse-fg/70 hover:bg-inverse-fg/10 hover:text-inverse-fg sm:w-auto"
             >
-              {signedIn ? "Open your dashboard" : demo ? "See the creator dashboard" : "Sign in"}
+              {signedIn
+                ? "Open your dashboard"
+                : demo
+                  ? "See the creator dashboard"
+                  : "Create an account"}
             </ButtonLink>
           </div>
         </Reveal>
