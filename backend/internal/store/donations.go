@@ -54,14 +54,17 @@ type PendingDonation struct {
 // another intent is rejected here rather than being credited a second time. The
 // status predicate makes the claim single-shot: a confirmed row cannot be
 // re-claimed with a different signature.
-func (s *Store) ClaimDonation(ctx context.Context, id, signature string) (PendingDonation, error) {
+//
+// Only the donor who recorded the intent can claim it: an intent belonging to
+// someone else is reported as not found, so its existence is not disclosed.
+func (s *Store) ClaimDonation(ctx context.Context, id, donorID, signature string) (PendingDonation, error) {
 	var d PendingDonation
 	err := s.pool.QueryRow(ctx, `
 		UPDATE donations SET status = 'submitted', signature = $2
-		WHERE id = $1 AND status IN ('pending', 'submitted')
+		WHERE id = $1 AND donor_id = $3 AND status IN ('pending', 'submitted')
 		RETURNING id::text, timelapse_id::text, creator_id::text,
 		          donor_address, payout_address, amount_lamports, status::text`,
-		id, signature).Scan(&d.ID, &d.TimelapseID, &d.CreatorID,
+		id, signature, donorID).Scan(&d.ID, &d.TimelapseID, &d.CreatorID,
 		&d.DonorAddress, &d.PayoutAddress, &d.Amount, &d.Status)
 	return d, normalize(err)
 }

@@ -26,7 +26,15 @@ type createDonationBody struct {
 // The recipient and the amount are fixed here, on the server, before anything
 // is signed. That is what makes the confirmation step meaningful: it compares
 // the chain against a number the client did not get to choose after the fact.
+//
+// Sponsoring requires an account. Every intent is tied to a donor, which is
+// what lets the confirmation step refuse a signature from anyone else and gives
+// the rate limit and the ledger a person to attribute each sponsorship to.
 func (s *Server) handleCreateDonation(w http.ResponseWriter, r *http.Request) error {
+	u, err := requireUser(r)
+	if err != nil {
+		return err
+	}
 	var body createDonationBody
 	if err := decode(r, &body); err != nil {
 		return err
@@ -62,18 +70,14 @@ func (s *Server) handleCreateDonation(w http.ResponseWriter, r *http.Request) er
 		return apierr.Conflict("This creator has not set up a wallet to receive donations yet.")
 	}
 
-	var donorID string
-	if u, ok := currentUser(r); ok {
-		if u.ID == t.Creator.ID {
-			return apierr.BadRequest("You cannot donate to your own timelapse.")
-		}
-		donorID = u.ID
+	if u.ID == t.Creator.ID {
+		return apierr.BadRequest("You cannot sponsor your own timelapse.")
 	}
 
 	id, err := s.store.CreateDonation(r.Context(), store.NewDonation{
 		TimelapseID:   t.ID,
 		CreatorID:     t.Creator.ID,
-		DonorID:       donorID,
+		DonorID:       u.ID,
 		DonorAddress:  body.DonorAddress,
 		PayoutAddress: payout,
 		Amount:        body.Amount,
@@ -102,6 +106,10 @@ type confirmDonationBody struct {
 // this handler has fetched the finalized transaction from an RPC node and seen
 // that the recipient's balance actually rose by at least the promised amount.
 func (s *Server) handleConfirmDonation(w http.ResponseWriter, r *http.Request) error {
+	u, err := requireUser(r)
+	if err != nil {
+		return err
+	}
 	id := r.PathValue("id")
 	if !validate.IsUUID(id) {
 		return apierr.NotFound("Donation")
@@ -118,7 +126,7 @@ func (s *Server) handleConfirmDonation(w http.ResponseWriter, r *http.Request) e
 			WithField("signature", "Enter the signature returned by your wallet.")
 	}
 
-	pending, err := s.store.ClaimDonation(r.Context(), id, body.Signature)
+	pending, err := s.store.ClaimDonation(r.Context(), id, u.ID, body.Signature)
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			return apierr.Conflict("That transaction has already been recorded.")
