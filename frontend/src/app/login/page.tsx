@@ -29,16 +29,19 @@ export default async function LoginPage({
   const { next } = await searchParams;
   const destination = safeNext(next);
   const viewer = await getViewer();
-  const sponsoring = destination.startsWith("/watch/");
+  const sponsoring = destination.startsWith("/watch/") && destination.endsWith("#sponsor");
   const uploading = destination.startsWith("/upload");
+  const eyebrow = sponsoring
+    ? "One step before you sponsor"
+    : uploading
+      ? "One step before you upload"
+      : "Sardhana";
 
   return (
     <Container width="wide" className="py-14 sm:py-24">
       <div className="grid gap-14 lg:grid-cols-2 lg:gap-24">
         <div className="max-w-md">
-          <p className="text-eyebrow">
-            {sponsoring ? "One step before you sponsor" : uploading ? "One step before you upload" : "Sardhana"}
-          </p>
+          <p className="text-eyebrow">{eyebrow}</p>
           <SplitHeading as="h1" onScroll={false} className="text-headline mt-4">
             Sign in or create an account
           </SplitHeading>
