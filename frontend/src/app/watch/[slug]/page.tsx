@@ -70,8 +70,13 @@ export default async function WatchPage({ params }: Props) {
           Back to the feed
         </Link>
 
-        <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
-          <div className="min-w-0">
+        {/*
+          One grid, three areas. On a phone they stack in source order, so the
+          sponsor panel sits right after the write-up instead of below the whole
+          discussion. From lg the sidebar spans both rows beside the main column.
+        */}
+        <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_1fr] lg:gap-x-12 lg:gap-y-0">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
             <Reveal immediate y={16}>
               <TimelapsePlayer timelapse={t} />
             </Reveal>
@@ -94,7 +99,13 @@ export default async function WatchPage({ params }: Props) {
               <div className="mt-6 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
                 <CreatorLine creator={t.creator} />
                 {demo ? null : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {data.payoutAddress ? (
+                      <a href="#sponsor" className={buttonClass("primary", "sm")}>
+                        <SolanaIcon size={12} />
+                        Sponsor
+                      </a>
+                    ) : null}
                     <ShareButton
                       title={t.title}
                       text={t.summary.slice(0, 120)}
@@ -125,8 +136,8 @@ export default async function WatchPage({ params }: Props) {
             </Reveal>
           </div>
 
-          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-            <Reveal immediate delay={0.15}>
+          <aside className="min-w-0 space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <Reveal immediate delay={0.15} id="sponsor" className="scroll-mt-24">
               {demo ? (
                 <Card className="p-5 sm:p-6">
                   <h2 className="flex items-center gap-2 text-[16px] font-semibold">
@@ -139,9 +150,22 @@ export default async function WatchPage({ params }: Props) {
                     transfer is verified on-chain before it is counted.
                   </p>
                 </Card>
-              ) : data.payoutAddress ? (
-                <DonatePanel timelapse={t} payoutAddress={data.payoutAddress} />
+              ) : !data.payoutAddress ? (
+                <DonationsUnavailable name={t.creator.displayName} />
+              ) : !data.signedIn ? (
+                <SponsorSignIn slug={t.slug} name={t.creator.displayName} />
+              ) : data.isOwner ? (
+                <Card className="p-5 sm:p-6">
+                  <h2 className="text-[16px] font-semibold">This is your session</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
+                    Viewers see the sponsor form here. Sponsorships you receive are listed on your
+                    dashboard.
+                  </p>
+                </Card>
               ) : (
+                <DonatePanel timelapse={t} payoutAddress={data.payoutAddress} />
+              )}
+              {false ? (
                 <DonationsUnavailable name={t.creator.displayName} />
               )}
             </Reveal>
