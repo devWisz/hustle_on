@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
+import { safeNext } from "@/lib/demo/cookie";
 import { ButtonLink, Spinner } from "../ui";
 
 export function VerifyClient() {
@@ -22,10 +23,7 @@ export function VerifyClient() {
 
     api("/v1/auth/verify", { body: { token } })
       .then(() => {
-        const next = params.get("next");
-        const destination =
-          next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-        window.location.replace(destination);
+        window.location.replace(safeNext(params.get("next"), "/dashboard"));
       })
       .catch((err: unknown) => {
         setError(

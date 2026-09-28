@@ -14,9 +14,11 @@ export function Reveal({
   stagger,
   immediate = false,
   style,
+  id,
 }: {
   children: React.ReactNode;
   as?: Tag;
+  id?: string;
   className?: string;
   delay?: number;
   y?: number;
@@ -56,7 +58,7 @@ export function Reveal({
 
   const Component = Tag as React.ElementType;
   return (
-    <Component ref={ref} data-reveal="" className={className} style={style}>
+    <Component ref={ref} id={id} data-reveal="" className={className} style={style}>
       {children}
     </Component>
   );

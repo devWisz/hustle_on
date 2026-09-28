@@ -52,8 +52,9 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
           </div>
           <h2 className="text-[16px] font-semibold">Check your inbox</h2>
           <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-            If <span className="font-medium text-fg">{email}</span> has an account, a sign-in link
-            is on its way. It works once and expires in 15 minutes.
+            A sign-in link is on its way to <span className="font-medium text-fg">{email}</span>.
+            It works once, expires in 15 minutes, and creates your account if this is your first
+            time.
           </p>
           <button
             type="button"
@@ -86,7 +87,7 @@ export function LoginForm({ next, className }: { next?: string; className?: stri
         />
       </Field>
       <Button type="submit" size="lg" className="mt-4 w-full" loading={state === "sending"}>
-        Send sign-in link
+        Continue with email
       </Button>
       <p className="mt-3 text-[12.5px] leading-relaxed text-fg-subtle">
         By continuing you agree to the{" "}

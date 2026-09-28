@@ -109,6 +109,8 @@ export interface WatchData {
   notes: Note[];
   upNext: Timelapse[];
   signedIn: boolean;
+  /** The signed-in viewer is the creator of this session. */
+  isOwner: boolean;
   demo: boolean;
 }
 
@@ -127,6 +129,7 @@ async function loadWatch(slug: string): Promise<WatchData | null> {
       notes: sampleNotes(slug),
       upNext: SAMPLE_TIMELAPSES.filter((t) => t.slug !== slug).slice(0, 4),
       signedIn: false,
+      isOwner: false,
       demo: true,
     };
   }
@@ -144,6 +147,7 @@ async function loadWatch(slug: string): Promise<WatchData | null> {
     notes: notes?.items ?? [],
     upNext: (feed?.items ?? []).filter((t) => t.slug !== slug).slice(0, 4),
     signedIn: Boolean(viewer.user),
+    isOwner: viewer.user?.handle === live.creator.handle,
     demo: false,
   };
 }

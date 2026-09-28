@@ -29,23 +29,32 @@ export default async function LoginPage({
   const { next } = await searchParams;
   const destination = safeNext(next);
   const viewer = await getViewer();
+  const sponsoring = destination.startsWith("/watch/");
+  const uploading = destination.startsWith("/upload");
 
   return (
     <Container width="wide" className="py-14 sm:py-24">
       <div className="grid gap-14 lg:grid-cols-2 lg:gap-24">
         <div className="max-w-md">
-          <p className="text-eyebrow">Sardhana</p>
+          <p className="text-eyebrow">
+            {sponsoring ? "One step before you sponsor" : uploading ? "One step before you upload" : "Sardhana"}
+          </p>
           <SplitHeading as="h1" onScroll={false} className="text-headline mt-4">
-            Sign in
+            Sign in or create an account
           </SplitHeading>
           <Reveal immediate delay={0.2}>
             <p className="mt-4 text-[15px] leading-relaxed text-fg-muted">
+              {sponsoring
+                ? "Sponsorships are tied to an account, so the creator knows who backed them and every transfer can be verified. "
+                : uploading
+                  ? "Uploads are tied to an account so reviewers can reach you and sponsors can find you. "
+                  : null}
               Enter your email and we send you a link. Your account is created the first time you
               open one, so there is nothing separate to sign up for.
             </p>
 
             {viewer.online ? (
-              <LoginForm next={next} className="mt-8" />
+              <LoginForm next={destination === "/" ? undefined : destination} className="mt-8" />
             ) : (
               <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft p-4 text-[13.5px] leading-relaxed text-warning">
                 <AlertIcon size={18} className="mt-0.5 shrink-0" />

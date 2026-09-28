@@ -12,12 +12,23 @@ import { TimelapsePlayer } from "@/components/timelapse/player";
 import { PlayerSeekProvider } from "@/components/timelapse/player-seek";
 import { ShareButton } from "@/components/timelapse/share-button";
 import { DiscussionPanel } from "@/components/watch/discussion-panel";
-import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/watch/donate-panel";
+import {
+  DonatePanel,
+  DonationsUnavailable,
+  SponsorSignIn,
+  SupporterList,
+} from "@/components/watch/donate-panel";
 import { ShareCard } from "@/components/watch/share-card";
 import { ReportButton } from "@/components/watch/report-button";
 import { UpNext } from "@/components/watch/up-next";
-import { Avatar, Card, Container } from "@/components/ui";
-import { ArrowLeftIcon, ExternalIcon, GitHubIcon, XIcon } from "@/components/ui/icons";
+import { Avatar, Card, Container, buttonClass } from "@/components/ui";
+import {
+  ArrowLeftIcon,
+  ExternalIcon,
+  GitHubIcon,
+  SolanaIcon,
+  XIcon,
+} from "@/components/ui/icons";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
@@ -100,7 +111,7 @@ export default async function WatchPage({ params }: Props) {
                 <CreatorLine creator={t.creator} />
                 {demo ? null : (
                   <div className="flex flex-wrap items-center gap-2">
-                    {data.payoutAddress ? (
+                    {data.payoutAddress && !data.isOwner ? (
                       <a href="#sponsor" className={buttonClass("primary", "sm")}>
                         <SolanaIcon size={12} />
                         Sponsor
@@ -165,9 +176,6 @@ export default async function WatchPage({ params }: Props) {
               ) : (
                 <DonatePanel timelapse={t} payoutAddress={data.payoutAddress} />
               )}
-              {false ? (
-                <DonationsUnavailable name={t.creator.displayName} />
-              )}
             </Reveal>
 
             <Reveal delay={0.2}>
@@ -192,10 +200,8 @@ export default async function WatchPage({ params }: Props) {
               <UpNext items={data.upNext} demo={demo} />
             </Reveal>
           </aside>
-        </div>
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
-          <div className="min-w-0">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-2">
             <DiscussionPanel
               slug={t.slug}
               title={t.title}
