@@ -54,17 +54,21 @@ sardhana/
 **For creators**
 - Upload with drag and drop, a live preview, and a checklist of what reviewers look for
 - A dashboard with every submission, its status and the reviewer's note
+- An email when a session is approved or sent back, with the reviewer's note
 - Edit and resubmit anything that was sent back, or withdraw a session at any time
 - Sponsorships received, a verified payout wallet, and saved sessions
 
 **For viewers**
 - A feed with sorting, topic filters and "load more" pagination
 - Watch pages with a proper player, timestamped notes, sponsors and share links
+- Report a session or a note to the admins, with a reason
 - Search from anywhere with `⌘K` or `/`
 
 **For admins only**
 - Overview with the review queue, approval rate, 30-day activity and top creators
 - A review desk with keyboard shortcuts (`j` `k` `a` `r`), quality flags and ready-made rejection notes
+- A reports inbox: remove the note or take down the session in one step, or resolve and dismiss
+- Feature sessions on the front page from the library
 - Library takedowns, member suspension (which signs the member out everywhere), a sponsorship ledger, notes moderation and an append-only audit trail
 - CSV export on every table
 
@@ -120,6 +124,8 @@ The short version; [docs/security.md](docs/security.md) is the real one.
   visitor's address with a shared secret, so limits apply per visitor, not to
   the web server as a whole.
 - **Every list endpoint is paginated** with a capped page size and an opaque cursor.
+- **Recordings live in a private bucket.** Neither a session nor its file can be
+  read without a link the API signs, and signed links expire after two hours.
 - **Content Security Policy with a per-request nonce**: only the app's own scripts
   run, and the browser may only talk to the API and the Solana RPC endpoint.
 - **The API does not own the database.** It can connect as a least-privilege role
@@ -157,6 +163,19 @@ The web app and the API must share a registrable domain (for example
 `sardhana.com` and `api.sardhana.com`) so the sign-in cookie reaches both.
 `NEXT_PUBLIC_API_URL` is baked in at build time, so redeploy the web app after
 changing it. The full checklist is in [docs/deployment.md](docs/deployment.md).
+
+## Email
+
+Sign-in links and review decisions are sent through [Resend](https://resend.com).
+To switch email on in production:
+
+1. Verify a sending domain in Resend and create an API key (it starts with `re_`).
+2. On Render, set `RESEND_API_KEY` and set `EMAIL_FROM` to an address on the verified
+   domain, for example `Sardhana <login@yourdomain.com>`.
+3. Set `APP_ENV=production` and redeploy. Production refuses to start without a key,
+   so a missing one fails loudly instead of silently dropping mail.
+
+Until then the API writes sign-in links to its log.
 
 ## Tech stack
 
