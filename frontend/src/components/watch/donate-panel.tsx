@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
 import { cx, formatSol, solToLamports } from "@/lib/format";
 import { sendSol, walletAvailable, WalletError } from "@/lib/wallet";
 import type { DonationIntent, Timelapse } from "@/lib/types";
 import { Avatar, Button, Card, Field, Input, Textarea, buttonClass } from "../ui";
-import { CheckIcon, CopyIcon, SolanaIcon, WalletIcon } from "../ui/icons";
+import { ArrowRightIcon, CheckIcon, CopyIcon, SolanaIcon, WalletIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 
 const PRESETS = [0.05, 0.1, 0.5, 1];
@@ -116,7 +117,7 @@ export function DonatePanel({
                     : "text-fg-subtle hover:text-fg",
                 )}
               >
-                {m === "wallet" ? "Browser" : "Direct"}
+                {m === "wallet" ? "Extension" : "Mobile"}
               </button>
             ))}
           </div>
@@ -222,7 +223,9 @@ export function DonatePanel({
             Open in a mobile wallet
           </a>
           <p className="text-[12px] leading-relaxed text-fg-subtle">
-            Transfers sent this way are not linked to your account and appear as anonymous.
+            A transfer sent this way still reaches {timelapse.creator.displayName}, but Sardhana
+            cannot link it to you, so it will not be listed under Sponsors. Use the extension tab
+            to be credited.
           </p>
         </div>
       )}
@@ -250,7 +253,10 @@ async function confirmWithRetry(id: string, signature: string): Promise<void> {
 
 function readableError(err: unknown): string {
   if (err instanceof WalletError) return err.message;
-  if (err instanceof ApiError) return err.message;
+  if (err instanceof ApiError) {
+    if (err.status === 401) return "Your session has ended. Sign in again to sponsor.";
+    return err.message;
+  }
   if (err instanceof Error) {
     if (/reject|denied|cancel/i.test(err.message)) return "You cancelled the transaction.";
     return err.message;
@@ -288,6 +294,47 @@ export function SupporterList({
         </li>
       ))}
     </ul>
+  );
+}
+
+const SIGN_IN_POINTS = [
+  "Your name appears with your sponsorship",
+  "Every transfer is verified on-chain before it counts",
+  "One email link, no password to remember",
+];
+
+export function SponsorSignIn({ slug, name }: { slug: string; name: string }) {
+  const next = `/watch/${slug}#sponsor`;
+  return (
+    <Card className="p-5 sm:p-6">
+      <h2 className="flex items-center gap-2 text-[16px] font-semibold">
+        <SolanaIcon size={15} />
+        Sponsor this work
+      </h2>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
+        Sign in to send SOL to {name}. It goes wallet to wallet, with no cut taken.
+      </p>
+      <ul className="mt-5 space-y-2.5">
+        {SIGN_IN_POINTS.map((point) => (
+          <li key={point} className="flex items-start gap-2.5 text-[13px] text-fg-muted">
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
+              <CheckIcon size={10} />
+            </span>
+            {point}
+          </li>
+        ))}
+      </ul>
+      <Link
+        href={`/login?next=${encodeURIComponent(next)}`}
+        className={buttonClass("primary", "lg", "mt-6 w-full")}
+      >
+        Sign in to sponsor
+        <ArrowRightIcon size={16} className="nudge-icon" />
+      </Link>
+      <p className="mt-3 text-center text-[12px] text-fg-subtle">
+        New here? The same link creates your account.
+      </p>
+    </Card>
   );
 }
 
