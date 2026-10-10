@@ -208,12 +208,7 @@ Until then the API writes sign-in links to its log.
 - **Responsive from 320px**: no horizontal scroll on any page
 - **Accessible**: visible focus rings, labelled controls, content never hidden by an animation that might not run
 
-## Credits
 
-Demo footage in `frontend/public/demo` is from [Pexels](https://www.pexels.com) under the
-Pexels licence, shortened and sped up for the demo library.
-
----
 
 <div align="center">
 
