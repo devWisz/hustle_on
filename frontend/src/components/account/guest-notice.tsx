@@ -30,9 +30,6 @@ export function GuestNotice({
         <div className="min-w-0">
           <h2 className="text-[16px] font-semibold">{what} needs an account</h2>
           <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-fg-muted">{reason}</p>
-          <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-fg-muted">
-            You can keep browsing as a guest — every published session is open to anyone.
-          </p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <SignInFromGuest next={next} />
             <Link

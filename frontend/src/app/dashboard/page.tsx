@@ -17,14 +17,19 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const viewer = await getViewer();
   if (!viewer.user && viewer.guest) {
+    // Saved sessions are kept in this browser, so a guest has something real to
+    // see here. Submissions and earnings are the parts that need an account.
     return (
       <Container width="narrow" className="py-14 sm:py-20">
         <p className="text-eyebrow">Dashboard</p>
-        <h1 className="text-headline mt-4">Your sessions</h1>
+        <h1 className="text-headline mt-4">Saved</h1>
+        <div className="mt-8">
+          <SavedList />
+        </div>
         <GuestNotice
-          what="The dashboard"
+          what="Submitting and earning"
           next="/dashboard"
-          reason="It shows your own drafts, what a reviewer decided and what you have earned, which only means anything once there is an account behind it."
+          reason="They are tied to an account, so a reviewer can reach you and a sponsorship has somewhere to land."
         />
       </Container>
     );

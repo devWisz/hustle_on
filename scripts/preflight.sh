@@ -194,17 +194,21 @@ echo
 if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
   echo "database contents"
   query() { psql "$dsn" -At -c "$1" 2>/dev/null || echo ""; }
+  # The ledger is deliberately unreadable by the API's own role, so anything
+  # about migrations has to be asked over the owner connection.
+  owner_query() { psql "${DATABASE_URL_DIRECT:-$dsn}" -At -c "$1" 2>/dev/null || echo ""; }
 
-  applied="$(query "select count(*) from schema_migrations")"
-  if [[ -n "$applied" ]]; then
-    pass "$applied migrations recorded as applied"
-    pending_dir="$ROOT/database/migrations"
-    total=$(find "$pending_dir" -name '*.up.sql' | wc -l | tr -d ' ')
-    if [[ "$applied" != "$total" ]]; then
+  applied="$(owner_query "select count(*) from schema_migrations")"
+  pending_dir="$ROOT/database/migrations"
+  total=$(find "$pending_dir" -name '*.up.sql' | wc -l | tr -d ' ')
+  if [[ "$applied" =~ ^[0-9]+$ ]]; then
+    if [[ "$applied" == "$total" ]]; then
+      pass "all $total migrations are applied"
+    else
       fail "there are $total migration files but $applied applied — run make db-migrate"
     fi
   else
-    warn "could not read schema_migrations; skipping the migration and account checks"
+    warn "could not read schema_migrations over the owner connection; expected $total applied"
   fi
 
   demo="$(query "select count(*) from users where email::text like '%@hustleon.test'")"
@@ -221,6 +225,43 @@ if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
     pass "$admins admin account(s)"
   elif [[ -n "$admins" ]]; then
     fail "no admin account exists: nobody can review submissions"
+  fi
+
+  # The privileged operations the API must not be able to perform. These are
+  # asked of the *connection*, not of the configuration: a role name in an
+  # environment variable proves nothing about what it can do.
+  probe() { query "select $1"; }
+  if [[ "$(probe "has_table_privilege(session_user, 'users', 'DELETE')")" == "t" ]]; then
+    fail "the API's database role can DELETE an account — migration 0008's revoke is not in effect"
+  else
+    pass "the API's role cannot delete accounts"
+  fi
+  if [[ "$(probe "has_table_privilege(session_user, 'audit_log', 'UPDATE')")" == "t" ]]; then
+    fail "the API's database role can edit the audit trail"
+  else
+    pass "the API's role cannot edit the audit trail"
+  fi
+  if [[ "$(probe "has_table_privilege(session_user, 'schema_migrations', 'SELECT')")" == "t" ]]; then
+    fail "the API's database role can read the migration ledger"
+  else
+    pass "the API's role cannot read the migration ledger"
+  fi
+
+  trigger="$(query "select tgname from pg_trigger where tgname = 'audit_log_append_only' and tgenabled <> 'D'")"
+  if [[ "$trigger" == "audit_log_append_only" ]]; then
+    pass "the append-only trigger is armed on audit_log"
+  else
+    fail "the append-only trigger is missing or disabled on audit_log"
+  fi
+
+  # A role setting applies to a session started as that role, so a login that
+  # inherits a group does not inherit the group's timeouts. Asking the live
+  # connection is the only way to know the guards are actually on.
+  timeout_setting="$(query "show statement_timeout")"
+  if [[ -n "$timeout_setting" && "$timeout_setting" != "0" ]]; then
+    pass "the API's connection has a statement_timeout of $timeout_setting"
+  else
+    fail "the API's connection has no statement_timeout: one bad query can hold a connection open indefinitely"
   fi
 
   if [[ "${ALLOW_OWNER_ROLE:-}" != "true" ]]; then
