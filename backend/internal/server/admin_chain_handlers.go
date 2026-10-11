@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/sardhana/backend/internal/solana"
-	"github.com/sardhana/backend/internal/store"
 	"github.com/sardhana/backend/internal/validate"
 	"github.com/sardhana/backend/pkg/apierr"
 )

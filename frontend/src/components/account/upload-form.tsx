@@ -37,8 +37,7 @@ type Stage = "idle" | "authoring" | "bytes" | "metadata" | "submitting" | "done"
  * The progress indicator names the same steps the form does, so a slow upload
  * does not read as a different process from the one being filled in.
  */
-const STAGE_LABELS: Record<Stage, string> = {
-  idle: "Not started",
+const STAGE_LABELS: Record<Exclude<Stage, "idle">, string> = {
   authoring: "Step 1 of 3 · Uploading the file",
   bytes: "Step 1 of 3 · Uploading the file",
   metadata: "Step 2 of 3 · Saving what you wrote",
@@ -80,9 +79,16 @@ export function UploadForm() {
 
   const busy = stage !== "idle" && stage !== "done";
   const done = stage === "done";
-  const step = !file || busy || done ? 1 : 2;
+  // The write-up being complete is what makes the review controls worth
+  // attention; the attestation stays in that step rather than gating it, so the
+  // checkbox is reachable at the moment it is needed.
+  const writeUpReady =
+    title.trim().length >= MIN_TITLE &&
+    summary.trim().length >= MIN_SUMMARY &&
+    summary.trim().length <= MAX_SUMMARY;
+  const step = !file || busy || done ? 1 : writeUpReady ? 3 : 2;
   const stepOne = step === 1;
-  const stepTwo = stepOne || step === 2;
+  const stepTwo = step === 2;
 
   useEffect(() => {
     if (!file) {
@@ -166,7 +172,6 @@ export function UploadForm() {
     try {
       setFileError("");
       setReviewError("");
-      setRetrying(true);
 
       if (stage === "idle" || stage === "authoring") {
         setStage("authoring");
@@ -178,9 +183,10 @@ export function UploadForm() {
         keyRef.current = upload.key;
       }
 
-      if (uploadRef.current) {
+      const signed = uploadRef.current;
+      if (signed) {
         setStage("bytes");
-        await uploadToStorage(uploadRef.current.url, file, setProgress);
+        await uploadToStorage(signed.url, file, setProgress);
         // Storage has the bytes now, so the signature will never be needed
         // again — and would be stale if it were.
         uploadRef.current = null;
@@ -259,7 +265,6 @@ export function UploadForm() {
     setXUrl("");
     setAttested(false);
     setStage("idle");
-    setRetrying(false);
     setProgress(0);
     setFileError("");
     setReviewError("");
@@ -366,7 +371,7 @@ export function UploadForm() {
           </p>
         ) : null}
 
-        {failed && file ? (
+        {fileError && file ? (
           <Button
             type="button"
             variant="secondary"
