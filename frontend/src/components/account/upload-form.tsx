@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_URL, ApiError, api, csrfHeader } from "@/lib/api/client";
+import { ApiError, api } from "@/lib/api/client";
+import { uploadToStorage } from "@/lib/upload";
 import { cx, formatDuration } from "@/lib/format";
 import type { Timelapse, Upload } from "@/lib/types";
 import { Button, Card, Field, Input, Textarea } from "../ui";
@@ -77,7 +78,7 @@ export function UploadForm() {
         body: { contentType: file.type, sizeBytes: file.size },
       });
 
-      await putFile(upload.url, file, setProgress);
+      await uploadToStorage(upload.url, file, setProgress);
 
       setStage("recording");
       const created = await api<Timelapse>("/v1/timelapses", {
@@ -342,47 +343,6 @@ function ProgressBar({ value }: { value: number }) {
       </p>
     </div>
   );
-}
-
-function putFile(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("PUT", url, true);
-    request.setRequestHeader("Content-Type", file.type);
-    // Only for our own API. A presigned bucket URL must receive exactly the
-    // headers its signature was computed over, and its CORS rules would not
-    // know this one — adding it there would break every real upload.
-    if (isApiUrl(url)) {
-      for (const [name, value] of Object.entries(csrfHeader())) {
-        request.setRequestHeader(name, value);
-      }
-    }
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
-    };
-    request.onload = () =>
-      request.status >= 200 && request.status < 300
-        ? resolve()
-        : reject(new Error(`Upload failed with status ${request.status}.`));
-    request.onerror = () => reject(new Error("The upload could not reach storage."));
-    request.send(file);
-  });
-}
-
-/**
- * Whether an upload URL points at our own API rather than object storage.
- *
- * The local development storage endpoint answers on the API's origin; a real
- * bucket is somewhere else entirely. Compared by origin, not by string prefix,
- * so a URL that merely starts with the same characters cannot qualify.
- */
-function isApiUrl(url: string): boolean {
-  try {
-    const base = typeof window === "undefined" ? "http://localhost" : window.location.href;
-    return new URL(url, base).origin === new URL(API_URL, base).origin;
-  } catch {
-    return false;
-  }
 }
 
 function readDuration(file: File): Promise<number> {

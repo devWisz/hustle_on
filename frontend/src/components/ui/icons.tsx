@@ -110,6 +110,14 @@ export function ArrowUpIcon(props: IconProps) {
   );
 }
 
+export function ArrowDownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4v16m0 0 5.5-5.5M12 20l-5.5-5.5" />
+    </Svg>
+  );
+}
+
 export function ExternalIcon(props: IconProps) {
   return (
     <Svg {...props}>

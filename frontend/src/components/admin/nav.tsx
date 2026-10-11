@@ -11,6 +11,7 @@ import {
   InboxIcon,
   ListIcon,
   MessageSquareIcon,
+  PlayIcon,
   UsersIcon,
 } from "../ui/icons";
 
@@ -19,6 +20,7 @@ const ITEMS = [
   { href: "/admin/queue", label: "Review desk", icon: InboxIcon, key: "queue" },
   { href: "/admin/reports", label: "Reports", icon: AlertIcon, key: "reports" },
   { href: "/admin/library", label: "Library", icon: FilmIcon, key: "library" },
+  { href: "/admin/front-page", label: "Front page", icon: PlayIcon, key: "frontPage" },
   { href: "/admin/members", label: "Members", icon: UsersIcon, key: "members" },
   { href: "/admin/ledger", label: "Ledger", icon: CoinsIcon, key: "ledger" },
   { href: "/admin/notes", label: "Notes", icon: MessageSquareIcon, key: "notes" },

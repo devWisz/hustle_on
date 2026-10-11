@@ -42,6 +42,12 @@ export interface Timelapse {
   donationTotalLamports: number;
   creator: Creator;
   featured?: boolean;
+  /**
+   * Position on the curated front page, 1-based; absent when the session is not
+   * on it. Only the admin console receives this — the API clears it from every
+   * public payload, so a visitor cannot read the shelf's arrangement.
+   */
+  featuredRank?: number;
   reviewNote?: string;
   submittedAt?: string;
   publishedAt?: string;

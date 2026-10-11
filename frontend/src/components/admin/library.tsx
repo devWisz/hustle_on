@@ -10,6 +10,7 @@ import { useToast } from "../layout/toast";
 import { Button, Select } from "../ui";
 import { FilmIcon } from "../ui/icons";
 import { DataTable, type Column } from "./data-table";
+import { TimelapseEditor } from "./timelapse-editor";
 
 export function Library({ initial }: { initial: Timelapse[] }) {
   const router = useRouter();
@@ -18,6 +19,9 @@ export function Library({ initial }: { initial: Timelapse[] }) {
   const [creator, setCreator] = useState("all");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // The row being edited, held as the record rather than an id so the editor can
+  // render from what the table is already showing, with no second lookup.
+  const [editing, setEditing] = useState<Timelapse | null>(null);
 
   const creators = Array.from(
     new Map(initial.map((t) => [t.creator.handle, t.creator.displayName])).entries(),
@@ -43,6 +47,9 @@ export function Library({ initial }: { initial: Timelapse[] }) {
     try {
       await api(`/v1/admin/timelapses/${t.id}`, { method: "DELETE" });
       setItems((list) => list.filter((x) => x.id !== t.id));
+      // An editor left open on a row that no longer exists would save into
+      // nothing, so it closes with the row.
+      setEditing((current) => (current?.id === t.id ? null : current));
       toast.success("Taken down. It is off the feed.");
       router.refresh();
     } catch (err) {
@@ -148,49 +155,72 @@ export function Library({ initial }: { initial: Timelapse[] }) {
             </Button>
           </span>
         ) : (
-          <Button size="sm" variant="secondary" onClick={() => setConfirming(t.id)}>
-            Take down
-          </Button>
+          <span className="inline-flex gap-1.5">
+            <Button
+              size="sm"
+              variant={editing?.id === t.id ? "inverse" : "secondary"}
+              aria-pressed={editing?.id === t.id}
+              onClick={() => setEditing(t)}
+            >
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirming(t.id)}>
+              Take down
+            </Button>
+          </span>
         ),
     },
   ];
 
   return (
-    <DataTable
-      rows={rows}
-      columns={columns}
-      search={(t) => `${t.title} ${t.creator.displayName}`}
-      searchLabel="Search sessions or creators"
-      filename="sardhana-library.csv"
-      defaultSort={{ key: "published", dir: "desc" }}
-      empty={
-        items.length === 0
-          ? {
-              title: "The library is empty",
-              description:
-                "Published sessions appear here as soon as they clear review. If you expected some, the API may not have answered.",
-              icon: <FilmIcon size={18} />,
-            }
-          : {
-              title: "No sessions match",
-              description: "Try another search or creator.",
-              icon: <FilmIcon size={18} />,
-            }
-      }
-      filters={
-        <Select
-          value={creator}
-          onChange={(e) => setCreator(e.target.value)}
-          aria-label="Filter by creator"
-        >
-          <option value="all">All creators</option>
-          {creators.map(([handle, name]) => (
-            <option key={handle} value={handle}>
-              {name}
-            </option>
-          ))}
-        </Select>
-      }
-    />
+    <div className="space-y-5">
+      {editing ? (
+        <TimelapseEditor
+          key={editing.id}
+          timelapse={editing}
+          onPatch={(patch) => {
+            setItems((list) => list.map((x) => (x.id === editing.id ? { ...x, ...patch } : x)));
+            setEditing((current) => (current ? { ...current, ...patch } : current));
+          }}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
+      <DataTable
+        rows={rows}
+        columns={columns}
+        search={(t) => `${t.title} ${t.creator.displayName}`}
+        searchLabel="Search sessions or creators"
+        filename="sardhana-library.csv"
+        defaultSort={{ key: "published", dir: "desc" }}
+        empty={
+          items.length === 0
+            ? {
+                title: "The library is empty",
+                description:
+                  "Published sessions appear here as soon as they clear review. If you expected some, the API may not have answered.",
+                icon: <FilmIcon size={18} />,
+              }
+            : {
+                title: "No sessions match",
+                description: "Try another search or creator.",
+                icon: <FilmIcon size={18} />,
+              }
+        }
+        filters={
+          <Select
+            value={creator}
+            onChange={(e) => setCreator(e.target.value)}
+            aria-label="Filter by creator"
+          >
+            <option value="all">All creators</option>
+            {creators.map(([handle, name]) => (
+              <option key={handle} value={handle}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        }
+      />
+    </div>
   );
 }
