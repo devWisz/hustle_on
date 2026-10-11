@@ -30,12 +30,6 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error { return e.err }
 
-// WithCause attaches an internal cause for logging.
-func (e *Error) WithCause(err error) *Error {
-	e.err = err
-	return e
-}
-
 // WithField adds a field-level validation message.
 func (e *Error) WithField(name, message string) *Error {
 	if e.Fields == nil {

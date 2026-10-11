@@ -79,6 +79,3 @@ func NewService(cfg Config, store Store) (*Service, error) {
 
 // SetClock replaces the time source. Tests use it; production does not.
 func (s *Service) SetClock(fn func() time.Time) { s.now = fn }
-
-// Config returns a copy of the effective configuration.
-func (s *Service) Config() Config { return s.cfg }

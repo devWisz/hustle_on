@@ -55,11 +55,6 @@ func Digest(secret string) []byte {
 	return sum[:]
 }
 
-// EqualDigest compares two digests in constant time.
-func EqualDigest(a, b []byte) bool {
-	return subtle.ConstantTimeCompare(a, b) == 1
-}
-
 // NewNonce returns a short random string for wallet signing challenges.
 func NewNonce() (string, error) {
 	buf := make([]byte, 16)

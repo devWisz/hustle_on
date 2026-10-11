@@ -104,13 +104,6 @@ func (s *Store) ResolveReport(ctx context.Context, id, adminID, status string, a
 	return title, normalize(err)
 }
 
-// OpenReportCount is how many reports are waiting for a decision.
-func (s *Store) OpenReportCount(ctx context.Context) (int, error) {
-	var n int
-	err := s.pool.QueryRow(ctx, `SELECT count(*) FROM reports WHERE status = 'open'`).Scan(&n)
-	return n, normalize(err)
-}
-
 // MaxFeatured is how many sessions the curated front page holds.
 //
 // A shelf is a selection, not a queue: past a dozen entries a visitor reads it as

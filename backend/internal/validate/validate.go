@@ -52,14 +52,6 @@ func (e *Errors) Err() error {
 	return out
 }
 
-// Required checks that a trimmed string is non-empty.
-func (e *Errors) Required(field, value string) *Errors {
-	if strings.TrimSpace(value) == "" {
-		e.Add(field, "This field is required.")
-	}
-	return e
-}
-
 // Length checks rune count, not byte count, so multi-byte text is measured the
 // way the person typing it would count it.
 func (e *Errors) Length(field, value string, min, max int) *Errors {
@@ -78,13 +70,6 @@ func (e *Errors) Handle(field, value string) *Errors {
 		e.Add(field, "Use 3 to 30 characters: lowercase letters, numbers or underscore.")
 	} else if reservedHandles[value] {
 		e.Add(field, "That handle is reserved.")
-	}
-	return e
-}
-
-func (e *Errors) UUID(field, value string) *Errors {
-	if !uuidRE.MatchString(value) {
-		e.Add(field, "Not a valid identifier.")
 	}
 	return e
 }

@@ -22,15 +22,6 @@ const maxBodyBytes = 1 << 20 // 1 MiB
 // writing one keeps error rendering in exactly one place.
 type handler func(http.ResponseWriter, *http.Request) error
 
-// wrap adapts a handler into an http.HandlerFunc, rendering any error.
-func (s *Server) wrap(h handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := h(w, r); err != nil {
-			s.writeError(w, r, err)
-		}
-	}
-}
-
 func writeJSON(w http.ResponseWriter, status int, body any) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -177,22 +168,3 @@ func listErr(err error, what string) error {
 	return storeErr(err, what)
 }
 
-// queryList splits a comma-separated parameter, keeping values that pass the
-// supplied test.
-func queryList(r *http.Request, name string, max int, ok func(string) bool) []string {
-	raw := r.URL.Query().Get(name)
-	if raw == "" {
-		return []string{}
-	}
-	out := []string{}
-	for _, part := range strings.Split(raw, ",") {
-		part = strings.ToLower(strings.TrimSpace(part))
-		if part != "" && ok(part) {
-			out = append(out, part)
-			if len(out) == max {
-				break
-			}
-		}
-	}
-	return out
-}
