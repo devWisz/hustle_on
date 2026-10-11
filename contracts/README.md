@@ -145,6 +145,47 @@ nothing deployed at it is the state worth catching early — every sponsorship t
 fails verification, and the failure looks exactly like a donor having sent the
 wrong transaction.
 
+### Trying the whole thing on a local validator
+
+A local validator gives unlimited SOL, so this costs nothing and needs no faucet.
+Every command below has been run in this order and works:
+
+```bash
+solana-test-validator --reset --quiet &          # free SOL, real runtime
+
+solana program deploy contracts/target/deploy/hustleon_pay.so \
+  --url http://127.0.0.1:8899 \
+  --program-id contracts/target/deploy/hustleon_pay-keypair.json
+
+export SOLANA_RPC_URL=http://127.0.0.1:8899
+NODE_PATH=frontend/node_modules node contracts/scripts/initialize-config.cjs \
+  --treasury <a-different-wallet> --fee-bps 500
+NODE_PATH=frontend/node_modules node contracts/scripts/check-program.cjs
+
+# A real sponsorship, built exactly as the browser builds it:
+NODE_PATH=frontend/node_modules node contracts/scripts/smoke-sponsor.cjs \
+  --keypair <funded-keypair.json> --creator <creator-address> --amount-lamports 100000000
+```
+
+Then point the API at that chain and confirm the sponsorship for real:
+
+```bash
+SOLANA_RPC_URL=http://127.0.0.1:8899 SOLANA_CLUSTER=localnet \
+HUSTLEON_PAY_PROGRAM_ID=<program-id> \
+  go run ./backend/cmd/api
+```
+
+Sponsoring 100 000 000 lamports at 500 bps moves 95 000 000 to the creator and
+5 000 000 to the treasury, and `POST /v1/donations/{id}/confirm` credits it — the
+creator's balance rising by *less* than the amount is the normal case, not a
+failure. A plain transfer of the same amount, bypassing the program, is refused.
+
+`initialize-config.cjs` takes two instructions to do its job and that is not an
+oversight: `initialize_config` receives only the admin account, so it necessarily
+sets the treasury to the admin, and moving the fee anywhere else needs
+`update_config` afterwards — which only the recorded admin may call. The script
+does both and is safe to re-run.
+
 ## How the API verifies a sponsorship
 
 `backend/internal/solana` fetches the finalized transaction and requires all of:
