@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 /**
  * The profile step, shown once.
  *
- * Signing in creates an account from an email address: a handle derived from it
- * and a display name identical to that handle. That is enough to own a session and
+ * Signing in creates an account from a wallet signature: a generated handle and a
+ * display name identical to that handle. That is enough to own a session and
  * not enough to be credited for one — the name is on every card, beside every
  * recording, and in the ledger when somebody sponsors the work — so this is where
  * the site stops guessing and asks.

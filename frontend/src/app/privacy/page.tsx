@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 const sections = [
   {
     title: "The short version",
-    body: "We collect as little as the service needs to work: an email address to sign you in, the recordings and write-ups you choose to submit, and the wallet address you verify to receive sponsorships. We do not sell data, we do not run advertising trackers, and we never ask for keys or passwords.",
+    body: "We collect as little as the service needs to work: the Solana wallet address that signs you in, the recordings and write-ups you choose to submit, and an optional contact email if you add one. We do not sell data, we do not run advertising trackers, and we never ask for keys or passwords.",
   },
   {
     title: "What we collect",
-    body: "Your email address; your handle, display name and bio; the recordings, thumbnails, write-ups, links and session lengths you submit; the Solana address you verify for payouts; notes you post and bookmarks you save; and technical data needed to run and protect the service, namely the IP address and browser a request came from, used for rate limiting, security and abuse investigation.",
+    body: "Your wallet address; your handle, display name and bio; any contact email you add; the recordings, thumbnails, write-ups, links and session lengths you submit; the address you nominate for payouts; notes you post and sessions you save; and technical data needed to run and protect the service, namely the IP address and browser a request came from, used for rate limiting, security and abuse investigation.",
   },
   {
     title: "Your recordings",
@@ -22,7 +22,7 @@ const sections = [
   },
   {
     title: "How we use it",
-    body: "To sign you in, to show your profile and published work, to let reviewers make decisions and keep a record of them, to verify sponsorships against the Solana chain, to send the sign-in emails the service needs, and to prevent abuse. Review decisions are shown on your dashboard rather than emailed. We do not use your data for advertising or sell it to anyone.",
+    body: "To sign you in, to show your profile and published work, to let reviewers make decisions and keep a record of them, to verify sponsorships against the Solana chain, and to prevent abuse. Nothing is emailed to you: signing in and review decisions both happen on the site. We do not use your data for advertising or sell it to anyone.",
   },
   {
     title: "What we never collect",
@@ -46,7 +46,7 @@ const sections = [
   },
   {
     title: "Who processes data for us",
-    body: "Our database is hosted by Neon. Recordings are kept with an object storage provider. Sign-in emails are sent through Resend. Sponsorships are verified through a Solana RPC provider. Each receives only what it needs to do its part and is not allowed to use it for anything else.",
+    body: "Our database is hosted by Neon. Recordings are kept with an object storage provider. No mail provider receives anything, because nothing is sent by email. Sponsorships are verified through a Solana RPC provider. Each receives only what it needs to do its part and is not allowed to use it for anything else.",
   },
   {
     title: "How long we keep it",
@@ -54,7 +54,7 @@ const sections = [
   },
   {
     title: "Your choices and rights",
-    body: "You can edit your profile, withdraw any timelapse, and delete your account at any time. Deleting an account removes your email, profile and content from the database; audit entries keep the decision but lose the link to your account. Depending on where you live you may also have the right to a copy of your data or to object to how it is used; write to us and we will answer within thirty days.",
+    body: "You can edit your profile, withdraw any timelapse, and delete your account at any time. Deleting an account removes your wallet address, profile and content from the database; audit entries keep the decision but lose the link to your account. Depending on where you live you may also have the right to a copy of your data or to object to how it is used; write to us and we will answer within thirty days.",
   },
   {
     title: "Security",

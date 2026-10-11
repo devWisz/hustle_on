@@ -290,7 +290,7 @@ function Closing({ signedIn }: { signedIn: boolean }) {
             Record it. Write it down. Get paid for it.
           </SplitHeading>
           <p className="mt-6 max-w-lg text-[15px] leading-relaxed opacity-70">
-            Your first upload goes to review the same day. An account is one email and one click.
+            Your first upload goes to review the same day. An account is one wallet signature.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Magnetic className="inline-flex w-full sm:w-auto">

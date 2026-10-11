@@ -14,7 +14,7 @@ const sections = [
   },
   {
     title: "Who can use it",
-    body: "You must be at least 18 years old, or the age of majority where you live if that is higher, to create an account, upload, or send or receive sponsorships. One account per person. You are responsible for everything done through your account, so keep access to your email address secure: signing in works by emailed link, and anyone who can read your inbox can sign in as you.",
+    body: "You must be at least 18 years old, or the age of majority where you live if that is higher, to create an account, upload, or send or receive sponsorships. One account per person. You are responsible for everything done through your account, so keep access to your wallet secure: signing in is a signature from it, and anyone holding your seed phrase or private key can sign in as you.",
   },
   {
     title: "Recording yourself",

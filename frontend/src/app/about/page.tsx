@@ -37,7 +37,7 @@ const STEPS = [
 const NEVER = [
   "Ask for a seed phrase or a private key, for signing in or for payouts.",
   "Take custody of a sponsorship. The transfer is wallet to wallet.",
-  "Store a password. Signing in is an emailed link that works once.",
+  "Store a password. Signing in is a signature from your wallet, and nothing is emailed to you.",
   "Publish anything without a person reading it first.",
 ];
 

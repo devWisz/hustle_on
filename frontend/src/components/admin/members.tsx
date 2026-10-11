@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { formatSol, timeAgo } from "@/lib/format";
+import { formatSol, shortAddress, timeAgo } from "@/lib/format";
 import type { AdminMember } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Avatar, Badge, Button, Select } from "../ui";
@@ -57,7 +57,9 @@ export function Members({ initial }: { initial: AdminMember[] }) {
           <Avatar name={m.displayName} size={32} />
           <span className="min-w-0">
             <span className="block truncate font-medium">{m.displayName}</span>
-            <span className="block truncate text-[12px] text-fg-subtle">{m.email}</span>
+            <span className="block truncate text-[12px] text-fg-subtle">
+              {m.walletAddress ? shortAddress(m.walletAddress) : (m.email ?? "no address")}
+            </span>
           </span>
         </Link>
       ),
@@ -142,8 +144,8 @@ export function Members({ initial }: { initial: AdminMember[] }) {
     <DataTable
       rows={rows}
       columns={columns}
-      search={(m) => `${m.displayName} ${m.handle} ${m.email}`}
-      searchLabel="Search by name, handle or email"
+      search={(m) => `${m.displayName} ${m.handle} ${m.walletAddress ?? ""} ${m.email ?? ""}`}
+      searchLabel="Search by name, handle, wallet or email"
       filename="hustleon-members.csv"
       defaultSort={{ key: "active", dir: "desc" }}
       empty={{
