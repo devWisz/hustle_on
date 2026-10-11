@@ -150,13 +150,11 @@ func (s *Server) cors(next http.Handler) http.Handler {
 	})
 }
 
+// originAllowed delegates to the auth package, which also owns the CSRF check.
+// Two copies of an origin rule is two places for it to drift, and the one that
+// drifts is the one nobody is looking at.
 func (s *Server) originAllowed(origin string) bool {
-	for _, o := range s.cfg.AllowedOrigins {
-		if strings.EqualFold(o, origin) {
-			return true
-		}
-	}
-	return false
+	return auth.OriginAllowed(origin, s.cfg.AllowedOrigins)
 }
 
 // ipCeiling bounds how much work one address can cause before its session has

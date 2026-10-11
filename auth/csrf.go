@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -45,7 +46,7 @@ func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
 			}
 		}
 	}
-	if origin == "" || !originAllowed(origin, allowedOrigins) {
+	if !OriginAllowed(origin, allowedOrigins) {
 		return ErrCSRF
 	}
 
@@ -66,11 +67,64 @@ func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
 	return nil
 }
 
-func originAllowed(origin string, allowed []string) bool {
+// OriginAllowed reports whether a request's origin is one this deployment serves.
+//
+// The comparison is exact, with one deliberate exception: the loopback spellings
+// are treated as the same address. `localhost`, `127.0.0.1` and `[::1]` are one
+// server, and which of them a browser, a dev server or a printed URL happens to
+// use is not a security-relevant distinction — but it is the difference between a
+// site that works and one where every write is refused, because reads are not
+// origin-checked and the page itself loads perfectly.
+//
+// The exception is confined to loopback on both sides, so any other origin still
+// has to be listed exactly. That restriction is the point: in production the
+// allowlist is the set of domains we serve, and loosening it there would be the
+// vulnerability rather than the fix.
+func OriginAllowed(origin string, allowed []string) bool {
+	o := strings.TrimRight(strings.TrimSpace(origin), "/")
+	if o == "" {
+		return false
+	}
 	for _, a := range allowed {
-		if strings.EqualFold(strings.TrimRight(a, "/"), strings.TrimRight(origin, "/")) {
+		a = strings.TrimRight(strings.TrimSpace(a), "/")
+		if strings.EqualFold(a, o) {
 			return true
 		}
+		if sameLoopbackService(a, o) {
+			return true
+		}
+	}
+	return false
+}
+
+// sameLoopbackService reports whether two origins name the same loopback service:
+// the same scheme, the same port, and both on a loopback host.
+func sameLoopbackService(a, b string) bool {
+	as, ah, ap, aok := splitOrigin(a)
+	bs, bh, bp, bok := splitOrigin(b)
+	if !aok || !bok || as != bs || ap != bp {
+		return false
+	}
+	return isLoopbackHost(ah) && isLoopbackHost(bh)
+}
+
+func splitOrigin(origin string) (scheme, host, port string, ok bool) {
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return "", "", "", false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", "", "", false
+	}
+	// Hostname() strips the brackets from an IPv6 literal, so `[::1]` becomes
+	// `::1` and the comparison sees one form rather than two.
+	return strings.ToLower(u.Scheme), strings.ToLower(u.Hostname()), u.Port(), true
+}
+
+func isLoopbackHost(host string) bool {
+	switch host {
+	case "localhost", "127.0.0.1", "::1":
+		return true
 	}
 	return false
 }
