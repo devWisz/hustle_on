@@ -88,7 +88,9 @@ export function UploadForm() {
     summary.trim().length <= MAX_SUMMARY;
   const step = !file || busy || done ? 1 : writeUpReady ? 3 : 2;
   const stepOne = step === 1;
-  const stepTwo = step === 2;
+  // Everything past the picker unlocks together: step 2 once a file is chosen,
+  // and the links and attestation again in step 3, where they are submitted.
+  const stepTwo = step >= 2;
 
   useEffect(() => {
     if (!file) {
@@ -608,20 +610,23 @@ function Step({
  */
 function SuccessCard({ onStartOver }: { onStartOver: () => void }) {
   return (
-    <Card role="status" className="border-success/30 bg-success-soft p-5 sm:p-6">
-      <h2 className="flex items-center gap-3 text-[16px] font-semibold">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
-          <CheckIcon size={15} />
-        </span>
-        It is in review
-      </h2>
-      <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
-        A person will read your write-up and watch the recording. Nothing is public until they have.
-      </p>
-      <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
-        If it is not accepted, the note tells you what to change and you can edit and resubmit from
-        your dashboard.
-      </p>
+    <Card className="border-success/30 bg-success-soft p-5 sm:p-6">
+      <div role="status">
+        <h2 className="flex items-center gap-3 text-[16px] font-semibold">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
+            <CheckIcon size={15} />
+          </span>
+          It is in review
+        </h2>
+        <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
+          A person will read your write-up and watch the recording. Nothing is public until they
+          have.
+        </p>
+        <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
+          If it is not accepted, the note tells you what to change and you can edit and resubmit from
+          your dashboard.
+        </p>
+      </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <ButtonLink href="/dashboard">
           Go to your dashboard

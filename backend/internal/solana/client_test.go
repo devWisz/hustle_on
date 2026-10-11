@@ -96,3 +96,36 @@ func TestVerifyTransferRejectsBadTransactions(t *testing.T) {
 		})
 	}
 }
+
+// The operator's health check asks the node a question whose answer is a status
+// string, and has to tell "up" from "up but degraded" as well as from unreachable.
+func TestHealthReportsWhatTheNodeSays(t *testing.T) {
+	c := stubRPC(t, "ok")
+	if err := c.Health(context.Background()); err != nil {
+		t.Fatalf("a healthy node was reported as %v", err)
+	}
+
+	c = stubRPC(t, "behind")
+	if err := c.Health(context.Background()); !errors.Is(err, ErrRPCRequest) {
+		t.Fatalf("a degraded node gave %v, want an RPC error", err)
+	}
+}
+
+func TestHealthReportsAnUnreachableNode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "nope", http.StatusBadGateway)
+	}))
+	srv.Close()
+
+	if err := New(srv.URL, "devnet").Health(context.Background()); err == nil {
+		t.Fatal("a closed endpoint was reported as healthy")
+	}
+}
+
+func TestClusterIsReportedAsConfigured(t *testing.T) {
+	// The console shows this to an operator, so it has to be the configured value
+	// rather than a guess: a deployment pointed at devnet must say so.
+	if got := New("http://localhost", "mainnet-beta").Cluster(); got != "mainnet-beta" {
+		t.Fatalf("cluster = %q", got)
+	}
+}
