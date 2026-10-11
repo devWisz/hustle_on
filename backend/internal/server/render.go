@@ -167,4 +167,3 @@ func listErr(err error, what string) error {
 	}
 	return storeErr(err, what)
 }
-

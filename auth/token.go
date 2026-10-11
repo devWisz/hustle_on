@@ -12,7 +12,6 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base32"
 	"encoding/base64"
 	"errors"
