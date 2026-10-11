@@ -40,11 +40,17 @@ const (
 	budgetPoster = "poster"
 	// budgetDonate covers recording and confirming sponsorship intents.
 	budgetDonate = "donate"
-	// budgetAuth covers requesting a sign-in link. Tight, because each request
-	// can send an email.
+	// budgetAuth covers asking for a sign-in challenge. It used to be extremely
+	// tight because each request sent an email, and the point of the limit was to
+	// stop somebody using us to fill a stranger's inbox. With sign-in a wallet
+	// signature there is nothing to send and nobody to flood: the request writes
+	// one short-lived nonce, and the number of those is already capped per address
+	// by MaxChallengeAttempts. What is left is ordinary abuse protection, so the
+	// allowance is sized for a person who mistypes, cancels a wallet prompt and
+	// tries again — not for a person who must not be allowed a second attempt.
 	budgetAuth = "auth"
-	// budgetVerify covers consuming a sign-in token. Tight, because it is the
-	// endpoint that guesses secrets.
+	// budgetVerify covers spending a sign-in challenge. It is the endpoint that
+	// checks a signature, so it stays the tighter of the two.
 	budgetVerify = "verify"
 	// budgetAdmin covers operator console reads. Higher than a public read
 	// because the console loads several lists at once.
@@ -57,8 +63,7 @@ type budget struct {
 	limiter *ratelimit.Limiter
 	// byIPOnly charges the caller's address even when they are signed in. The
 	// sign-in endpoints need this: they are anonymous by definition, so keying
-	// them on a user id would let one account bypass the limit that exists to
-	// stop that account from spamming an inbox.
+	// them on a user id would let one account bypass the limit entirely.
 	byIPOnly bool
 	// message is what an exhausted caller is told. It says which budget they
 	// ran out of, because "try again shortly" on its own is not actionable.
@@ -93,8 +98,8 @@ func buildBudgets(cfg config.Config) map[string]*budget {
 			"Too many sponsorship attempts. Wait a moment and try again."),
 		mk(budgetAuth, cfg.RateLimitAuth, true,
 			"Too many sign-in attempts from here. Wait a moment and try again."),
-		mk(budgetVerify, cfg.RateLimitAuth, true,
-			"Too many attempts to use a sign-in link. Request a new one and try again."),
+		mk(budgetVerify, cfg.RateLimitAuth/2, true,
+			"Too many sign-in attempts from here. Wait a moment and try again."),
 		mk(budgetAdmin, cfg.RateLimitAdmin, false,
 			"Too many console requests. Wait a moment and try again."),
 	}

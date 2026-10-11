@@ -32,7 +32,7 @@ record yourself ──▶ make a timelapse ──▶ upload with a write-up ─�
 |---|---|
 | **Nothing publishes itself** | `published` is set by one statement behind the admin role, and every decision is audited |
 | **Rejections carry a reason** | Enforced by the API and a database constraint; creators read it on their dashboard and can edit and resubmit |
-| **Sponsorships never touch us** | SOL moves wallet to wallet: no keys held, no cut taken, verified on-chain before it is counted |
+| **Sponsorships are verified, not taken on trust** | SOL moves wallet to wallet with no custody, and a sponsorship is counted only once the chain confirms it |
 | **Nothing is destroyed quietly** | The API cannot `DELETE` an account, a session or a sponsorship, and the audit trail refuses `UPDATE` and `DELETE` even from the owner |
 
 ## Project structure
@@ -40,9 +40,10 @@ record yourself ──▶ make a timelapse ──▶ upload with a write-up ─�
 ```
 hustleon/
 ├── backend/        # Go HTTP API, the only writer to the database
-├── auth/           # Go module: sign-in links, sessions, CSRF, wallet proofs
+├── auth/           # Go module: wallet sign-in, sessions, CSRF, wallet proofs
 ├── frontend/       # Next.js app: public site, creator dashboard, admin console
 ├── database/       # Postgres migrations and seed data
+├── contracts/      # Anchor sponsorship program (hustleon_pay)
 ├── docs/           # Architecture, workflow, security, deployment, decision records
 ├── scripts/        # Developer tooling, including the seed generator
 ├── Dockerfile      # API image (build context is the repository root)
@@ -54,7 +55,6 @@ hustleon/
 **For creators**
 - Upload with drag and drop, a live preview, and a checklist of what reviewers look for
 - A dashboard with every submission, its status and the reviewer's note
-- An email when a session is approved or sent back, with the reviewer's note
 - Edit and resubmit anything that was sent back, or withdraw a session at any time
 - Sponsorships received, a verified payout wallet, and saved sessions
 
@@ -106,11 +106,12 @@ like before and after a reorder.
 
 ### Become an admin
 
-Roles are granted in the database on purpose, so no bug in an endpoint can create one:
-
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
-```
+Admin access is granted by the environment, not by a database row, so no bug in an
+endpoint can create one. Put your Solana address in `ADMIN_WALLETS` and restart the
+API: the first time that wallet signs in it is promoted to `role = 'admin'`, and
+the promotion is written to the audit log. `ADMIN_WALLETS` is required in
+production and validated at boot, so a typo stops the process with the offending
+value named rather than leaving nobody able to reach the console.
 
 ## Cookies
 
@@ -129,17 +130,18 @@ account: the API never sees the cookie, and uploading, commenting, saving and th
 console all still require a session. Reaching one of them as a guest explains what
 the account is for instead of bouncing to a form.
 
-A banner on the first visit asks whether preferences (theme, recent searches,
-saved sessions while signed out) may be remembered on the device. Choosing
-"Essential only" deletes them. The full list is on the `/cookies` page, and the
-choice can be changed from **Cookie settings** in the footer.
+A banner on the first visit asks whether preferences (theme and recent searches)
+may be remembered on the device. Choosing "Essential only" deletes them. The full
+list is on the `/cookies` page, and the choice can be changed from **Cookie
+settings** in the footer. Saved sessions are not one of those preferences: they
+live on the account, on the server, and never in the browser.
 
 ## Security
 
 The short version; [docs/security.md](docs/security.md) is the real one.
 
-- **No passwords exist**, so none can leak. Sign-in is a single-use emailed link,
-  and sessions are stored as SHA-256 digests.
+- **No passwords exist**, so none can leak. Sign-in is a Solana wallet signature
+  over a single-use, short-lived nonce, and sessions are stored as SHA-256 digests.
 - **Every state-changing request** passes one CSRF middleware (an allowlisted
   `Origin` plus a double-submit token bound to the session) before any handler runs.
 - **Rate limits are per class of work**: reads, writes, uploads, sponsorships,
@@ -157,7 +159,7 @@ The short version; [docs/security.md](docs/security.md) is the real one.
   the migration ledger, and carries a statement timeout. `make preflight` checks
   all of that from the live connection, because a role name in an environment
   variable proves nothing about what the role can do.
-- **Production refuses to degrade**: no Resend key, no storage credentials or a
+- **Production refuses to degrade**: no admin wallet, no storage credentials or a
   non-mainnet cluster all fail at startup.
 
 ## Quick start
@@ -166,14 +168,15 @@ The short version; [docs/security.md](docs/security.md) is the real one.
 cp .env.example .env          # fill in DATABASE_URL, SESSION_SECRET, INTERNAL_PROXY_SECRET
 make setup                    # install dependencies
 make db-migrate               # apply migrations
-make db-seed                  # optional: empties the tables and creates one admin account
+make db-seed                  # optional: empties every table and creates nothing
 scripts/create-api-role.sh --write-env   # the API's least-privilege login role
 make dev                      # API on :8085, web on :3001
 ```
 
-Locally there is no email provider, object storage or SOL to set up: sign-in
-links print to the API log and uploads write to disk. None of these shortcuts
-exist in production.
+Locally there is nothing external to set up: sign-in is a wallet signature, so a
+browser wallet is enough, and uploads write to disk. The dev seed creates no
+accounts at all — put your own wallet in `ADMIN_WALLETS` and sign in with it to
+get an operator account. None of these shortcuts exist in production.
 
 Every list on the site is built from real records, so an empty site renders empty
 states that say what will appear there. There is no fallback content and no
@@ -185,7 +188,7 @@ somebody uploads one and a reviewer approves it.
 
 | Piece | Where | Key settings |
 |---|---|---|
-| API | Render, from `render.yaml` | `DATABASE_URL`, `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS`, `SESSION_COOKIE_DOMAIN`, `INTERNAL_PROXY_SECRET`, `TRUSTED_PROXY_HOPS=1` |
+| API | Render, from `render.yaml` | `DATABASE_URL`, `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS`, `SESSION_COOKIE_DOMAIN`, `ADMIN_WALLETS`, `HUSTLEON_PAY_PROGRAM_ID`, `INTERNAL_PROXY_SECRET`, `TRUSTED_PROXY_HOPS=1` |
 | Web | Vercel, project root `frontend` | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `INTERNAL_PROXY_SECRET` |
 | Database | Neon | pooled URL for the API, direct URL for migrations |
 
@@ -194,18 +197,14 @@ The web app and the API must share a registrable domain (for example
 `NEXT_PUBLIC_API_URL` is baked in at build time, so redeploy the web app after
 changing it. The full checklist is in [docs/deployment.md](docs/deployment.md).
 
-## Email
+## Sponsorships on chain
 
-Sign-in links and review decisions are sent through [Resend](https://resend.com).
-To switch email on in production:
-
-1. Verify a sending domain in Resend and create an API key (it starts with `re_`).
-2. On Render, set `RESEND_API_KEY` and set `EMAIL_FROM` to an address on the verified
-   domain, for example `Hustle On <login@yourdomain.com>`.
-3. Set `APP_ENV=production` and redeploy. Production refuses to start without a key,
-   so a missing one fails loudly instead of silently dropping mail.
-
-Until then the API writes sign-in links to its log.
+Sponsorships are recorded by the deployed Anchor program `hustleon_pay` when
+`HUSTLEON_PAY_PROGRAM_ID` is set: the `sponsor` instruction moves the SOL, emits
+an on-chain receipt anyone can read, and routes a platform fee to a treasury.
+With the variable empty the API falls back to verifying a plain SOL transfer,
+which is correct but leaves nothing on chain. Build, deploy and verification
+detail is in [contracts/README.md](contracts/README.md).
 
 ## Tech stack
 
@@ -214,8 +213,8 @@ Until then the API writes sign-in links to its log.
 | **Frontend** | Next.js 15.5, React 19, Tailwind CSS 4, GSAP |
 | **Backend** | Go, net/http |
 | **Database** | PostgreSQL on Neon |
-| **Payments** | Solana (wallet to wallet, no custody) |
-| **Auth** | Magic links, CSRF tokens, wallet signature proofs |
+| **Payments** | Solana (wallet to wallet, no custody); the `hustleon_pay` program records sponsorships on chain |
+| **Auth** | Solana wallet signatures, CSRF tokens, digest-only sessions |
 
 ## Documentation
 

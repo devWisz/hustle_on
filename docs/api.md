@@ -33,8 +33,8 @@ session cookie is present, the `X-Hustleon-CSRF` header whose value is the
 `credentials: "include"`.
 
 The check runs in one middleware for the whole API, before any handler, so it
-cannot be forgotten on a new endpoint. A request with no session — requesting a
-sign-in link — is protected by the origin check alone, because there is no
+cannot be forgotten on a new endpoint. A request with no session — asking for a
+sign-in challenge — is protected by the origin check alone, because there is no
 session for a token to be bound to.
 
 Request bodies reject unknown fields, and the error names the field that was not
@@ -106,8 +106,8 @@ ignored.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/v1/auth/request-link` | `{ email, next? }`. Always 202, whatever happened |
-| `POST` | `/v1/auth/verify` | `{ token }`. Sets the session and CSRF cookies |
+| `POST` | `/v1/auth/signin/challenge` | `{ address }` → `{ message, nonce, issuedAt }`. The exact text to sign. 200, and it looks up no account |
+| `POST` | `/v1/auth/signin/verify` | `{ address, nonce, signature, issuedAt }`. Sets the session and CSRF cookies and returns the profile; creates the account the first time the address signs in |
 | `POST` | `/v1/auth/logout` | Revokes the session |
 | `GET` | `/v1/auth/session` | `{ authenticated, user? }`. Never fails |
 
@@ -221,8 +221,8 @@ working: the API signs the link on the way out.
 
 ### The profile step
 
-Signing in creates an account from an email address: a handle derived from it and
-a display name identical to that handle. That is enough to own a session and not
+Signing in creates an account from a Solana address: a generated placeholder
+handle and a display name identical to it. That is enough to own a session and not
 enough to be credited for one, so `GET /v1/me` (and `/v1/auth/session`) reports
 `onboarded`, and the client sends an un-onboarded account to the profile step
 once. `POST /v1/me/onboarding` writes the handle, display name, bio and picture
@@ -280,10 +280,10 @@ application role is not granted either privilege. See
 
 Limits are per **class of work**, not per API. A single global budget has to be
 set to whatever the busiest endpoint needs, which would let the most expensive
-endpoint to abuse — requesting a sign-in link, which sends mail — run at the same
-rate as reading the feed. Each route in `routes.go` names the budget it is
-charged against, so the route table doubles as the rate-limit policy and a new
-endpoint cannot be added without choosing one.
+endpoint to abuse — a sign-in challenge, which is anonymous and cheap to mint in
+bulk — run at the same rate as reading the feed. Each route in `routes.go` names
+the budget it is charged against, so the route table doubles as the rate-limit
+policy and a new endpoint cannot be added without choosing one.
 
 | Budget | Default/min | Charged to | Covers |
 | --- | --- | --- | --- |
@@ -293,15 +293,15 @@ endpoint cannot be added without choosing one.
 | upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing a video upload URL |
 | poster | `RATE_LIMIT_POSTER` 60 | caller | Issuing a poster-image upload URL, which is admin-only and small |
 | donate | `RATE_LIMIT_DONATE` 10 | caller | Recording and confirming a sponsorship |
-| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Requesting a sign-in link |
-| verify | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Consuming a sign-in token |
+| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Asking for a sign-in challenge |
+| verify | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Verifying a sign-in signature |
 | admin | `RATE_LIMIT_ADMIN` 240 | caller | Operator console reads and decisions |
 
 "Caller" means the account id when a session is present and the address
 otherwise — the reason the limiter sits *after* session resolution. The two
 sign-in budgets are always charged to the address: they are anonymous by
-definition, and keying them on an account would let one session send as much mail
-as it liked.
+definition, and keying them on an account would let one session mint as many
+challenges as it liked.
 
 Two coarser layers sit above and below this:
 

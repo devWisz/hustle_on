@@ -182,8 +182,13 @@ func Load() (Config, error) {
 		UploadURLTTL:         time.Duration(envInt("UPLOAD_URL_TTL_MINUTES", 15)) * time.Minute,
 
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 300),
-		// Sign-in attempts get their own, far tighter budget than page traffic.
-		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 5),
+		// Sign-in attempts get their own budget, tighter than page traffic but
+		// sized for a person: the token bucket hands out a quarter of this as a
+		// burst, so 5 meant one attempt and then a twelve-second wait. That was
+		// right when each attempt sent an email; with a wallet signature there is
+		// nothing to send, and locking somebody out of their own account for
+		// cancelling a wallet prompt is not security.
+		RateLimitAuth: envInt("RATE_LIMIT_AUTH_ATTEMPTS", 20),
 		// Per-endpoint budgets. A feed read is cheap and a page render can fan
 		// out into several, so read/write stay generous; issuing an upload URL,
 		// recording a sponsorship and consuming a sign-in token are the

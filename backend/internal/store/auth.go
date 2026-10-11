@@ -16,6 +16,13 @@ var _ auth.Store = (*Store)(nil)
 const authUserColumns = `u.id::text, COALESCE(u.wallet_address::text, ''), u.handle::text,
 	u.display_name, u.role::text, u.status::text`
 
+// The same projection without the table alias. `INSERT ... RETURNING` has no
+// alias to qualify against, and using the aliased list there fails at runtime
+// with "missing FROM-clause entry" — which no unit test would have caught,
+// because the rule they exercise lives above the SQL.
+const authUserColumnsBare = `id::text, COALESCE(wallet_address::text, ''), handle::text,
+	display_name, role::text, status::text`
+
 func (s *Store) UserByID(ctx context.Context, id string) (auth.User, error) {
 	return s.scanAuthUser(ctx, `SELECT `+authUserColumns+` FROM users u WHERE u.id = $1`, id)
 }
@@ -50,7 +57,7 @@ func (s *Store) CreateUser(ctx context.Context, walletAddress, handle, displayNa
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO users (wallet_address, handle, display_name)
 		VALUES ($1, $2, $3)
-		RETURNING `+authUserColumns,
+		RETURNING `+authUserColumnsBare,
 		walletAddress, handle, displayName).Scan(
 		&u.ID, &u.WalletAddress, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
 	if err != nil {

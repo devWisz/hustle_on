@@ -70,11 +70,11 @@ func (s *Server) handleAdminReports(w http.ResponseWriter, r *http.Request) erro
 	default:
 		return apierr.BadRequest("Unknown status filter.")
 	}
-	items, err := s.store.Reports(r.Context(), status, queryInt(r, "limit", 100, 1, 300))
+	page, err := s.store.Reports(r.Context(), status, pageQuery(r, 100, 300))
 	if err != nil {
-		return storeErr(err, "Reports")
+		return listErr(err, "Reports")
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	return writeJSON(w, http.StatusOK, page)
 }
 
 type resolveBody struct {

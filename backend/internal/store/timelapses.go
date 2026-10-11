@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -161,21 +162,39 @@ func (q FeedQuery) rankOf(t domain.Timelapse) int64 {
 	}
 }
 
-// keysetPredicate is the "resume after the row the cursor names" clause.
+// keyset is the "resume after the row the cursor names" clause, and the arguments
+// it needs, for this order.
 //
 // Every order pages. The ranked orders used to return a single page instead,
 // because their sort column moves underneath the reader — a donation lands, a
 // view is counted — and a cursor over a moving value can show a row twice or
-// miss one between pages. That is a real effect and it is the price of being able
-// to see past the twelfth most-funded session at all; the alternative was a tab
-// that silently stopped and gave no sign it had. The key includes the ranking
+// miss one between pages. That is a real effect, and it is the price of being
+// able to see past the twelfth most-funded session at all; the alternative was a
+// tab that silently stopped and gave no sign it had. The key includes the ranking
 // value, so a row is at least never skipped for merely tying with the last one
 // seen.
-func (q FeedQuery) keysetPredicate() string {
+//
+// The arguments are returned alongside the clause rather than assembled from the
+// same fixed list, because the two orders do not use the same parameters: the
+// default order has no ranking value at all, and passing one anyway leaves
+// Postgres unable to infer a type for it — "could not determine data type of
+// parameter $1" — on the most-travelled query in the application.
+func (q FeedQuery) keyset() (clause string, args []any, err error) {
 	if q.Sort == FeedRecent {
-		return "$2::timestamptz IS NULL OR (t.published_at, t.id) < ($2, $3::uuid)"
+		before, beforeID, err := decodeTimeIDCursor(q.Cursor)
+		if err != nil {
+			return "", nil, err
+		}
+		return "$1::timestamptz IS NULL OR (t.published_at, t.id) < ($1, $2::uuid)",
+			[]any{before, beforeID}, nil
 	}
-	return "$2::timestamptz IS NULL OR (" + q.rankColumn() + ", t.published_at, t.id) < ($1, $2, $3::uuid)"
+
+	rank, before, beforeID, err := decodeIntTimeIDCursor(q.Cursor)
+	if err != nil {
+		return "", nil, err
+	}
+	return "$2::timestamptz IS NULL OR (" + q.rankColumn() + ", t.published_at, t.id) < ($1, $2, $3::uuid)",
+		[]any{rank, before, beforeID}, nil
 }
 
 // cursorFor mints the cursor to resume from, in the shape this order pages by.
@@ -195,32 +214,28 @@ func (q FeedQuery) cursorFor(t domain.Timelapse) string {
 // donation landing between two page loads cannot shuffle a row from page two
 // onto page one, and the cost of page fifty is the same as page one.
 func (s *Store) Feed(ctx context.Context, q FeedQuery) (domain.Page[domain.Timelapse], error) {
-	var (
-		rank     *int64
-		before   *time.Time
-		beforeID *string
-		err      error
-	)
-	if q.Sort == FeedRecent {
-		before, beforeID, err = decodeTimeIDCursor(q.Cursor)
-	} else {
-		rank, before, beforeID, err = decodeRankCursor(q.Cursor)
-	}
+	clause, args, err := q.keyset()
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, err
 	}
 
+	// The cursor's parameters come first, so the two that follow are numbered
+	// after however many of them there were.
+	limitParam := fmt.Sprintf("$%d", len(args)+1)
+	searchParam := fmt.Sprintf("$%d", len(args)+2)
+	args = append(args, q.Limit+1, likePattern(q.Search))
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE t.status = 'published'
-		  AND (`+q.keysetPredicate()+`)
-		  AND ($5::text IS NULL
-		       OR t.title ILIKE $5 ESCAPE '\'
-		       OR t.summary ILIKE $5 ESCAPE '\'
-		       OR u.display_name ILIKE $5 ESCAPE '\'
-		       OR u.handle::text ILIKE $5 ESCAPE '\')
+		  AND (`+clause+`)
+		  AND (`+searchParam+`::text IS NULL
+		       OR t.title ILIKE `+searchParam+` ESCAPE '\'
+		       OR t.summary ILIKE `+searchParam+` ESCAPE '\'
+		       OR u.display_name ILIKE `+searchParam+` ESCAPE '\'
+		       OR u.handle::text ILIKE `+searchParam+` ESCAPE '\')
 		ORDER BY `+q.orderBy()+`
-		LIMIT $4`, rank, before, beforeID, q.Limit+1, likePattern(q.Search))
+		LIMIT `+limitParam, args...)
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}

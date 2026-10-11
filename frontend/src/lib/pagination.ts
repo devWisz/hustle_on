@@ -1,5 +1,5 @@
 import { api } from "./api/client";
-import type { Donation, Note, Page, Timelapse } from "./types";
+import type { AdminNote, Donation, Note, Page, Report, Timelapse } from "./types";
 
 /**
  * The pages after the first one.
@@ -20,6 +20,13 @@ export const MY_SUBMISSIONS_PAGE_SIZE = 50;
 export const MY_SPONSORSHIPS_PAGE_SIZE = 50;
 export const SUPPORTERS_PAGE_SIZE = 20;
 export const NOTES_PAGE_SIZE = 100;
+/**
+ * The moderation inbox's bound. It is the endpoint's own maximum because the
+ * console's server render asks for a wide first slice — the overview counts
+ * open reports from it — and every page after that should continue at the same
+ * size.
+ */
+export const REPORTS_PAGE_SIZE = 300;
 
 function pagePath(path: string, limit: number, cursor?: string): string {
   const params = new URLSearchParams({ limit: String(limit) });
@@ -54,4 +61,24 @@ export function fetchSupporters(slug: string, cursor?: string): Promise<Page<Don
 /** The peer notes on a published session, newest first. */
 export function fetchTimelapseNotes(slug: string, cursor?: string): Promise<Page<Note>> {
   return api<Page<Note>>(pagePath(`/v1/timelapses/${slug}/notes`, NOTES_PAGE_SIZE, cursor));
+}
+
+/** The notes left across every published session, newest first, for moderation. */
+export function fetchAdminNotes(cursor?: string): Promise<Page<AdminNote>> {
+  return api<Page<AdminNote>>(pagePath("/v1/admin/notes", NOTES_PAGE_SIZE, cursor));
+}
+
+/**
+ * The reports inbox. `status` is written into the query on every call, empty
+ * meaning "everything", because the cursor is only meaningful within one
+ * filtered ordering: a later page that dropped the filter would be reading its
+ * keyset against a different list.
+ */
+export function fetchAdminReports(
+  cursor: string | undefined,
+  status: string,
+): Promise<Page<Report>> {
+  const params = new URLSearchParams({ status, limit: String(REPORTS_PAGE_SIZE) });
+  if (cursor) params.set("cursor", cursor);
+  return api<Page<Report>>(`/v1/admin/reports?${params}`);
 }

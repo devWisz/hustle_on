@@ -177,7 +177,16 @@ func (s *Store) Activity(ctx context.Context, days int) ([]domain.ActivityDay, e
 }
 
 // RecentNotes lists the newest notes across every session, for moderation.
-func (s *Store) RecentNotes(ctx context.Context, limit int) ([]domain.AdminNote, error) {
+//
+// Paged on (created_at, id). Moderation is a list somebody works down, and the
+// caps this used to have — a fixed 200 and no way past it — meant a busy site
+// could hide a note simply by being busy.
+func (s *Store) RecentNotes(ctx context.Context, q PageQuery) (domain.Page[domain.AdminNote], error) {
+	before, beforeID, err := decodeCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.AdminNote]{}, err
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT n.id::text, n.body, n.timestamp_seconds, n.helpful_count, n.created_at,
 		       u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, ''),
@@ -185,10 +194,11 @@ func (s *Store) RecentNotes(ctx context.Context, limit int) ([]domain.AdminNote,
 		FROM timelapse_notes n
 		JOIN users u ON u.id = n.author_id
 		JOIN timelapses t ON t.id = n.timelapse_id
-		ORDER BY n.created_at DESC
-		LIMIT $1`, limit)
+		WHERE ($1::timestamptz IS NULL OR (n.created_at, n.id) < ($1, $2::uuid))
+		ORDER BY n.created_at DESC, n.id DESC
+		LIMIT $3`, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.AdminNote]{}, normalize(err)
 	}
 	defer rows.Close()
 
@@ -198,11 +208,16 @@ func (s *Store) RecentNotes(ctx context.Context, limit int) ([]domain.AdminNote,
 		if err := rows.Scan(&n.ID, &n.Body, &n.TimestampSeconds, &n.HelpfulCount, &n.CreatedAt,
 			&n.Author.ID, &n.Author.Handle, &n.Author.DisplayName, &n.Author.AvatarURL,
 			&n.Timelapse.Slug, &n.Timelapse.Title); err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.AdminNote]{}, normalize(err)
 		}
 		out = append(out, n)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.AdminNote]{}, normalize(err)
+	}
+	return pageOf(out, q.Limit, func(n domain.AdminNote) string {
+		return encodeKeyset(keysetTime(n.CreatedAt), n.ID)
+	}), nil
 }
 
 // --- operator corrections -------------------------------------------------

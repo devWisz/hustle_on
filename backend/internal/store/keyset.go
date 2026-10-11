@@ -91,15 +91,16 @@ func decodeTimeIDCursor(cursor string) (at *time.Time, id *string, err error) {
 	return &when, &parts[1], nil
 }
 
-// decodeRankCursor decodes the three-field cursor a ranked list uses: the
-// ranking value, the timestamp, and the row id.
+// decodeIntTimeIDCursor decodes the three-field cursor used by an order that
+// leads with an integer: the ranking value or grouping bucket, the timestamp, and
+// the row id.
 //
-// The ranking value is part of the key because it is the first thing the order
-// sorts on. A cursor without it could only say "after this timestamp", which is
-// not where the reader stopped: plenty of sessions share a donation total, and
-// resuming on the timestamp would skip every one of them that ranked level with
+// The integer is part of the key because it is the first thing the order sorts
+// on. A cursor without it could only say "after this timestamp", which is not
+// where the reader stopped: plenty of rows share a donation total or a status,
+// and resuming on the timestamp alone would skip every one of them that matched
 // the last row seen.
-func decodeRankCursor(cursor string) (rank *int64, at *time.Time, id *string, err error) {
+func decodeIntTimeIDCursor(cursor string) (rank *int64, at *time.Time, id *string, err error) {
 	parts, err := decodeKeyset(cursor, 3)
 	if err != nil || parts == nil {
 		return nil, nil, nil, err

@@ -8,6 +8,7 @@ import {
   MY_SPONSORSHIPS_PAGE_SIZE,
   MY_SUBMISSIONS_PAGE_SIZE,
   NOTES_PAGE_SIZE,
+  REPORTS_PAGE_SIZE,
   SUPPORTERS_PAGE_SIZE,
 } from "./pagination";
 import type {
@@ -214,7 +215,11 @@ export interface AdminData {
   ledger: LedgerEntry[];
   activity: ActivityDay[];
   notes: AdminNote[];
+  /** Where the notes list continues; absent when the first page is the last. */
+  notesCursor?: string;
   reports: Report[];
+  /** Where the reports inbox continues; absent when the first page is the last. */
+  reportsCursor?: string;
   stats: Stats;
 }
 
@@ -225,9 +230,13 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
     return viewer.adminAccess;
   }
   if (viewer.user?.role === "admin") {
-    // The console is the one surface that needs the whole set rather than a
-    // page of it, so these walk the API's cursor to the end instead of asking
-    // for one very large page — the server keeps its bound either way.
+    // Most of the console needs the whole set rather than a page of it, so
+    // these walk the API's cursor to the end instead of asking for one very
+    // large page — the server keeps its bound either way.
+    //
+    // Notes and reports are the exception: each has a page of its own with a
+    // pager, so the console renders one page at the shared size and hands the
+    // cursor down. The overview reads those same arrays only as slices.
     const [queue, audit, library, shelf, members, ledger, activity, notes, reports, stats] =
       await Promise.all([
         apiServerAllPages<Timelapse>("/v1/admin/queue?limit=100", 0),
@@ -237,8 +246,8 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
         apiServerAllPages<AdminMember>("/v1/admin/members?limit=200", 0),
         apiServerAllPages<LedgerEntry>("/v1/admin/ledger?limit=200", 0),
         apiServer<Page<ActivityDay>>("/v1/admin/activity?days=30", 0),
-        apiServer<Page<AdminNote>>("/v1/admin/notes?limit=200", 0),
-        apiServer<Page<Report>>("/v1/admin/reports?limit=300", 0),
+        apiServer<Page<AdminNote>>(`/v1/admin/notes?limit=${NOTES_PAGE_SIZE}`, 0),
+        apiServer<Page<Report>>(`/v1/admin/reports?limit=${REPORTS_PAGE_SIZE}`, 0),
         liveStats(),
       ]);
     return {
@@ -253,7 +262,9 @@ export const getAdmin = cache(async (): Promise<AdminData | AdminAccess | "forbi
       ledger: ledger?.items ?? [],
       activity: activity?.items ?? [],
       notes: notes?.items ?? [],
+      notesCursor: notes?.nextCursor,
       reports: reports?.items ?? [],
+      reportsCursor: reports?.nextCursor,
       stats: stats ?? {
         creators: 0,
         publishedTimelapses: 0,

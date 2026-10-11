@@ -12,7 +12,7 @@ export default async function ReportsPage() {
       title="Reports"
       description="Sessions and notes people have flagged. Closing a report, and anything you remove because of it, is recorded in the audit trail."
     >
-      <ReportsInbox initial={data.reports} />
+      <ReportsInbox initial={data.reports} initialCursor={data.reportsCursor} />
     </AdminPage>
   );
 }

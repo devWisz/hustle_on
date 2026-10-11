@@ -1,15 +1,19 @@
 # Authentication
 
-Hustle On has two kinds of proof, and they answer different questions.
+Hustle On has two wallet signatures, and they answer different questions.
 
-| Proof | Answers | Lives in |
+| Signature | Answers | Lives in |
 | --- | --- | --- |
-| **Email link** | Who is this account? | `auth/magiclink.go`, `auth/session.go` |
-| **Wallet signature** | Which key should be paid? | `auth/wallet.go` |
+| **Sign-in** | Who is this account? | `auth/signin.go`, `auth/session.go` |
+| **Payout proof** | Which key should be paid? | `auth/wallet.go` |
 
-They are deliberately separate. Signing in never touches a wallet, and proving
-a wallet never signs you in. Someone who compromises an inbox cannot move
-anybody's SOL, because the payout address is pinned to a key they do not hold.
+They are deliberately separate. The message a wallet signs to sign in names the
+product and the site, carries a one-time nonce, and — in as many words —
+authorises no transfer and moves no funds. Recording a payout address is a
+second, different proof over a message the server rebuilds from its own stored
+nonce, so the signature that got somebody signed in is not the signature that
+decides where their SOL goes. The payout address is pinned to a key, and
+claiming one already held elsewhere is a conflict rather than a transfer.
 
 There is no password anywhere in the system. There is no column for one, so
 there is nothing to leak, reset, reuse across sites, or phish.
@@ -19,16 +23,16 @@ there is nothing to leak, reset, reuse across sites, or phish.
 ## Signing in
 
 ```
-  POST /v1/auth/request-link          { email }
-       │
-       │  a 32-byte token is generated;
-       │  only its SHA-256 digest is stored
+  POST /v1/auth/signin/challenge      { address }
+       │  a nonce is generated and stored against the address;
+       │  the exact text to sign comes back
        ▼
-  email ── https://…/auth/verify?token=<secret> ──▶ the browser
+  wallet.signMessage(message)         ← authorises no transfer
        │
        ▼
-  POST /v1/auth/verify                { token }
-       │  digest looked up, marked consumed, session created
+  POST /v1/auth/signin/verify         { address, nonce, signature, issuedAt }
+       │  signature checked, nonce consumed atomically,
+       │  the account is found or created
        ▼
   Set-Cookie: hustleon_session       (HttpOnly, Secure, SameSite=Lax)
   Set-Cookie: hustleon_session_csrf  (readable, by design)
@@ -36,28 +40,41 @@ there is nothing to leak, reset, reuse across sites, or phish.
 
 ### What each step guarantees
 
-**The reply never varies.** `request-link` answers with the same message for an
-unknown address, an existing account and a suspended one. Varying it would turn
-the endpoint into a way to ask "does this person have an account here?"
+**The challenge is not a directory.** `signin/challenge` looks up no account. It
+answers identically for an address that has one and an address that has never
+been seen, so it cannot be asked "does this wallet have an account here?"
 
-**The token is stored as a digest.** The plaintext exists in exactly one place:
-the recipient's inbox. A dump of `magic_link_tokens` grants nobody a session.
+**The message is rebuilt on the server.** The text to sign is rendered from the
+stored nonce and the address rather than accepted from the request, so a caller
+cannot present a signature over text of their own choosing and have it count.
+It names the product and the site's origin, which makes it meaningless anywhere
+else: a signature harvested by a lookalike cannot be replayed here.
 
-**The link works once.** `ConsumeMagicLink` marks the row used inside the same
-`UPDATE` that reads it, with `consumed_at IS NULL` in the predicate. Two
-concurrent requests race on the row lock and only the first gets a row back.
+**The nonce is single-use.** `ConsumeSignInChallenge` marks the challenge spent
+inside the same `UPDATE` that reads it, with `consumed_at IS NULL` in the
+predicate. Two concurrent presentations of the same signature race on the row
+lock and only the first gets a row back. A signature is not a secret, so this is
+the only thing standing between a captured one and a second session.
 
-**Fifteen minutes.** Long enough to walk to another device, short enough that a
-link sitting in a mail archive is worthless.
+**The signature is checked before the nonce is spent.** A wallet that signed
+slightly different text — a dropped character, a trimmed newline — does not burn
+the challenge and force the person to start again. It is still single-use: only a
+verified request reaches the consume, and a replay loses the race above.
 
-**The account is created on verification, not on request.** Asking for a link
-for an address you do not control creates nothing, so an unverified address can
-never occupy a handle.
+**Five minutes.** `SIGNIN_CHALLENGE_TTL_MINUTES` (default 5) is how long a nonce
+stays signable. Short on purpose: it only has to outlive the moment between the
+request and the signature.
 
-**`next` must be a local path.** `SafeRedirectPath` rejects absolute URLs,
-protocol-relative `//host` forms and anything with a newline in it. Without
-that check, an emailed link is an open redirect that lands a freshly
-authenticated visitor on somebody else's page.
+**Sign-up and sign-in are the same act.** An address that has never been seen
+gets an account in the same request, because the signature that proves who they
+are is the same signature that would be needed to claim a pre-made account. A
+challenge for an address nobody controls creates nothing, so an unverified
+address can never occupy a handle or a session.
+
+**`next` must be a local path.** The login page runs it through `safeNext`,
+which accepts only a single-slash path and rejects protocol-relative `//host`
+and backslash forms. Without that check, a crafted `?next=` is an open redirect
+that lands a freshly signed-in visitor on somebody else's page.
 
 ---
 
@@ -72,8 +89,8 @@ The cookie's flags are the security model, not decoration:
 - **`HttpOnly`** — no script on the page can read it, so an XSS bug cannot
   exfiltrate a session.
 - **`Secure`** — it never crosses a plaintext connection.
-- **`SameSite=Lax`** — a cross-site `POST` cannot carry it, while a top-level
-  navigation from the emailed link still works.
+- **`SameSite=Lax`** — a cross-site `POST` cannot carry it, while an ordinary
+  top-level navigation still can.
 - **Host-only** (`Path=/`, no `Domain`) — subdomains never receive it.
 
 `attachSession` resolves the cookie on every request and puts the account on the
@@ -102,7 +119,7 @@ the matching token.
 
 Both checks run in a single middleware in front of the whole API rather than in
 each handler, so a new state-changing endpoint is covered by existing rather than
-by remembering. A request with no session — requesting a sign-in link — is
+by remembering. A request with no session — asking for a sign-in challenge — is
 protected by the origin check alone, since there is no session to bind a token to.
 
 If a valid session arrives without its CSRF cookie, the API reissues it on that
@@ -161,24 +178,29 @@ actor, the subject and the reason.
 The frontend's `/admin` page returns **404**, not 403, to a signed-in member. A
 403 confirms that the page exists.
 
-Roles are granted in the database, deliberately. There is no endpoint that
-promotes an account, so a bug in one cannot create an admin:
-
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
-```
+Admin access is a property of the environment, not of a database row. A wallet
+listed in `ADMIN_WALLETS` is promoted to `role = 'admin'` the first time it signs
+in, and the promotion is written to `audit_log` with `source: ADMIN_WALLETS`.
+There is no endpoint that promotes an account, so a bug in one cannot create an
+admin — and because the list lives in the environment, restoring a backup or
+provisioning a new deployment cannot silently drop the only person who can
+review anything. Every address is validated at boot and `config.Load` refuses to
+start a production process without at least one, so a typo names the offending
+value instead of leaving nobody able to reach the console.
 
 ---
 
 ## The profile step
 
-Verifying an address creates the account: a handle derived from the local part of
-the email, and a display name identical to it. That is enough to own a session
-and not enough to be credited for one, so the address is verified first and the
-name is asked for immediately afterwards, once (`users.onboarded_at`). Everything
-in it is public and editable later; an account that has not been through it is
-sent to `/welcome` before it can upload or open its dashboard, rather than
-publishing work under a name nobody chose.
+The first sign-in creates the account: a generated placeholder handle and a
+display name identical to it. The handle is generated rather than asked for,
+because a form between somebody and the account they have just proved they own is
+ceremony, and the handle is public decoration that onboarding replaces a moment
+later. That much is enough to own a session and not enough to be credited for
+one, so the name is asked for immediately afterwards, once
+(`users.onboarded_at`). Everything in it is public and editable later; an account
+that has not been through it is sent to `/welcome` before it can upload or open
+its dashboard, rather than publishing work under a name nobody chose.
 
 ## Wallet linking
 
@@ -202,7 +224,7 @@ the same proof loses the race and is refused.
 | --- | --- | --- |
 | Reading | 300/min per caller | `RATE_LIMIT_ANON`; also the backstop on every route |
 | Sign-in and sign-in tokens | 5/min per **address** | `RATE_LIMIT_AUTH_ATTEMPTS` |
-| Links per email | 5/hour | Stops mailbox flooding via our sender |
+| Open challenges per address | 5 | A fixed cap; stops one address filling the table with unspent nonces |
 | Per address, before the session is read | 1200/min | `RATE_LIMIT_IP_CEILING`; loose on purpose |
 
 Beyond those, each endpoint is charged against a budget for its class of work —
@@ -220,42 +242,50 @@ client.
 
 ---
 
-## Email delivery
+## The sign-in message
 
-Sign-in links leave the process through one of two mailers, chosen once at
-startup by `buildMailer` in `backend/cmd/api/main.go`. Which one is in use is
-logged on the first line of the API's output, because it is the single most
-common thing to be wrong about when a link never arrives:
+There is no delivery step and nothing to configure for one. The challenge returns
+a single string — the exact bytes the wallet must sign — and that is the whole
+protocol:
 
-| Startup log line | What is happening |
+```
+Hustle On (https://hustleon.com)
+
+Sign in with your Solana wallet.
+
+Address: <your address>
+Nonce: <a fresh nonce>
+Issued At: <RFC 3339 timestamp>
+
+This signature proves you control this wallet. It authorises no transfer, moves no funds and costs nothing.
+```
+
+Every interpolated part earns its place. The product name and the origin make the
+signature meaningless anywhere else, so one harvested by a lookalike site cannot
+be replayed here. The address binds the proof to the wallet that will own the
+account. The nonce makes it single-use; the timestamp makes it expire.
+`auth.SignInMessageTemplate` is the single definition of that text, and both the
+challenge and the verification render it from the stored nonce — which is what
+stops the two from drifting apart.
+
+### Why there is no email
+
+Sign-in used to depend on a third party's mail delivery: no API key, no way in; a
+bounced message, no way in; and every attempt wrote a row whose only purpose was
+to hold a secret in flight. A signature has none of that — the key never leaves
+the wallet, and the only thing the server keeps is a public address that has
+already proved itself. `users.email` survives as optional contact information a
+member may add: it is not unique, not a credential, and never used to sign in.
+See [ADR 0008](adr/0008-wallet-only-authentication.md).
+
+### When a signature is refused
+
+| What the caller sees | What it means |
 | --- | --- |
-| `RESEND_API_KEY is not set` | `LogMailer`. The link is printed to the API's own stdout and no email is sent. This is the default for local development and is not a fault. |
-| `does not look like a Resend key` | A value is set but has no `re_` prefix — almost always another provider's key in the wrong variable. Every send will fail. |
-| `sending through Resend` | `ResendMailer`, sending as the `from` address on that same line. |
-
-Outside production the real send runs **alongside** the log, so a
-misconfiguration is visible while developing rather than the first time someone
-deploys. A failure there never fails the request — the link is already in the
-log — but it is logged as
-`Resend rejected the message; the link above was not delivered`, with the
-provider's status and body. It is not swallowed.
-
-### When a key is set and mail still does not arrive
-
-1. **Read the error.** Resend returns the reason in the body and the API logs it
-   verbatim.
-2. **`403` almost always means the sender domain is not verified.** The domain in
-   `EMAIL_FROM` has to be added and verified in the Resend dashboard, DNS records
-   and all. A valid key with an unverified sender fails exactly like a bad key.
-3. **`401` means the key itself.** Revoked, mistyped, or from a different Resend
-   account than the domain.
-4. **`422` means the payload.** Usually an `EMAIL_FROM` that is not a valid
-   address or `Name <address>` pair.
-5. **Nothing in the log at all** means the request never reached `StartLogin` —
-   check the rate limits above before suspecting the mailer.
-
-`config.Load` refuses to start a production process without `RESEND_API_KEY`, so
-a deployment can never silently fall back to printing links.
+| `That signature does not match the wallet.` (401) | The signed bytes are not the message the server rebuilt — a different wallet, a mangled paste, or text edited by a page. The nonce is not spent, so the same challenge can be tried again. |
+| `That sign-in request has expired. Try again.` (400) | The nonce was already spent, or the challenge aged out. Ask for a fresh one. |
+| `This account is suspended.` (403) | The signature is valid, but the account it belongs to is not allowed a session. |
+| `Too many sign-in attempts. Wait a moment and try again.` (429) | The sign-in budget or the open-challenge cap. Check the rate limits above. |
 
 ---
 
@@ -263,7 +293,7 @@ a deployment can never silently fall back to printing links.
 
 | Question | File |
 | --- | --- |
-| How is a link issued and consumed? | `auth/magiclink.go` |
+| How is a sign-in challenge issued and verified? | `auth/signin.go` |
 | How is a session created and revoked? | `auth/session.go` |
 | How are cookies flagged? | `auth/cookie.go` |
 | How is CSRF derived and checked? | `auth/csrf.go` |

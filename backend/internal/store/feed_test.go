@@ -71,7 +71,7 @@ func TestEveryOrderMintsACursorItCanResumeFrom(t *testing.T) {
 	}
 	// A two-field cursor is not a ranked cursor. Handing one to a ranked order
 	// must be refused outright rather than quietly read as page one.
-	if _, _, _, err := decodeRankCursor(recent); err == nil {
+	if _, _, _, err := decodeIntTimeIDCursor(recent); err == nil {
 		t.Error("a default-order cursor was accepted by a ranked order")
 	}
 
@@ -87,7 +87,7 @@ func TestEveryOrderMintsACursorItCanResumeFrom(t *testing.T) {
 		if cursor == "" {
 			t.Fatalf("%s produced no cursor", tc.sort)
 		}
-		rank, at, id, err := decodeRankCursor(cursor)
+		rank, at, id, err := decodeIntTimeIDCursor(cursor)
 		if err != nil || rank == nil || *rank != tc.want || at == nil || *id != row.ID {
 			t.Errorf("%s cursor round-tripped to rank=%v at=%v id=%v err=%v, want rank %d",
 				tc.sort, rank, at, id, err, tc.want)

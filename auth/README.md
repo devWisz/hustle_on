@@ -5,41 +5,46 @@ rules live in one auditable place and the API server cannot accidentally
 reimplement them.
 
 The module has **no third-party dependencies** — only the standard library.
-Storage and email delivery are interfaces (`Store`, `Mailer`) that the backend
-satisfies; nothing here knows about Postgres or HTTP routing.
+Storage is an interface (`Store`) that the backend satisfies over Postgres;
+nothing here knows about HTTP routing. There is no mailer and no delivery step:
+the sign-in message the wallet must sign goes straight back to the caller.
 
 ## What it provides
 
 | File | Responsibility |
 | ---- | -------------- |
 | `token.go`     | Random token generation, SHA-256 digests, constant-time comparison |
-| `magiclink.go` | Issue and consume single-use email login links |
+| `signin.go`    | Issue a sign-in nonce and verify the wallet signature that spends it |
 | `session.go`   | Create, look up, refresh and revoke sessions |
 | `cookie.go`    | Cookie construction with the hardened default flags |
 | `csrf.go`      | Double-submit token derived from the session, HMAC bound |
 | `wallet.go`    | ed25519 verification of Solana wallet ownership proofs |
-| `resend.go`    | Resend transactional email client |
+| `store.go`     | The `Store` interface the backend implements, and the `User` the rules need |
 
 ## Model
 
-There are no passwords. A login is:
+There are no passwords and no email. A login is:
 
-1. The visitor submits an email address.
-2. A 256-bit token is generated. The **digest** is stored; the plaintext is
-   only ever in the email.
-3. The link is opened within the TTL, the token is consumed atomically, and a
-   session token is issued in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie.
+1. The visitor asks for a challenge naming a Solana address.
+2. A nonce is generated and stored against that address with a short expiry, and
+   the exact text to sign is returned. Nothing is delivered anywhere.
+3. The wallet signs it. The signature is verified against the address *before*
+   the nonce is spent, so a mangled signature does not burn the challenge. The
+   first address to do this gets an account; there is no separate sign-up.
+4. A session token is issued in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie.
 
-Enumeration is not possible from the outside: requesting a link for an unknown
-address returns the same response and takes the same path as a known one.
+Enumeration is not possible from the outside: the challenge looks up no account
+and answers the same way whether the address is already known or has never been
+seen.
 
-Wallets are separate from identity. Connecting a wallet requires signing a
+The wallet is the identity. Signing in proves control of the address that owns
+the account; recording a payout address is a second proof over a different
 server-issued nonce, so pasting somebody else's address proves nothing.
 
-The wallet proof and the sign-in link answer different questions. A signature
-identifies the key that should be paid; a link identifies the account. Someone
-who compromises an inbox therefore cannot move anybody's SOL, because the payout
-address is pinned to a key they do not hold.
+The sign-in signature and the payout proof answer different questions. One
+establishes who is asking; the other fixes where money goes. The payout address
+is pinned to a key, so claiming one already held elsewhere is a conflict rather
+than a transfer.
 
 ## Testing
 

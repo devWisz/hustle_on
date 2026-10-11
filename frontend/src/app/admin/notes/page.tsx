@@ -12,7 +12,7 @@ export default async function NotesPage() {
       title="Notes"
       description="Everything people have written on published sessions, newest first. Removing a note is recorded in the audit trail."
     >
-      <NotesModeration initial={data.notes} />
+      <NotesModeration initial={data.notes} initialCursor={data.notesCursor} />
     </AdminPage>
   );
 }

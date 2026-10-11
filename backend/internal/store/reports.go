@@ -41,8 +41,20 @@ func (s *Store) CreateReport(ctx context.Context, in NewReport) error {
 	return nil
 }
 
-// Reports lists reports with the session and note they point at, newest first.
-func (s *Store) Reports(ctx context.Context, status string, limit int) ([]domain.Report, error) {
+// Reports lists reports for the moderation inbox, open ones first.
+//
+// The open-first order is what makes this cursor a three-field one. `(status =
+// 'open')` is a boolean, so it cannot be the whole sort key: a cursor carrying
+// only "still open" would not say which open report the reader had reached, and
+// the next page would start again at the top of that group. The key is therefore
+// the bucket, then the timestamp, then the id — bucket 0 for open and 1 for
+// everything else, which is the same order the boolean produces.
+func (s *Store) Reports(ctx context.Context, status string, q PageQuery) (domain.Page[domain.Report], error) {
+	bucket, before, beforeID, err := decodeIntTimeIDCursor(q.Cursor)
+	if err != nil {
+		return domain.Page[domain.Report]{}, err
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT r.id::text, r.subject_type, r.reason::text, COALESCE(r.details, ''), r.status::text,
 		       r.resolved_at, r.created_at,
@@ -56,11 +68,13 @@ func (s *Store) Reports(ctx context.Context, status string, limit int) ([]domain
 		LEFT JOIN users rp ON rp.id = r.reporter_id
 		LEFT JOIN timelapse_notes n ON n.id = r.note_id
 		LEFT JOIN users na ON na.id = n.author_id
-		WHERE $1 = '' OR r.status::text = $1
-		ORDER BY (r.status = 'open') DESC, r.created_at DESC
-		LIMIT $2`, status, limit)
+		WHERE ($1 = '' OR r.status::text = $1)
+		  AND ($3::timestamptz IS NULL
+		       OR (CASE WHEN r.status = 'open' THEN 0 ELSE 1 END, r.created_at, r.id) < ($2, $3, $4::uuid))
+		ORDER BY (r.status = 'open') DESC, r.created_at DESC, r.id DESC
+		LIMIT $5`, status, bucket, before, beforeID, q.Limit+1)
 	if err != nil {
-		return nil, normalize(err)
+		return domain.Page[domain.Report]{}, normalize(err)
 	}
 	defer rows.Close()
 
@@ -77,7 +91,7 @@ func (s *Store) Reports(ctx context.Context, status string, limit int) ([]domain
 			&r.Timelapse.ID, &r.Timelapse.Slug, &r.Timelapse.Title, &r.Timelapse.Status,
 			&r.Timelapse.Creator.ID, &r.Timelapse.Creator.Handle, &r.Timelapse.Creator.DisplayName,
 			&noteID, &noteBody, &naID, &naHandle, &naName); err != nil {
-			return nil, normalize(err)
+			return domain.Page[domain.Report]{}, normalize(err)
 		}
 		if rpID != nil {
 			r.Reporter = &domain.Creator{ID: *rpID, Handle: deref(rpHandle), DisplayName: deref(rpName)}
@@ -90,7 +104,18 @@ func (s *Store) Reports(ctx context.Context, status string, limit int) ([]domain
 		}
 		out = append(out, r)
 	}
-	return out, normalize(rows.Err())
+	if err := rows.Err(); err != nil {
+		return domain.Page[domain.Report]{}, normalize(err)
+	}
+	// The bucket is recomputed from the row rather than carried alongside it, so
+	// the cursor cannot disagree with the order the query used.
+	return pageOf(out, q.Limit, func(r domain.Report) string {
+		open := int64(1)
+		if r.Status == "open" {
+			open = 0
+		}
+		return encodeKeyset(keysetInt(open), keysetTime(r.CreatedAt), r.ID)
+	}), nil
 }
 
 // ResolveReport closes an open report as resolved or dismissed.
