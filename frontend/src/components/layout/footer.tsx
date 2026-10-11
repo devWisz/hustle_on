@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { GitHubIcon, LogoMark, XIcon } from "../ui/icons";
 import { CookieSettingsButton } from "./cookie-settings-button";
 
@@ -32,7 +33,7 @@ export function Footer() {
           <div>
             <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold">
               <LogoMark />
-              Hustle On
+              {SITE_NAME}
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-fg-muted">
               Timelapses of real work, reviewed by a person and funded directly by the people who
@@ -83,12 +84,12 @@ export function Footer() {
           aria-hidden
           className="mt-16 select-none text-[clamp(3.5rem,17vw,15rem)] font-semibold leading-[0.8] tracking-[-0.06em] text-fg/[0.07]"
         >
-          Hustle On
+          {SITE_NAME}
         </p>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
           <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span>Rewards your hustle.</span>
+            <span>{SITE_TAGLINE}</span>
             <CookieSettingsButton variant="link" />
           </p>
           <p className="flex items-center gap-4">

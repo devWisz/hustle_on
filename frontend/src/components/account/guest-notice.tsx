@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SignInFromGuest } from "./guest-actions";
 import { Card } from "../ui";
-import { LockIcon } from "../ui/icons";
+import { ShieldIcon } from "../ui/icons";
 
 /**
  * What a guest sees where an account is needed.
@@ -25,7 +25,7 @@ export function GuestNotice({
     <Card as="section" className="mt-6 p-6">
       <div className="flex items-start gap-4">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised text-fg-muted">
-          <LockIcon size={18} />
+          <ShieldIcon size={18} />
         </span>
         <div className="min-w-0">
           <h2 className="text-[16px] font-semibold">{what} needs an account</h2>

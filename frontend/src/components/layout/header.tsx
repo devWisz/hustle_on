@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getViewer } from "@/lib/data";
+import { SITE_NAME } from "@/lib/brand";
 import { LogoMark } from "../ui/icons";
 import { HeaderClient } from "./header-client";
 
@@ -25,7 +26,7 @@ export function HeaderFallback() {
           className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight"
         >
           <LogoMark />
-          Hustle On
+          {SITE_NAME}
         </Link>
       </div>
     </header>

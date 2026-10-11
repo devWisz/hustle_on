@@ -122,7 +122,7 @@ export function HeaderClient({ user }: { user?: HeaderUser }) {
           className="flex shrink-0 items-center gap-2.5 text-[15px] font-semibold tracking-tight"
         >
           <LogoMark />
-          <span>Hustle On</span>
+          <span>{SITE_NAME}</span>
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
@@ -213,7 +213,7 @@ export function HeaderClient({ user }: { user?: HeaderUser }) {
                   onClick={() => setOpen(false)}
                 >
                   <LogoMark />
-                  Hustle On
+                  {SITE_NAME}
                 </Link>
                 <button
                   type="button"
