@@ -48,11 +48,20 @@ run from a deploy: `/app/migrate up`.
 
 ## Privileges
 
-Migrations run as the owner. The API is meant to run as a different role that
-inherits `sardhana_app`, which `0008` gives read/write access to every table and
-then withholds the things the API does not do: `DELETE` on `users`, `timelapses`
+Migrations run as the owner. The API runs as its **own login role**, which
+inherits `sardhana_app`: `0008` gives that group read/write access to every table
+and then withholds what the API does not do — `DELETE` on `users`, `timelapses`
 and `donations`, any write to `schema_migrations`, and `UPDATE`/`DELETE` on
-`audit_log`. The full list, and the two steps to adopt it, are in
+`audit_log`.
+
+```bash
+scripts/create-api-role.sh --write-env   # create or rotate the login, point .env at it
+```
+
+Then restart the API. The script is idempotent, sets the session guards, and
+prints what the role can and cannot do before reporting success. It is a script
+rather than a migration because a password does not belong in a file that is
+committed and replayed on every environment. Detail in
 [../docs/database.md](../docs/database.md#the-application-role).
 
 ## Maintenance

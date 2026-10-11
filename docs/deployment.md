@@ -83,6 +83,19 @@ and therefore reach production anyway:
 It exits non-zero and names what to fix. Warnings are the settings worth a
 second look rather than blockers.
 
+The database section asks the **live connection** rather than reading the
+configuration, because a role name in an environment variable proves nothing
+about what the role can do. It fails if the API can delete an account, edit the
+audit trail or read the migration ledger, if the append-only trigger is missing or
+disabled, if there is no statement timeout, or if the connection still owns the
+tables — the state in which every least-privilege grant is inert.
+
+```bash
+scripts/create-api-role.sh --write-env   # create or rotate the API's login role
+```
+
+Run that once per environment, and again whenever the password is rotated.
+
 ## The two halves have to agree
 
 The web app is built with `NEXT_PUBLIC_*` baked in, so **redeploy it after

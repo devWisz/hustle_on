@@ -169,19 +169,29 @@ schema; the API needs to read and write rows and nothing else. `0008` creates a
 `sardhana_app` group role holding exactly the second set, and leaves the owner
 for migrations.
 
-Adopting it is two steps, done deliberately rather than as a side effect of
+Adopting it is one command, done deliberately rather than as a side effect of
 applying a migration:
 
-```sql
--- 1. A login role that inherits the group, with its own password.
-CREATE ROLE hustleon_api LOGIN PASSWORD 'generated-with-openssl-rand-base64-48'
-    IN ROLE sardhana_app;
+```bash
+scripts/create-api-role.sh --write-env   # create or rotate the login, point .env at it
 ```
 
-```bash
-# 2. Point the API at it. The pooled endpoint, as before.
-DATABASE_URL="postgres://hustleon_api:<password>@<pooler-host>/sardhana?sslmode=require"
-```
+The script generates a password, creates `hustleon_api` in the group, applies the
+session guards, sets a connection limit, and reports what the role can and cannot
+do — a role that could delete an account, or edit the audit trail, is the failure
+it exists to prevent. It is a script rather than a migration because a password
+does not belong in a file that is committed, replayed on every environment and
+read by anyone with the repository.
+
+`DATABASE_URL` becomes the API's login; `DATABASE_URL_DIRECT` stays the owner,
+because migrations need DDL. Rotating the password is the same command again.
+
+**Role settings do not inherit.** `ALTER ROLE sardhana_app SET statement_timeout`
+applies to sessions started *as that role*, or to a session that activates it with
+`SET ROLE` — not to a login that merely inherits from it. A login relying on the
+group's copy would run with no timeout at all while looking, in the catalog, as
+though it had one. The script therefore sets the guards on the login role too, and
+the preflight asks the live connection rather than reading the configuration.
 
 The new role owns nothing, so it can drop nothing. What it specifically cannot
 do, on top of the ordinary grants:

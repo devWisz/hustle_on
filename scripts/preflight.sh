@@ -186,7 +186,17 @@ else
   warn "TRUSTED_PROXY_HOPS=0: every visitor will be seen as the proxy's address, so rate limits act on the web server as a whole"
 fi
 if [[ -n "${ADMIN_ALLOWED_IPS:-}" ]]; then pass "ADMIN_ALLOWED_IPS restricts the console"; else warn "ADMIN_ALLOWED_IPS is unset: the console is reachable from anywhere for a signed-in admin"; fi
-if [[ -n "${ADMIN_SESSION_MAX_AGE_HOURS:-}" ]]; then pass "ADMIN_SESSION_MAX_AGE_HOURS=${ADMIN_SESSION_MAX_AGE_HOURS}"; else warn "ADMIN_SESSION_MAX_AGE_HOURS is unset: admin sessions never expire"; fi
+admin_age="${ADMIN_SESSION_MAX_AGE_HOURS:-12}"
+if [[ "$admin_age" =~ ^[0-9]+$ ]] && (( admin_age >= 1 )); then
+  pass "admin sessions are re-authenticated after ${admin_age}h"
+else
+  fail "ADMIN_SESSION_MAX_AGE_HOURS=${admin_age} lets an admin session live forever"
+fi
+if [[ "${SOLANA_ALLOW_TEST_CLUSTER:-}" == "true" ]]; then
+  fail "SOLANA_ALLOW_TEST_CLUSTER=true relaxes the mainnet requirement; it is for a beta, not for production"
+else
+  pass "no test-cluster escape hatch is enabled"
+fi
 echo
 
 # Live checks. These are skipped rather than failed when the database cannot be

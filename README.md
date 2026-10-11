@@ -151,8 +151,12 @@ The short version; [docs/security.md](docs/security.md) is the real one.
   read without a link the API signs, and signed links expire after two hours.
 - **Content Security Policy with a per-request nonce**: only the app's own scripts
   run, and the browser may only talk to the API and the Solana RPC endpoint.
-- **The API does not own the database.** It can connect as a least-privilege role
-  that cannot drop tables, delete creator records or edit the audit trail.
+- **The API does not own the database.** It connects as its own login role,
+  which inherits read and write access to the tables and nothing else: it cannot
+  delete an account, a timelapse or a donation, cannot touch the audit trail or
+  the migration ledger, and carries a statement timeout. `make preflight` checks
+  all of that from the live connection, because a role name in an environment
+  variable proves nothing about what the role can do.
 - **Production refuses to degrade**: no Resend key, no storage credentials or a
   non-mainnet cluster all fail at startup.
 
@@ -163,6 +167,7 @@ cp .env.example .env          # fill in DATABASE_URL, SESSION_SECRET, INTERNAL_P
 make setup                    # install dependencies
 make db-migrate               # apply migrations
 make db-seed                  # optional: empties the tables and creates one admin account
+scripts/create-api-role.sh --write-env   # the API's least-privilege login role
 make dev                      # API on :8085, web on :3001
 ```
 
