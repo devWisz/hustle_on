@@ -87,6 +87,23 @@ the site links to it for them. Beyond holding the admin role, a request must pas
 Every decision (approve, send back, take down, suspend, reinstate, remove a
 note) is written to the audit trail with who did it and what it was about.
 
+The console is also where live content is edited, because nobody else can:
+
+| Surface | What it does |
+|---|---|
+| **Review desk** | Approve, send back with a reason, take down |
+| **Library** | Edit any published session — title, summary, links, session length — or open it to replace its poster image |
+| **Front page** | Choose which sessions are on the homepage and move them into the order you want; the shelf is capped at 12 so it stays a selection |
+| **Reports** | Sessions and notes that people flagged, with the note attached |
+| **Notes** | Every note on the site, with removal |
+| **Members** | Search, suspend and reinstate; suspended accounts lose their sessions immediately |
+| **Ledger** | Every sponsorship with its on-chain signature |
+| **Audit trail** | Every action above, filterable and exportable |
+
+Editing something already published moves no status, so the audit line is what
+makes it visible: it records which fields changed and what the front page looked
+like before and after a reorder.
+
 ### Become an admin
 
 Roles are granted in the database on purpose, so no bug in an endpoint can create one:
