@@ -24,7 +24,6 @@ type Server struct {
 	auth    *auth.Service
 	chain   *solana.Client
 	media   *media.Storage
-	mailer  auth.Mailer
 	limiter *ratelimit.Limiter
 	ceil    *ratelimit.Limiter
 	// budgets holds the per-endpoint allowances, keyed by budget name. See

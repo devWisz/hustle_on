@@ -10,18 +10,22 @@ import (
 
 const purgeInterval = 24 * time.Hour
 
-// PurgeExpiredAuth deletes sign-in links, wallet challenges and sessions that
-// stopped working more than a month ago. It runs once at start and then daily.
+// PurgeExpiredAuth deletes wallet challenges and sessions that stopped working
+// more than a month ago. It runs once at start and then daily.
+//
+// There used to be a third category — sign-in links — and this loop named it in
+// its log line. With the links gone the count is smaller, and the log says so
+// rather than printing a number that is always zero.
 func PurgeExpiredAuth(ctx context.Context, log *slog.Logger, st *store.Store) {
 	purge := func() {
-		links, challenges, sessions, err := st.PurgeExpiredAuth(ctx)
+		challenges, sessions, err := st.PurgeExpiredAuth(ctx)
 		if err != nil {
 			log.ErrorContext(ctx, "purge: expired auth rows", "error", err)
 			return
 		}
-		if links+challenges+sessions > 0 {
+		if challenges+sessions > 0 {
 			log.InfoContext(ctx, "purged expired auth rows",
-				"links", links, "challenges", challenges, "sessions", sessions)
+				"challenges", challenges, "sessions", sessions)
 		}
 	}
 

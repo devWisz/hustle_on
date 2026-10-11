@@ -12,8 +12,13 @@ import (
 // profileColumns is the projection behind every profile read. It is a single
 // constant so the public and self shapes can never drift apart in what they
 // select — only in what they are allowed to expose.
+//
+// PayoutAddress resolves to the login wallet when no separate payout address has
+// been set, so there is exactly one answer to "where does money for this creator
+// go" and every caller gets it from the same place. A donor reading this field
+// does not need to know which of the two columns supplied it.
 const profileColumns = `u.id::text, u.handle::text, u.display_name,
-	COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''), COALESCE(u.payout_address, ''),
+	COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''), COALESCE(u.payout_address, u.wallet_address::text, ''),
 	u.timelapse_count, u.donation_count, u.donation_total_lamports, u.created_at`
 
 func scanProfile(row interface{ Scan(...any) error }) (domain.PublicUser, error) {
@@ -37,20 +42,24 @@ func (s *Store) PublicProfile(ctx context.Context, handle string) (domain.Public
 func (s *Store) SelfProfile(ctx context.Context, userID string) (domain.SelfUser, error) {
 	var self domain.SelfUser
 	var payoutVerified *time.Time
-	var emailVerified *time.Time
 	var onboardedAt *time.Time
+	var payoutAddress *string
 	err := s.pool.QueryRow(ctx, `
-		SELECT `+profileColumns+`, u.email::text, u.email_verified_at, u.role::text,
-		       u.payout_verified_at, u.onboarded_at
+		SELECT `+profileColumns+`, COALESCE(u.wallet_address::text, ''), COALESCE(u.email::text, ''),
+		       u.role::text, u.payout_address, u.payout_verified_at, u.onboarded_at
 		FROM users u WHERE u.id = $1`, userID).Scan(
 		&self.ID, &self.Handle, &self.DisplayName, &self.Bio, &self.AvatarURL,
 		&self.PayoutAddress, &self.TimelapseCount, &self.DonationCount, &self.DonationTotal,
-		&self.JoinedAt, &self.Email, &emailVerified, &self.Role, &payoutVerified, &onboardedAt)
+		&self.JoinedAt, &self.WalletAddress, &self.Email, &self.Role,
+		&payoutAddress, &payoutVerified, &onboardedAt)
 	if err != nil {
 		return domain.SelfUser{}, normalize(err)
 	}
-	self.EmailVerified = emailVerified != nil
-	self.PayoutVerified = payoutVerified != nil
+	// Signing in with a wallet already proved control of it, so an account whose
+	// payout is its own login address counts as verified even though no separate
+	// payout challenge was ever run. Only an account that has never had either
+	// is unverified.
+	self.PayoutVerified = payoutVerified != nil || self.WalletAddress != ""
 	self.Onboarded = onboardedAt != nil
 	return self, nil
 }

@@ -260,20 +260,3 @@ func (s *Store) ReorderFeatured(ctx context.Context, ids []string) ([]string, er
 	return titles, nil
 }
 
-// CreatorContact is who to email about a decision on a session.
-type CreatorContact struct {
-	Email       string
-	DisplayName string
-	Title       string
-	Slug        string
-}
-
-// ContactForTimelapse returns the creator's address and the session's title.
-func (s *Store) ContactForTimelapse(ctx context.Context, id string) (CreatorContact, error) {
-	var c CreatorContact
-	err := s.pool.QueryRow(ctx, `
-		SELECT u.email::text, u.display_name, t.title, t.slug
-		FROM timelapses t JOIN users u ON u.id = t.user_id
-		WHERE t.id = $1`, id).Scan(&c.Email, &c.DisplayName, &c.Title, &c.Slug)
-	return c, normalize(err)
-}

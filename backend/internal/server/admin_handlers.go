@@ -43,7 +43,6 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) error {
 		return storeErr(err, "Timelapse")
 	}
 	s.audit(r, reviewer.ID, "timelapse.approve", "timelapse", id, map[string]any{"title": updated.Title})
-	s.notifyDecision(id, true, "")
 	return writeJSON(w, http.StatusOK, updated)
 }
 
@@ -80,7 +79,6 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) error {
 		return storeErr(err, "Timelapse")
 	}
 	s.audit(r, reviewer.ID, "timelapse.reject", "timelapse", id, map[string]any{"title": updated.Title, "note": note})
-	s.notifyDecision(id, false, note)
 	return writeJSON(w, http.StatusOK, updated)
 }
 

@@ -37,13 +37,16 @@ func (s *Store) Members(ctx context.Context, query string, q PageQuery) (domain.
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id::text, u.handle::text, u.display_name, COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''),
-		       COALESCE(u.payout_address, ''), u.timelapse_count, u.donation_count, u.donation_total_lamports,
-		       u.created_at, u.email::text, u.role::text, u.status::text, u.payout_verified_at IS NOT NULL,
+		       COALESCE(u.payout_address, u.wallet_address::text, ''), u.timelapse_count, u.donation_count,
+		       u.donation_total_lamports, u.created_at, COALESCE(u.wallet_address::text, ''),
+		       COALESCE(u.email::text, ''), u.role::text, u.status::text,
+		       (u.payout_verified_at IS NOT NULL OR u.wallet_address IS NOT NULL),
 		       (SELECT count(*) FROM timelapses t WHERE t.user_id = u.id AND t.status = 'in_review'),
 		       (SELECT count(*) FROM timelapses t WHERE t.user_id = u.id AND t.status = 'rejected'),
 		       `+memberActivity+`
 		FROM users u
-		WHERE ($1::text IS NULL OR u.handle::text ILIKE $1 OR u.display_name ILIKE $1 OR u.email::text ILIKE $1)
+		WHERE ($1::text IS NULL OR u.handle::text ILIKE $1 OR u.display_name ILIKE $1
+		       OR u.wallet_address::text ILIKE $1 OR u.email::text ILIKE $1)
 		  AND ($2::timestamptz IS NULL OR (`+memberActivity+`, u.id) < ($2, $3::uuid))
 		ORDER BY `+memberActivity+` DESC, u.id DESC
 		LIMIT $4`, likePattern(query), before, beforeID, q.Limit+1)
@@ -57,7 +60,7 @@ func (s *Store) Members(ctx context.Context, query string, q PageQuery) (domain.
 		var m domain.AdminMember
 		if err := rows.Scan(&m.ID, &m.Handle, &m.DisplayName, &m.Bio, &m.AvatarURL,
 			&m.PayoutAddress, &m.TimelapseCount, &m.DonationCount, &m.DonationTotal,
-			&m.JoinedAt, &m.Email, &m.Role, &m.Status, &m.PayoutVerified,
+			&m.JoinedAt, &m.WalletAddress, &m.Email, &m.Role, &m.Status, &m.PayoutVerified,
 			&m.InReview, &m.Rejected, &m.LastActiveAt); err != nil {
 			return domain.Page[domain.AdminMember]{}, normalize(err)
 		}

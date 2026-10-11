@@ -38,15 +38,21 @@ type PublicUser struct {
 // SelfUser adds the fields an account may see about itself.
 type SelfUser struct {
 	PublicUser
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"emailVerified"`
-	Role          string `json:"role"`
-	// True once the payout address has been proven by a signature.
+	// WalletAddress is the address that signs in for this account, shown back
+	// so the holder can recognise which key they used.
+	WalletAddress string `json:"walletAddress,omitempty"`
+	// Email is optional contact information the account holder may add. It is
+	// not a credential: nothing signs in with it and nothing is sent to it.
+	Email string `json:"email,omitempty"`
+	Role  string `json:"role"`
+	// True when donations go to an address this account has proven it controls
+	// — which signing in already did, so it is true unless a payout address was
+	// set some other way.
 	PayoutVerified bool `json:"payoutVerified"`
 	// False until the account holder has chosen their own handle and display
-	// name. Signing in creates those from the email address, which is enough to
-	// own a session and not enough to be credited for one, so the client sends
-	// an un-onboarded account to the profile step once.
+	// name. Signing in generates a placeholder pair, which is enough to own a
+	// session and not enough to be credited for one, so the client sends an
+	// un-onboarded account to the profile step once.
 	Onboarded bool `json:"onboarded"`
 }
 
@@ -170,7 +176,10 @@ type Page[T any] struct {
 // AdminMember is an account as the admin console lists it.
 type AdminMember struct {
 	PublicUser
-	Email          string    `json:"email"`
+	// WalletAddress is the account's identity; Email is whatever contact
+	// address the holder chose to add. Either may be empty.
+	WalletAddress  string    `json:"walletAddress,omitempty"`
+	Email          string    `json:"email,omitempty"`
 	Role           string    `json:"role"`
 	Status         string    `json:"status"`
 	PayoutVerified bool      `json:"payoutVerified"`
