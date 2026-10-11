@@ -223,7 +223,7 @@ the same proof loses the race and is refused.
 | Surface | Default | Why |
 | --- | --- | --- |
 | Reading | 300/min per caller | `RATE_LIMIT_ANON`; also the backstop on every route |
-| Sign-in and sign-in tokens | 5/min per **address** | `RATE_LIMIT_AUTH_ATTEMPTS` |
+| Sign-in challenge | 20/min per **address** | `RATE_LIMIT_AUTH_ATTEMPTS`. This used to be 5 because every request sent an email; a signature sends nothing, and the token bucket hands out a quarter of the budget as a burst, so 5 meant one attempt and then a twelve-second wait |
 | Open challenges per address | 5 | A fixed cap; stops one address filling the table with unspent nonces |
 | Per address, before the session is read | 1200/min | `RATE_LIMIT_IP_CEILING`; loose on purpose |
 

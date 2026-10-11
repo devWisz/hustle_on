@@ -292,9 +292,10 @@ policy and a new endpoint cannot be added without choosing one.
 | write | `RATE_LIMIT_WRITE` 60 | caller | Creating, editing and submitting work |
 | upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing a video upload URL |
 | poster | `RATE_LIMIT_POSTER` 60 | caller | Issuing a poster-image upload URL, which is admin-only and small |
-| donate | `RATE_LIMIT_DONATE` 10 | caller | Recording and confirming a sponsorship |
-| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Asking for a sign-in challenge |
-| verify | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Verifying a sign-in signature |
+| donate | `RATE_LIMIT_DONATE` 10 | caller | Recording a sponsorship: fixes a recipient and an amount |
+| donate_check | `RATE_LIMIT_DONATE_CHECK` 60 | caller | Confirming a sponsorship — polled by the browser until the chain finalizes |
+| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 20 | **address** | Asking for a sign-in challenge |
+| verify | `RATE_LIMIT_AUTH_ATTEMPTS`/2 10 | **address** | Verifying a sign-in signature — the tighter of the two, since it is where a signature is checked |
 | admin | `RATE_LIMIT_ADMIN` 240 | caller | Operator console reads and decisions |
 
 "Caller" means the account id when a session is present and the address
