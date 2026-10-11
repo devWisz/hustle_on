@@ -211,7 +211,7 @@ func TestASponsorshipInsideACrossProgramInvocationIsFound(t *testing.T) {
 // then refers to the concatenated list. A verifier that only reads the static
 // keys would reject a perfectly good sponsorship.
 func TestLookupTableKeysAreResolved(t *testing.T) {
-	const amount = 1_000_000
+	const amount int64 = 1_000_000
 	fee := amount * MaxPlatformFeeBps / 10_000
 	tx := sponsorTransaction(t, amount, func(tx *Transaction) {
 		// creator and treasury live in the lookup table instead, so the account
