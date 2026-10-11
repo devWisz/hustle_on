@@ -7,7 +7,10 @@ export const CONSENT_EVENT = "hustleon:consent";
 export const OPEN_COOKIE_SETTINGS = "hustleon:cookie-settings";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 
-const PREFERENCE_KEYS = ["theme", "hustleon-recent-searches", "hustleon-bookmarks"];
+// The keys this site is allowed to remember. Saved sessions used to be on this
+// list; they are on the account now, so choosing "essential only" no longer has
+// a bookmark list to delete.
+const PREFERENCE_KEYS = ["theme", "hustleon-recent-searches"];
 
 export function readConsent(): Consent | null {
   if (typeof document === "undefined") return null;

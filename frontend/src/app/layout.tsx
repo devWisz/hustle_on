@@ -12,6 +12,7 @@ import { Header, HeaderFallback } from "@/components/layout/header";
 import { ScrollTop } from "@/components/layout/scroll-top";
 import { Shortcuts } from "@/components/layout/shortcuts";
 import { ToastProvider } from "@/components/layout/toast";
+import { BookmarksProvider } from "@/lib/bookmarks";
 import { HydrationMark } from "@/components/motion/hydration-mark";
 import "./globals.css";
 
@@ -78,22 +79,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         <ToastProvider>
-          <Suspense fallback={<HeaderFallback />}>
-            <Header />
-          </Suspense>
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <ScrollTop />
-          <Shortcuts />
-          <CookieBanner />
-          <Suspense fallback={null}>
-            <Search />
-          </Suspense>
-          <Suspense fallback={null}>
-            <OfflineWatcher />
-          </Suspense>
+          {/* Saved sessions are read once for the whole app rather than per save
+              button, so the state is provided here instead of inside each hook. */}
+          <BookmarksProvider>
+            <Suspense fallback={<HeaderFallback />}>
+              <Header />
+            </Suspense>
+            <main id="main" className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <ScrollTop />
+            <Shortcuts />
+            <CookieBanner />
+            <Suspense fallback={null}>
+              <Search />
+            </Suspense>
+            <Suspense fallback={null}>
+              <OfflineWatcher />
+            </Suspense>
+          </BookmarksProvider>
         </ToastProvider>
       </body>
     </html>
