@@ -252,7 +252,8 @@ endpoint cannot be added without choosing one.
 | read | `RATE_LIMIT_ANON` 300 | caller | Public GETs and `/health` |
 | engage | `RATE_LIMIT_ENGAGE` 60 | caller | Views, notes, votes, bookmarks, logout |
 | write | `RATE_LIMIT_WRITE` 60 | caller | Creating, editing and submitting work |
-| upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing an upload URL |
+| upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing a video upload URL |
+| poster | `RATE_LIMIT_POSTER` 60 | caller | Issuing a poster-image upload URL, which is admin-only and small |
 | donate | `RATE_LIMIT_DONATE` 10 | caller | Recording and confirming a sponsorship |
 | auth | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Requesting a sign-in link |
 | verify | `RATE_LIMIT_AUTH_ATTEMPTS` 5 | **address** | Consuming a sign-in token |

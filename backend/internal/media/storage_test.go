@@ -155,3 +155,24 @@ func TestPosterUploadIsServedLocally(t *testing.T) {
 		t.Errorf("local poster ceiling = %d, want the default 8 MiB", up.MaxBytes)
 	}
 }
+
+// A key is a path we hand to a storage layer, so one that can be read two ways
+// must never be accepted, however it starts.
+func TestIsPosterKeyRefusesTraversal(t *testing.T) {
+	s := testStorage()
+
+	for _, bad := range []string{
+		"posters/user-1/../uploads/user-1/clip.mp4",
+		"posters/user-1/../../etc/passwd",
+		"/posters/user-1/poster.jpg",
+		"uploads/user-1/2026/09/clip.mp4",
+		"",
+	} {
+		if s.IsPosterKey(bad) {
+			t.Errorf("poster key %q was accepted", bad)
+		}
+	}
+	if !s.IsPosterKey("posters/user-1/2026/09/abc.png") {
+		t.Error("a key this API issued was refused")
+	}
+}

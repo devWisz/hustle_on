@@ -63,8 +63,18 @@ export const FEED_PAGE_SIZE = 12;
 /** Used only when `/v1/admin/featured` does not answer, so the shelf still has a bound. */
 const FEATURED_CAPACITY_FALLBACK = 12;
 
+// Content is read fresh; only the aggregate figures are cached.
+//
+// The cache window used to be 30 to 120 seconds on everything, which meant an
+// operator could approve a session, see it in the console, and find the homepage
+// still showing the old feed — the one moment the site looks broken. Aggregate
+// totals still benefit from a minute of cache because they are the same for
+// everybody and cost more to compute; a list of sessions is neither.
 export const getFeatured = cache(async (): Promise<Timelapse[]> => {
-  const page = await apiServer<Page<Timelapse>>("/v1/featured?limit=6", 60);
+  // The whole shelf, not the first few: the front page is edited as one ordered
+  // list, and reading only part of it would make the homepage disagree with the
+  // console about what is on it. The API caps this at the shelf's own capacity.
+  const page = await apiServer<Page<Timelapse>>("/v1/featured?limit=12", 0);
   return page?.items ?? [];
 });
 
@@ -76,7 +86,7 @@ export async function getStats(): Promise<Sourced<Stats> | null> {
 
 export async function getFeed(sort: string): Promise<Sourced<Timelapse[]>> {
   const query = `?limit=${FEED_PAGE_SIZE}${sort ? `&sort=${sort}` : ""}`;
-  const page = await apiServer<Page<Timelapse>>(`/v1/timelapses${query}`);
+  const page = await apiServer<Page<Timelapse>>(`/v1/timelapses${query}`, 0);
   return { data: page?.items ?? [], nextCursor: page?.nextCursor };
 }
 
@@ -93,16 +103,16 @@ export interface WatchData {
 
 async function loadWatch(slug: string): Promise<WatchData | null> {
   const [live, viewer] = await Promise.all([
-    apiServer<Timelapse>(`/v1/timelapses/${slug}`),
+    apiServer<Timelapse>(`/v1/timelapses/${slug}`, 0),
     getViewer(),
   ]);
   if (!live) return null;
 
   const [creator, donations, notes, feed] = await Promise.all([
-    apiServer<PublicUser>(`/v1/creators/${live.creator.handle}`, 120),
-    apiServer<Page<Donation>>(`/v1/timelapses/${slug}/donations`),
+    apiServer<PublicUser>(`/v1/creators/${live.creator.handle}`, 0),
+    apiServer<Page<Donation>>(`/v1/timelapses/${slug}/donations`, 0),
     apiServer<Page<Note>>(`/v1/timelapses/${slug}/notes`, 0),
-    apiServer<Page<Timelapse>>("/v1/timelapses?limit=5"),
+    apiServer<Page<Timelapse>>("/v1/timelapses?limit=5", 0),
   ]);
   return {
     timelapse: live,
@@ -119,8 +129,8 @@ async function loadCreator(
   handle: string,
 ): Promise<Sourced<{ creator: PublicUser; items: Timelapse[] }> | null> {
   const [live, items] = await Promise.all([
-    apiServer<PublicUser>(`/v1/creators/${handle}`),
-    apiServer<Page<Timelapse>>(`/v1/creators/${handle}/timelapses`),
+    apiServer<PublicUser>(`/v1/creators/${handle}`, 0),
+    apiServer<Page<Timelapse>>(`/v1/creators/${handle}/timelapses`, 0),
   ]);
   if (!live) return null;
   return { data: { creator: live, items: items?.items ?? [] } };

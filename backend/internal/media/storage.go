@@ -180,11 +180,19 @@ func (s *Storage) NewPosterUpload(userID, contentType string, declaredSize int64
 	}, nil
 }
 
-// IsPosterKey reports whether a key names a poster object. A video key can never
-// be attached as a thumbnail, and the reverse is what would let a poster URL be
-// recorded as somebody's session recording.
+// IsPosterKey reports whether a key is a poster object this API would have
+// issued.
+//
+// Three conditions, and the third is not decoration. A key that merely starts
+// with the poster prefix can still contain a traversal segment —
+// "posters/<id>/../uploads/<id>/clip.mp4" passes a prefix test — and while the
+// storage layers on both sides clean the path before touching a file, accepting
+// such a key would mean recording a reference that means one thing to us and
+// another to whatever serves it next. A key we did not issue is refused here.
 func (s *Storage) IsPosterKey(key string) bool {
-	return strings.HasPrefix(key, posterPrefix)
+	return strings.HasPrefix(key, posterPrefix) &&
+		!strings.Contains(key, "..") &&
+		!strings.HasPrefix(key, "/")
 }
 
 // PublicURL returns the read URL for a stored object.

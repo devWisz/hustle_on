@@ -40,7 +40,7 @@ func TestResolveSignsPrivateReferences(t *testing.T) {
 
 func TestResolveLeavesPlainURLsAlone(t *testing.T) {
 	s := privateStorage()
-	for _, in := range []string{"/demo/wood-workshop.mp4", "https://cdn.example/x.mp4", ""} {
+	for _, in := range []string{"/media/session-01.mp4", "https://cdn.example/x.mp4", ""} {
 		if got := s.Resolve(in); got != in {
 			t.Fatalf("%q became %q", in, got)
 		}
