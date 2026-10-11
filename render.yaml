@@ -26,9 +26,9 @@ services:
         sync: false
       - key: API_PUBLIC_URL
         sync: false
-      - key: RESEND_API_KEY
+      - key: ADMIN_WALLETS
         sync: false
-      - key: EMAIL_FROM
+      - key: HUSTLEON_PAY_PROGRAM_ID
         sync: false
       - key: SOLANA_CLUSTER
         value: devnet

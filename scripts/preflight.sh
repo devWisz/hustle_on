@@ -2,12 +2,11 @@
 # Production readiness check.
 #
 # `config.Load` already refuses to start without the things that would be unsafe
-# to run without — a session secret, a Resend key, storage credentials, mainnet.
-# This checks the things that are merely *easy to get wrong*, which are the ones
-# that reach production anyway: a cookie name that disagrees between the two
-# halves of the app, an origin still pointing at localhost, a public RPC endpoint
-# that rate limits its own users, an account from the development seed still
-# holding the admin role.
+# to run without — a session secret, operator wallets, storage credentials,
+# mainnet. This checks the things that are merely *easy to get wrong*, which are
+# the ones that reach production anyway: a cookie name that disagrees between the
+# two halves of the app, an origin still pointing at localhost, a public RPC
+# endpoint that rate limits its own users, an account that can no longer sign in.
 #
 # Usage:  scripts/preflight.sh [env-file]      (default: .env)
 # Exit:   0 ready, 1 something must be fixed.
@@ -122,11 +121,33 @@ fi
 if [[ -n "${DATABASE_URL_DIRECT:-}" ]]; then pass "DATABASE_URL_DIRECT is set (migrations)"; else warn "DATABASE_URL_DIRECT is unset; migrations will fall back to the pooled endpoint and may fail"; fi
 echo
 
-echo "email"
-requires RESEND_API_KEY
-requires EMAIL_FROM
-if [[ -n "${EMAIL_FROM:-}" && "${EMAIL_FROM}" == *localhost* ]]; then
-  fail "EMAIL_FROM still points at localhost; every sign-in link will bounce"
+echo "operator access"
+# Admin access is a property of this environment, not of a database row, so an
+# unset list is not a security hole — it is an unreachable console. That is the
+# failure being looked for here: a deployment where nobody can review anything.
+if [[ -n "${ADMIN_WALLETS:-}" ]]; then
+  bad=""
+  for addr in ${ADMIN_WALLETS//,/ }; do
+    # A Solana address is base58 and decodes to 32 bytes; 32-44 characters is the
+    # only shape that can be checked without decoding here. A typo that survives
+    # this is caught at boot by config.Load, which names the offending value.
+    if (( ${#addr} < 32 || ${#addr} > 44 )); then bad="$bad $addr"; fi
+  done
+  if [[ -n "$bad" ]]; then
+    fail "ADMIN_WALLETS contains something that is not a Solana address:$bad"
+  else
+    pass "ADMIN_WALLETS is set"
+  fi
+else
+  fail "ADMIN_WALLETS is empty; nobody can reach the admin console"
+fi
+echo
+
+echo "sponsorship program"
+if [[ -n "${HUSTLEON_PAY_PROGRAM_ID:-}" ]]; then
+  pass "HUSTLEON_PAY_PROGRAM_ID is set; sponsorships are verified against the program"
+else
+  warn "HUSTLEON_PAY_PROGRAM_ID is unset; sponsorships fall back to verifying a plain SOL transfer, which carries no on-chain record"
 fi
 echo
 
@@ -221,12 +242,16 @@ if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
     warn "could not read schema_migrations over the owner connection; expected $total applied"
   fi
 
-  demo="$(query "select count(*) from users where email::text like '%@hustleon.test'")"
-  if [[ "$demo" =~ ^[0-9]+$ ]]; then
-    if (( demo == 0 )); then
-      pass "no development-seed accounts remain"
+  # An account with no wallet_address cannot sign in. That is not a hypothetical:
+  # it is every account that existed before migration 0013, because email used to
+  # be the identity and nobody had linked a wallet yet. Left alone, those
+  # accounts are simply gone as far as their owners are concerned.
+  stranded="$(query "select count(*) from users where wallet_address is null")"
+  if [[ "$stranded" =~ ^[0-9]+$ ]]; then
+    if (( stranded == 0 )); then
+      pass "every account has a wallet address and can sign in"
     else
-      fail "$demo development-seed account(s) still exist — see database/README.md for how to replace them"
+      fail "$stranded account(s) have no wallet address and cannot sign in — each needs a wallet linked, or should be removed"
     fi
   fi
 

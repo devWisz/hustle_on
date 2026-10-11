@@ -1,22 +1,24 @@
--- Development seed: one administrator, and nothing else.
+-- Development reset: empties every table, and creates nothing.
 --
--- This file used to create eight invented creators and nine invented sessions
--- whose recordings shipped in frontend/public/demo. All of that is gone from the
--- product, and generating it here would only put it back: a seeded imitation of a
--- recorded session is exactly what the feed must never contain.
+-- This file used to seed an administrator. It does not any more, and that is a
+-- deliberate improvement rather than an omission.
 --
--- What the seed is for now is the one thing a fresh database cannot give you — an
--- account with the admin role, so the console is reachable at all. Everything
--- else is made by using the site: sign in, upload a real session from /upload,
--- and approve it from /admin/queue.
+-- The seeded admin was an account nobody controlled: it had an address in a
+-- .test domain, so it could only ever be signed into through a link printed to a
+-- developer's own log. Now that sign-in is a wallet signature, seeding an admin
+-- would mean shipping a wallet address into the repository, and a seeded admin
+-- with no key is an account that can never be used and must be cleaned up by
+-- hand afterwards.
 --
--- To make the account yours, sign in with your own address once and promote it:
+-- Admin access comes from ADMIN_WALLETS instead. Sign in with your own wallet
+-- once, and if its address is in that list the account is promoted at sign-in —
+-- see docs/auth.md. There is no default credential here to leak or to forget.
 --
---   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
---   DELETE FROM users WHERE email = 'reviewer@hustleon.test';
+-- Everything else is made by using the site: sign in, upload a real session from
+-- /upload, and approve it from /admin/queue.
 --
--- Safe to re-run: it empties every table first. scripts/migrate.sh and
--- cmd/migrate both refuse to run it when APP_ENV=production.
+-- Safe to re-run: it empties every table. scripts/migrate.sh and cmd/migrate
+-- both refuse to run it when APP_ENV=production.
 
 BEGIN;
 
@@ -24,18 +26,10 @@ BEGIN;
 -- it: a reset list that depends on a foreign key defined elsewhere goes stale the
 -- next time a table is added.
 TRUNCATE reports, note_votes, timelapse_notes, bookmarks, donations, timelapse_views,
-         timelapses, audit_log, wallet_challenges, sessions, magic_link_tokens, users
+         timelapses, audit_log, wallet_challenges, sessions, users
          RESTART IDENTITY CASCADE;
 
--- The single admin account. The address is a .test domain so no real inbox is
--- involved, and locally the sign-in link prints to the API log rather than being
--- emailed.
-INSERT INTO users (id, email, email_verified_at, handle, display_name, role, bio,
-                   payout_address, payout_verified_at, created_at, last_seen_at)
-VALUES
-  ('00000000-0000-0000-0000-000000000001', 'reviewer@hustleon.test', now(), 'reviewer',
-   'Reviewer', 'admin',
-   'Reads every submission before it reaches the feed.',
-   NULL, NULL, now(), now());
+-- Nothing is inserted. A fresh database has no accounts, and the first one to
+-- sign in with a wallet listed in ADMIN_WALLETS becomes the operator.
 
 COMMIT;

@@ -16,8 +16,10 @@ export interface PublicUser extends Creator {
 }
 
 export interface SelfUser extends PublicUser {
-  email: string;
-  emailVerified: boolean;
+  /** The Solana address that signs in for this account. */
+  walletAddress?: string;
+  /** Optional contact address the holder added. Not a credential. */
+  email?: string;
   role: "member" | "admin";
   payoutVerified: boolean;
   /** False until the account holder has chosen their own handle and name. */
@@ -157,7 +159,9 @@ export interface AdminNote {
 }
 
 export interface AdminMember extends PublicUser {
-  email: string;
+  /** The account's identity; `email` is whatever contact address it added. */
+  walletAddress?: string;
+  email?: string;
   role: "member" | "admin";
   status: "active" | "suspended";
   payoutVerified: boolean;
