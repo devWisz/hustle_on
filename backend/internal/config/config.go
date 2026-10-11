@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sardhana/auth"
 )
 
 type Config struct {
@@ -33,14 +35,23 @@ type Config struct {
 	AllowTestCluster    bool
 	AdminNetworks       []netip.Prefix
 	SessionTTL          time.Duration
-	MagicLinkTTL        time.Duration
+	// ChallengeTTL is how long a wallet sign-in nonce stays signable.
+	ChallengeTTL time.Duration
 
-	ResendAPIKey string
-	EmailFrom    string
-	EmailReplyTo string
+	// AdminWallets lists the Solana addresses that are operators. Admin access
+	// is a property of the environment rather than of a row: promoting by
+	// editing the database leaves no trace of who decided it, and has to be
+	// redone by hand after every restore. An address here is granted the role
+	// when it signs in, and the grant is written to the audit log.
+	AdminWallets []string
 
 	SolanaCluster string
 	SolanaRPCURL  string
+	// PayProgramID is the deployed sponsorship program. When it is set, a
+	// sponsorship is only credited if the transaction invoked this program;
+	// when it is empty the API verifies a plain SOL transfer instead, which is
+	// what a local cluster without a deployment looks like.
+	PayProgramID string
 
 	StorageEndpoint  string
 	StorageBucket    string
@@ -138,14 +149,13 @@ func Load() (Config, error) {
 		AdminSessionMaxAge:  time.Duration(envInt("ADMIN_SESSION_MAX_AGE_HOURS", 12)) * time.Hour,
 		AllowTestCluster:    os.Getenv("SOLANA_ALLOW_TEST_CLUSTER") == "true",
 		SessionTTL:          time.Duration(envInt("SESSION_TTL_HOURS", 720)) * time.Hour,
-		MagicLinkTTL:        time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
+		ChallengeTTL:        time.Duration(envInt("SIGNIN_CHALLENGE_TTL_MINUTES", 5)) * time.Minute,
 
-		ResendAPIKey: os.Getenv("RESEND_API_KEY"),
-		EmailFrom:    env("EMAIL_FROM", "Hustle On <login@localhost>"),
-		EmailReplyTo: os.Getenv("EMAIL_REPLY_TO"),
+		AdminWallets: splitList(os.Getenv("ADMIN_WALLETS")),
 
 		SolanaCluster: env("SOLANA_CLUSTER", "devnet"),
 		SolanaRPCURL:  env("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
+		PayProgramID:  strings.TrimSpace(os.Getenv("HUSTLEON_PAY_PROGRAM_ID")),
 
 		StorageEndpoint:      os.Getenv("STORAGE_ENDPOINT"),
 		StorageBucket:        os.Getenv("STORAGE_BUCKET"),
@@ -246,12 +256,30 @@ func (c Config) validate() error {
 		problems = append(problems, "DATABASE_MAX_CONNS above 100 will exhaust a pooled endpoint; use a higher-tier pool instead")
 	}
 
+	// An operator address that does not decode is not an address. Catching it
+	// here means a typo in ADMIN_WALLETS stops the process at boot with the
+	// offending value named, instead of silently leaving nobody able to reach
+	// the console.
+	for _, w := range c.AdminWallets {
+		if err := auth.ValidateSolanaAddress(w); err != nil {
+			problems = append(problems, fmt.Sprintf("ADMIN_WALLETS entry %q is not a Solana address", w))
+		}
+	}
+	if c.PayProgramID != "" {
+		if err := auth.ValidateSolanaAddress(c.PayProgramID); err != nil {
+			problems = append(problems, "HUSTLEON_PAY_PROGRAM_ID is not a Solana address")
+		}
+	}
+	if c.ChallengeTTL < time.Minute {
+		problems = append(problems, "SIGNIN_CHALLENGE_TTL_MINUTES must be at least 1: a window shorter than that cannot be signed in reliably, and the nonce would expire while the wallet prompt is open")
+	}
+
 	if c.IsProduction() {
 		// Development conveniences are refused outright in production rather
 		// than degraded, so a missing variable cannot silently weaken the
 		// deployment.
-		if c.ResendAPIKey == "" {
-			problems = append(problems, "RESEND_API_KEY is required in production")
+		if len(c.AdminWallets) == 0 {
+			problems = append(problems, "ADMIN_WALLETS must list at least one address in production, or the deployment has no way to be administered")
 		}
 		if !strings.HasPrefix(c.WebURL, "https://") {
 			problems = append(problems, "WEB_PUBLIC_URL must use https in production")
@@ -309,6 +337,19 @@ func sslMode(dsn string) string {
 		value = value[:end]
 	}
 	return value
+}
+
+// splitList parses a comma-separated environment variable into its non-empty,
+// trimmed entries. Blank entries are dropped rather than rejected so a trailing
+// comma cannot stop the process.
+func splitList(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func env(key, fallback string) string {

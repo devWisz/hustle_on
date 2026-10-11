@@ -13,21 +13,26 @@ import (
 
 var _ auth.Store = (*Store)(nil)
 
-const authUserColumns = `u.id::text, u.email::text, u.handle::text, u.display_name,
-	u.role::text, u.status::text, (u.email_verified_at IS NOT NULL)`
+const authUserColumns = `u.id::text, COALESCE(u.wallet_address::text, ''), u.handle::text,
+	u.display_name, u.role::text, u.status::text`
 
 func (s *Store) UserByID(ctx context.Context, id string) (auth.User, error) {
 	return s.scanAuthUser(ctx, `SELECT `+authUserColumns+` FROM users u WHERE u.id = $1`, id)
 }
 
-func (s *Store) UserByEmail(ctx context.Context, email string) (auth.User, error) {
-	return s.scanAuthUser(ctx, `SELECT `+authUserColumns+` FROM users u WHERE u.email = $1`, email)
+// UserByWallet resolves the account that signs in with an address.
+//
+// The lookup is by the login address, never by a payout address: being paid at
+// an address is not the same as being able to sign for it, and only the second
+// of those may open a session.
+func (s *Store) UserByWallet(ctx context.Context, address string) (auth.User, error) {
+	return s.scanAuthUser(ctx, `SELECT `+authUserColumns+` FROM users u WHERE u.wallet_address = $1`, address)
 }
 
 func (s *Store) scanAuthUser(ctx context.Context, query string, arg any) (auth.User, error) {
 	var u auth.User
 	err := s.pool.QueryRow(ctx, query, arg).Scan(
-		&u.ID, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status, &u.EmailVerified)
+		&u.ID, &u.WalletAddress, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
 	if err != nil {
 		if errors.Is(normalize(err), ErrNotFound) {
 			return auth.User{}, auth.ErrNotFound
@@ -37,73 +42,42 @@ func (s *Store) scanAuthUser(ctx context.Context, query string, arg any) (auth.U
 	return u, nil
 }
 
-// CreateUser registers an account. The display name starts as the handle; the
-// account can change it from settings once signed in.
-func (s *Store) CreateUser(ctx context.Context, email, handle, displayName string) (auth.User, error) {
+// CreateUser registers an account for an address that has just proven it holds
+// the matching key. The display name starts as the generated handle; onboarding
+// replaces both a moment later.
+func (s *Store) CreateUser(ctx context.Context, walletAddress, handle, displayName string) (auth.User, error) {
 	var u auth.User
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO users (email, handle, display_name)
+		INSERT INTO users (wallet_address, handle, display_name)
 		VALUES ($1, $2, $3)
-		RETURNING id::text, email::text, handle::text, display_name, role::text, status::text,
-		          (email_verified_at IS NOT NULL)`,
-		email, handle, displayName).Scan(
-		&u.ID, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status, &u.EmailVerified)
+		RETURNING `+authUserColumns,
+		walletAddress, handle, displayName).Scan(
+		&u.ID, &u.WalletAddress, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
 	if err != nil {
 		if isUniqueViolationOn(err, "handle") {
 			return auth.User{}, auth.ErrHandleTaken
+		}
+		// Two simultaneous first-ever sign-ins with the same wallet can race.
+		// The unique index is what actually prevents a second account; the
+		// caller retries the lookup and finds the row the other request wrote.
+		if isUniqueViolationOn(err, "wallet_address") {
+			return auth.User{}, auth.ErrNotFound
 		}
 		return auth.User{}, normalize(err)
 	}
 	return u, nil
 }
 
-func (s *Store) MarkEmailVerified(ctx context.Context, userID string, at time.Time) error {
-	_, err := s.pool.Exec(ctx,
-		`UPDATE users SET email_verified_at = COALESCE(email_verified_at, $2) WHERE id = $1`,
-		userID, at)
-	return normalize(err)
-}
-
-func (s *Store) CreateMagicLink(ctx context.Context, link auth.MagicLink) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO magic_link_tokens
-			(user_id, email, token_hash, expires_at, request_ip, request_user_agent)
-		VALUES (NULLIF($1,'')::uuid, $2, $3, $4, $5, $6)`,
-		link.UserID, link.Email, link.TokenHash,
-		link.ExpiresAt, nullIP(link.IP), nullText(link.UserAgent))
-	return normalize(err)
-}
-
-// ConsumeMagicLink marks a token used and returns it, in one statement.
+// PromoteToAdmin grants the operator role to a wallet listed in ADMIN_WALLETS.
 //
-// The `consumed_at IS NULL` predicate inside the UPDATE is what makes the link
-// genuinely single-use: two concurrent requests race on the row lock, and only
-// the first of them sees a returned row.
-func (s *Store) ConsumeMagicLink(ctx context.Context, digest []byte, now time.Time) (auth.MagicLink, error) {
-	var link auth.MagicLink
-	var userID *string
-	err := s.pool.QueryRow(ctx, `
-		UPDATE magic_link_tokens
-		SET consumed_at = $2
-		WHERE token_hash = $1
-		  AND consumed_at IS NULL
-		  AND expires_at > $2
-		RETURNING id::text, user_id::text, email::text, expires_at, created_at`,
-		digest, now).Scan(&link.ID, &userID, &link.Email, &link.ExpiresAt, &link.CreatedAt)
-	if err != nil {
-		return auth.MagicLink{}, normalize(err)
-	}
-	link.UserID = deref(userID)
-	link.TokenHash = digest
-	return link, nil
-}
-
-func (s *Store) CountRecentMagicLinks(ctx context.Context, email string, since time.Time) (int, error) {
-	var n int
-	err := s.pool.QueryRow(ctx,
-		`SELECT count(*) FROM magic_link_tokens WHERE email = $1 AND created_at >= $2`,
-		email, since).Scan(&n)
-	return n, normalize(err)
+// It is idempotent by construction: the WHERE clause only matches accounts that
+// are not already admins, so a repeated sign-in is a no-op rather than a write.
+// It never demotes — removing an address from the environment is a deliberate
+// act that should be done through the console, where it is audited.
+func (s *Store) PromoteToAdmin(ctx context.Context, userID string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE users SET role = 'admin' WHERE id = $1 AND role <> 'admin'`, userID)
+	return normalize(err)
 }
 
 func (s *Store) CreateSession(ctx context.Context, sess auth.Session) error {
@@ -149,40 +123,84 @@ func (s *Store) RevokeUserSessions(ctx context.Context, userID string, at time.T
 	return normalize(err)
 }
 
+// CreateWalletChallenge records a nonce awaiting a signature.
+//
+// user_id is NULL for a sign-in challenge: the account it will belong to may not
+// exist yet, and creating one on the strength of an unsigned nonce would let
+// anybody fill the users table by asking for challenges.
 func (s *Store) CreateWalletChallenge(ctx context.Context, c auth.WalletChallenge) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO wallet_challenges (user_id, address, nonce, expires_at)
-		VALUES ($1, $2, $3, $4)`,
-		c.UserID, c.Address, c.Nonce, c.ExpiresAt)
+		INSERT INTO wallet_challenges (user_id, address, nonce, purpose, expires_at)
+		VALUES (NULLIF($1, '')::uuid, $2, $3, $4, $5)`,
+		c.UserID, c.Address, c.Nonce, c.Purpose, c.ExpiresAt)
 	return normalize(err)
 }
 
-func (s *Store) ConsumeWalletChallenge(ctx context.Context, userID, address, nonce string, now time.Time) error {
-	var id string
+func (s *Store) CountOpenChallenges(ctx context.Context, address string, now time.Time) (int, error) {
+	var n int
 	err := s.pool.QueryRow(ctx, `
-		UPDATE wallet_challenges SET consumed_at = $4
-		WHERE user_id = $1 AND address = $2 AND nonce = $3
-		  AND consumed_at IS NULL AND expires_at > $4
-		RETURNING id::text`, userID, address, nonce, now).Scan(&id)
-	return normalize(err)
+		SELECT count(*) FROM wallet_challenges
+		WHERE address = $1 AND consumed_at IS NULL AND expires_at > $2`,
+		address, now).Scan(&n)
+	return n, normalize(err)
+}
+
+// ConsumeSignInChallenge spends a sign-in nonce, in one statement.
+//
+// The `consumed_at IS NULL` predicate inside the UPDATE is what makes it
+// single-use: two concurrent presentations of the same signature race on the row
+// lock and only the first sees a returned row. A signature is not a secret, so
+// this is the only thing standing between a captured one and a second session.
+func (s *Store) ConsumeSignInChallenge(ctx context.Context, address, nonce string, now time.Time) error {
+	return s.consumeChallenge(ctx, `user_id IS NULL AND purpose = 'signin'`,
+		[]any{address, nonce, now}, now)
+}
+
+// ConsumeWalletChallenge spends a payout nonce belonging to userID.
+func (s *Store) ConsumeWalletChallenge(ctx context.Context, userID, address, nonce string, now time.Time) error {
+	return s.consumeChallenge(ctx, `user_id = $4 AND purpose = 'payout'`,
+		[]any{address, nonce, now, userID}, now)
+}
+
+func (s *Store) consumeChallenge(ctx context.Context, predicate string, args []any, now time.Time) error {
+	var id string
+	query := `UPDATE wallet_challenges SET consumed_at = $3
+		WHERE address = $1 AND nonce = $2 AND consumed_at IS NULL AND expires_at > $3 AND ` + predicate + `
+		RETURNING id::text`
+	if err := s.pool.QueryRow(ctx, query, args...).Scan(&id); err != nil {
+		return normalize(err)
+	}
+	return nil
 }
 
 // SetPayoutAddress records an address the account has just proven it controls.
 //
-// The column carries a UNIQUE constraint, so an address already held by another
-// account surfaces here as ErrConflict rather than quietly moving to whoever
-// claimed it most recently.
+// Two constraints are enforced here rather than by hoping. The column's own
+// UNIQUE constraint stops an address being claimed twice. The NOT EXISTS clause
+// stops a subtler case: adopting an address that is somebody else's *login*
+// wallet, which would quietly redirect that person's donations into the account
+// doing the adopting.
 func (s *Store) SetPayoutAddress(ctx context.Context, userID, address string, at time.Time) error {
-	_, err := s.pool.Exec(ctx, `
-		UPDATE users SET payout_address = $2, payout_verified_at = $3 WHERE id = $1`,
-		userID, address, at)
-	return normalize(err)
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE users SET payout_address = $2, payout_verified_at = $3
+		WHERE id = $1
+		  AND NOT EXISTS (
+		      SELECT 1 FROM users o WHERE o.id <> $1 AND o.wallet_address = $2
+		  )`, userID, address, at)
+	if err != nil {
+		return normalize(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrConflict
+	}
+	return nil
 }
 
-// PurgeExpiredAuth removes auth rows that expired more than thirty days ago,
-// through the purge_expired_auth function added in migration 0007.
-func (s *Store) PurgeExpiredAuth(ctx context.Context) (links, challenges, sessions int64, err error) {
-	err = s.pool.QueryRow(ctx, `SELECT links, challenges, sessions FROM purge_expired_auth()`).
-		Scan(&links, &challenges, &sessions)
-	return links, challenges, sessions, normalize(err)
+// PurgeExpiredAuth removes challenges and sessions that expired more than thirty
+// days ago, through purge_expired_auth as redefined in migration 0013. The
+// sign-in-link leg is gone with the table that held them.
+func (s *Store) PurgeExpiredAuth(ctx context.Context) (challenges, sessions int64, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT challenges, sessions FROM purge_expired_auth()`).
+		Scan(&challenges, &sessions)
+	return challenges, sessions, normalize(err)
 }
