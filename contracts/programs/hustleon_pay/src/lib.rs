@@ -1,21 +1,8 @@
-//! # Hustle On — sponsorship / support program
-//!
-//! Sponsors send SOL to a creator. The program keeps an on-chain record of the
-//! sponsorship (`CreatorStats`) and routes a platform fee, taken from the same
-//! transfer, to a treasury wallet configured by the platform admin.
-//!
-//! ## Instruction wire format
-//!
-//! `sponsor` deliberately takes **exactly one** argument (`amount_lamports: u64`)
-//! so the instruction data is exactly
-//! `8-byte anchor discriminator || 8-byte little-endian u64` — 16 bytes total.
-//!
-//! SPDX-License-Identifier: MIT
 
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
-declare_id!("6vK2BUb6UoAqTxWVU2zXTLDje8NDuVA8CaEuTwJZDkFk");
+declare_id!("5aRAEcR35qrMCkkkhJHJ1UdwXWoTua3jggyeXqpb56nS");
 
 /// Hard ceiling on the platform fee: 1000 bps == 10%.
 pub const MAX_FEE_BPS: u16 = 1_000;
