@@ -27,7 +27,7 @@ interface NavItem {
   match: (path: string) => boolean;
 }
 
-export function HeaderClient({ user }: { user?: HeaderUser }) {
+export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest?: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const bar = useRef<HTMLElement>(null);
@@ -166,12 +166,23 @@ export function HeaderClient({ user }: { user?: HeaderUser }) {
           <ThemeToggle />
 
           {user ? null : (
-            <Link
-              href="/login"
-              className={buttonClass("ghost", "sm", "hidden md:inline-flex")}
-            >
-              Sign in
-            </Link>
+            <>
+              {guest ? (
+                <span
+                  className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11.5px] text-fg-subtle md:inline-flex"
+                  title="Browsing without an account. Everything published is open; uploading needs one."
+                >
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+                  Guest
+                </span>
+              ) : null}
+              <Link
+                href="/login"
+                className={buttonClass("ghost", "sm", "hidden md:inline-flex")}
+              >
+                Sign in
+              </Link>
+            </>
           )}
           <Link
             href="/upload"
@@ -267,7 +278,7 @@ export function HeaderClient({ user }: { user?: HeaderUser }) {
                       Upload a timelapse
                     </Link>
                     <Link href="/login" className={buttonClass("inverse", "lg", "w-full")}>
-                      Sign in or create an account
+                      {guest ? "Sign in to upload" : "Sign in or create an account"}
                     </Link>
                   </>
                 )}

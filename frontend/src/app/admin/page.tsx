@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { getAdmin } from "@/lib/data";
-import { formatSol } from "@/lib/format";
-import { formatWait, reviewFlags, waitingMinutes } from "@/lib/review";
+import { formatSol, timeAgo } from "@/lib/format";
+import { formatWait, waitingMinutes } from "@/lib/review";
 import { ActivityChart } from "@/components/admin/activity-chart";
-import { AuditRow } from "@/components/admin/audit-log";
-import { AdminHeader } from "@/components/admin/page-header";
+import { AuditRow, DECISION_ACTIONS } from "@/components/admin/audit-log";
+import { AdminPage, Panel, StatCard, decisionTotals } from "@/components/admin/console";
 import { CountUp } from "@/components/motion/count-up";
-import { Reveal } from "@/components/motion/reveal";
-import { Avatar, Badge, ButtonLink, Card, EmptyState } from "@/components/ui";
-import { ArrowRightIcon, InboxIcon } from "@/components/ui/icons";
+import { Avatar, EmptyState } from "@/components/ui";
+import { InboxIcon } from "@/components/ui/icons";
 
 export const metadata = { title: "Overview" };
 
@@ -16,212 +15,202 @@ export default async function AdminOverview() {
   const data = await getAdmin();
   if (typeof data === "string") return null;
 
-  const decided = data.activity.reduce((n, d) => n + d.approved + d.rejected, 0);
-  const approved = data.activity.reduce((n, d) => n + d.approved, 0);
-  const volume = data.activity.reduce((n, d) => n + d.lamports, 0);
-  const oldest = [...data.queue].sort((a, b) => waitingMinutes(b) - waitingMinutes(a));
+  const { approved, decisions } = decisionTotals(data.activity);
+  const approvalRate = decisions ? Math.round((approved / decisions) * 100) : 0;
+
+  const waiting = [...data.queue].sort((a, b) => waitingMinutes(b) - waitingMinutes(a));
+  const oldest = waiting[0];
+  const openReports = data.reports
+    .filter((r) => r.status === "open")
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const inFlight = data.ledger.filter((e) => e.status === "pending" || e.status === "submitted");
+  const decisionRows = data.audit.filter((e) => DECISION_ACTIONS.includes(e.action));
   const earners = [...data.members]
     .sort((a, b) => b.donationTotalLamports - a.donationTotalLamports)
-    .slice(0, 5);
-
-  const openReports = data.reports.filter((r) => r.status === "open").length;
-  const kpis = [
-    {
-      label: "Waiting for review",
-      value: <CountUp value={data.queue.length} format="plain" />,
-      hint: oldest[0] ? `Oldest ${formatWait(waitingMinutes(oldest[0]))}` : "Queue is clear",
-    },
-    {
-      label: "Open reports",
-      value: <CountUp value={openReports} format="plain" />,
-      hint: openReports ? "Waiting in the reports inbox" : "Nothing flagged",
-    },
-    {
-      label: "Approval rate · 30d",
-      value: decided ? <CountUp value={(approved / decided) * 100} format="percent" /> : "—",
-      hint: `${decided} decisions`,
-    },
-    {
-      label: "Published sessions",
-      value: <CountUp value={data.stats.publishedTimelapses} format="plain" />,
-      hint: `${data.stats.creators} creators`,
-    },
-    {
-      label: "Sponsored · 30d",
-      value: volume ? (
-        <CountUp value={volume} format="sol" />
-      ) : (
-        <CountUp value={data.stats.donationTotalLamports} format="sol" />
-      ),
-      hint: `${data.stats.confirmedDonations} confirmed transfers`,
-    },
-  ];
+    .slice(0, 5)
+    .filter((m) => m.donationTotalLamports > 0);
 
   return (
-    <div>
-      <AdminHeader
-        title={`Welcome back, ${data.operator.displayName.split(" ")[0]}`}
-        description="Everything that needs a decision, and what the last thirty days looked like."
-        action={
-          <ButtonLink href="/admin/queue">
-            Open review desk
-            <ArrowRightIcon size={15} className="nudge-icon" />
-          </ButtonLink>
-        }
-      />
+    <AdminPage
+      title={`Welcome back, ${data.operator.displayName.split(" ")[0]}`}
+      description="What needs you right now, and what the last thirty days looked like. Every number opens the page that acts on it."
+    >
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Submissions waiting"
+          value={<CountUp value={data.queue.length} format="plain" />}
+          hint={oldest ? `Oldest has waited ${formatWait(waitingMinutes(oldest))}` : "Queue is clear"}
+          href="/admin/queue"
+          cta="Open the review desk"
+        />
+        <StatCard
+          label="Open reports"
+          value={<CountUp value={openReports.length} format="plain" />}
+          hint={
+            openReports.length
+              ? `Oldest ${timeAgo(openReports[0]?.createdAt ?? "")}`
+              : "Nothing flagged"
+          }
+          href="/admin/reports"
+          cta="Open the reports inbox"
+        />
+        <StatCard
+          label="Donations awaiting the chain"
+          value={
+            inFlight.length ? (
+              <CountUp value={inFlight.reduce((n, e) => n + e.amountLamports, 0)} format="sol" />
+            ) : (
+              "0 SOL"
+            )
+          }
+          hint={
+            inFlight.length
+              ? `${inFlight.length} transfer${inFlight.length === 1 ? "" : "s"} not yet confirmed`
+              : "Nothing is in flight"
+          }
+          href="/admin/ledger"
+          cta="Open the ledger"
+        />
+        <StatCard
+          label="Decisions · 30 days"
+          value={<CountUp value={decisions} format="plain" />}
+          hint={
+            decisions ? `${approvalRate}% approved, ${decisions - approved} sent back` : "No decisions yet"
+          }
+          href="/admin/audit"
+          cta="Open the audit trail"
+        />
+      </dl>
 
-      <Reveal
-        as="dl"
-        stagger={0.06}
-        immediate
-        className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5"
-      >
-        {kpis.map((k) => (
-          <div
-            key={k.label}
-            className="rounded-[var(--radius-card)] border border-border bg-surface p-5"
-          >
-            <dt className="text-[12.5px] text-fg-muted">{k.label}</dt>
-            <dd className="tnum mt-3 text-[clamp(1.5rem,1.2rem+1vw,2.1rem)] font-semibold leading-none tracking-tight">
-              {k.value}
-            </dd>
-            <p className="mt-2 text-[12px] text-fg-subtle">{k.hint}</p>
-          </div>
-        ))}
-      </Reveal>
-
-      <Reveal className="mt-6">
-        <Card className="p-5 sm:p-6">
+      <Panel padded>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="text-[16px] font-semibold">Review decisions · last 30 days</h2>
-          <div className="mt-5">
-            {data.activity.length ? (
-              <ActivityChart days={data.activity} />
-            ) : (
-              <p className="text-[13.5px] text-fg-muted">
-                Activity could not be loaded. Reload to try again.
-              </p>
-            )}
+          <Link
+            href="/admin/audit"
+            className="link-underline text-[13px] text-fg-muted hover:text-fg"
+          >
+            Audit trail
+          </Link>
+        </div>
+        <div className="mt-5">
+          {data.activity.length ? (
+            <ActivityChart days={data.activity} />
+          ) : (
+            <p className="text-[13.5px] text-fg-muted">
+              Activity could not be loaded. Reload to try again.
+            </p>
+          )}
+        </div>
+      </Panel>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Panel padded className="h-full">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[16px] font-semibold">Waiting longest</h2>
+            <Link
+              href="/admin/queue"
+              className="link-underline text-[13px] text-fg-muted hover:text-fg"
+            >
+              All {data.queue.length}
+            </Link>
           </div>
-        </Card>
-      </Reveal>
+          {waiting.length === 0 ? (
+            <EmptyState
+              className="mt-5"
+              icon={<InboxIcon size={18} />}
+              title="The queue is clear"
+              description="Every submission has a decision. New ones appear here as they arrive."
+            />
+          ) : (
+            <ul className="mt-2 divide-y divide-border">
+              {waiting.slice(0, 4).map((t) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/admin/queue?item=${encodeURIComponent(t.id)}`}
+                    className="group -mx-2 flex items-center gap-3 rounded-[var(--radius-control)] px-2 py-3 hover:bg-surface-raised"
+                  >
+                    <Avatar name={t.creator.displayName} src={t.creator.avatarUrl} size={32} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-medium">{t.title}</span>
+                      <span className="mt-0.5 block truncate text-[12px] text-fg-subtle">
+                        {t.creator.displayName} · waiting {formatWait(waitingMinutes(t))}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[12px] text-fg-subtle group-hover:text-fg">
+                      Decide
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Reveal>
-          <Card className="h-full p-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[16px] font-semibold">Needs attention</h2>
-              <Link
-                href="/admin/queue"
-                className="link-underline text-[13px] text-fg-muted hover:text-fg"
-              >
-                All {data.queue.length}
-              </Link>
-            </div>
-            {oldest.length === 0 ? (
-              <EmptyState
-                className="mt-5"
-                icon={<InboxIcon size={18} />}
-                title="Queue is clear"
-                description="Every submission has a decision."
-              />
-            ) : (
-              <ul className="mt-3 divide-y divide-border">
-                {oldest.slice(0, 4).map((t) => {
-                  const flags = reviewFlags(t);
-                  return (
-                    <li key={t.id}>
-                      <Link
-                        href={`/admin/queue?item=${t.id}`}
-                        className="group -mx-2 flex items-center gap-3 rounded-[var(--radius-control)] px-2 py-3 hover:bg-surface-raised"
-                      >
-                        <Avatar name={t.creator.displayName} size={32} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium">{t.title}</p>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12px] text-fg-subtle">
-                            {t.creator.displayName} · waiting {formatWait(waitingMinutes(t))}
-                            {flags.slice(0, 1).map((f) => (
-                              <Badge key={f.label} tone={f.tone} className="h-5 px-2 text-[11px]">
-                                {f.label}
-                              </Badge>
-                            ))}
-                          </p>
-                        </div>
-                        <ArrowRightIcon size={14} className="nudge-icon shrink-0 text-fg-subtle" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Card>
-        </Reveal>
-
-        <Reveal delay={0.08}>
-          <Card className="h-full p-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[16px] font-semibold">Recent decisions</h2>
-              <Link
-                href="/admin/audit"
-                className="link-underline text-[13px] text-fg-muted hover:text-fg"
-              >
-                Audit trail
-              </Link>
-            </div>
-            <ul className="mt-3 divide-y divide-border">
-              {data.audit.slice(0, 5).map((entry) => (
+        <Panel padded className="h-full">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[16px] font-semibold">Recent decisions</h2>
+            <Link
+              href="/admin/audit"
+              className="link-underline text-[13px] text-fg-muted hover:text-fg"
+            >
+              Audit trail
+            </Link>
+          </div>
+          {decisionRows.length === 0 ? (
+            <p className="mt-4 text-[13.5px] text-fg-muted">
+              No approvals or rejections recorded yet. They appear here the moment you make one.
+            </p>
+          ) : (
+            <ul className="mt-2 divide-y divide-border">
+              {decisionRows.slice(0, 5).map((entry) => (
                 <AuditRow key={entry.id} entry={entry} compact />
               ))}
             </ul>
-            {data.audit.length === 0 ? (
-              <p className="mt-3 text-[13.5px] text-fg-muted">No decisions recorded yet.</p>
-            ) : null}
-          </Card>
-        </Reveal>
+          )}
+        </Panel>
       </div>
 
       {earners.length > 0 ? (
-        <Reveal className="mt-6">
-          <Card className="p-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[16px] font-semibold">Top creators by sponsorship</h2>
-              <Link
-                href="/admin/members"
-                className="link-underline text-[13px] text-fg-muted hover:text-fg"
-              >
-                All members
-              </Link>
-            </div>
-            <ol className="mt-4 space-y-3">
-              {earners.map((m, i) => {
-                const share = earners[0]!.donationTotalLamports
-                  ? m.donationTotalLamports / earners[0]!.donationTotalLamports
-                  : 0;
-                return (
-                  <li
-                    key={m.id}
-                    className="grid grid-cols-[20px_minmax(0,160px)_minmax(0,1fr)_auto] items-center gap-3 text-[13.5px]"
-                  >
-                    <span className="font-mono text-[11.5px] text-fg-subtle">{i + 1}</span>
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Avatar name={m.displayName} size={24} />
-                      <span className="truncate">{m.displayName}</span>
-                    </span>
-                    <span className="h-2 overflow-hidden rounded-full bg-surface-raised">
-                      <span
-                        className="block h-full rounded-full"
-                        style={{ width: `${share * 100}%`, background: "var(--chart-1)" }}
-                      />
-                    </span>
-                    <span className="font-mono text-[12.5px] tabular-nums">
-                      {formatSol(m.donationTotalLamports)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </Card>
-        </Reveal>
+        <Panel padded>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[16px] font-semibold">Top creators by sponsorship</h2>
+            <Link
+              href="/admin/members"
+              className="link-underline text-[13px] text-fg-muted hover:text-fg"
+            >
+              All members
+            </Link>
+          </div>
+          <ol className="mt-4 space-y-3">
+            {earners.map((m, i) => {
+              const share = earners[0]?.donationTotalLamports
+                ? m.donationTotalLamports / earners[0].donationTotalLamports
+                : 0;
+              return (
+                <li
+                  key={m.id}
+                  className="grid grid-cols-[20px_minmax(0,160px)_minmax(0,1fr)_auto] items-center gap-3 text-[13.5px]"
+                >
+                  <span className="font-mono text-[11.5px] text-fg-subtle">{i + 1}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Avatar name={m.displayName} src={m.avatarUrl} size={24} />
+                    <span className="truncate">{m.displayName}</span>
+                  </span>
+                  <span className="h-2 overflow-hidden rounded-full bg-surface-raised">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{ width: `${share * 100}%`, background: "var(--chart-1)" }}
+                    />
+                  </span>
+                  <span className="font-mono text-[12.5px] tabular-nums">
+                    {formatSol(m.donationTotalLamports)}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </Panel>
       ) : null}
-    </div>
+    </AdminPage>
   );
 }

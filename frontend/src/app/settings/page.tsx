@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getAccount } from "@/lib/data";
+import { getAccount, getViewer } from "@/lib/data";
+import { GuestNotice } from "@/components/account/guest-notice";
 import { ProfileForm, SignOutButton, WalletForm } from "@/components/account/settings-forms";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
@@ -10,6 +11,21 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false, f
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const viewer = await getViewer();
+  if (!viewer.user && viewer.guest) {
+    return (
+      <Container width="narrow" className="py-14 sm:py-20">
+        <p className="text-eyebrow">Account</p>
+        <h1 className="text-headline mt-4">Settings</h1>
+        <GuestNotice
+          what="Settings"
+          next="/settings"
+          reason="It holds your profile, your payout wallet and the sessions tied to your account, so there has to be an account first."
+        />
+      </Container>
+    );
+  }
+
   const me = await getAccount();
   if (me === "signin") redirect("/login?next=/settings");
 

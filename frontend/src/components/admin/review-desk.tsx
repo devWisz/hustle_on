@@ -335,7 +335,7 @@ export function ReviewDesk({
                 Back to the queue
               </button>
 
-              <Panel as="section" aria-labelledby="review-detail-title" rows={false}>
+              <Panel as="section" label="review-detail-title" rows={false}>
                 <VideoStage timelapse={current} />
 
                 <div className="p-5 sm:p-6">
