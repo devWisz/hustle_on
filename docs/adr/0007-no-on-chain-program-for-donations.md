@@ -1,6 +1,6 @@
 # 7. No on-chain program for donations
 
-**Status:** accepted
+**Status:** superseded by [0008](0008-on-chain-sponsorship-program.md)
 
 ## Context
 

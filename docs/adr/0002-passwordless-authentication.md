@@ -1,6 +1,6 @@
 # 2. Passwordless authentication with email magic links
 
-**Status:** accepted
+**Status:** superseded by [0009](0009-wallet-only-authentication.md)
 
 ## Context
 

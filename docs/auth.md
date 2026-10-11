@@ -276,7 +276,7 @@ to hold a secret in flight. A signature has none of that — the key never leave
 the wallet, and the only thing the server keeps is a public address that has
 already proved itself. `users.email` survives as optional contact information a
 member may add: it is not unique, not a credential, and never used to sign in.
-See [ADR 0008](adr/0008-wallet-only-authentication.md).
+See [ADR 0009](adr/0009-wallet-only-authentication.md).
 
 ### When a signature is refused
 

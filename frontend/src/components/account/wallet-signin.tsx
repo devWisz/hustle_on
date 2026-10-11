@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
-import { connectWallet, signOwnershipProof, walletAvailable } from "@/lib/wallet";
 import { Button } from "../ui";
 
 /**
@@ -44,14 +43,25 @@ export function WalletSignIn({ next, className }: { next?: string; className?: s
   // wallet is missing when the check simply has not happened yet.
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
+  // Whether a wallet exists is asked of the browser, so the module that knows how
+  // to talk to one is imported only here and only in the browser. Importing it at
+  // the top of the file would put the whole Solana client — a couple of hundred
+  // kilobytes — into the bundle for a page most visitors leave immediately.
   useEffect(() => {
-    setHasWallet(walletAvailable());
+    let cancelled = false;
+    void import("@/lib/wallet").then(({ walletAvailable }) => {
+      if (!cancelled) setHasWallet(walletAvailable());
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signIn = useCallback(async () => {
     setError(null);
     try {
       setStep("connecting");
+      const { connectWallet, signOwnershipProof } = await import("@/lib/wallet");
       const address = await connectWallet();
 
       // One retry, and only for an expired challenge: the common cause is a

@@ -165,7 +165,7 @@ The short version; [docs/security.md](docs/security.md) is the real one.
 ## Quick start
 
 ```bash
-cp .env.example .env          # fill in DATABASE_URL, SESSION_SECRET, INTERNAL_PROXY_SECRET
+cp .env.example .env          # fill in DATABASE_URL, SESSION_SECRET, ADMIN_WALLETS
 make setup                    # install dependencies
 make db-migrate               # apply migrations
 make db-seed                  # optional: empties every table and creates nothing
