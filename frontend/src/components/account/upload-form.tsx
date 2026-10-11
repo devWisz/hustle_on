@@ -13,7 +13,7 @@ const MIN_SUMMARY = 40;
 
 type Stage = "idle" | "uploading" | "recording" | "submitting" | "done";
 
-export function UploadForm({ preview = false }: { preview?: boolean }) {
+export function UploadForm() {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -55,13 +55,6 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
     event.preventDefault();
     setError("");
     setFieldErrors({});
-
-    if (preview) {
-      setError(
-        "This is the demo, so nothing was sent. Sign in and the same form submits for real.",
-      );
-      return;
-    }
 
     if (!file) {
       setError("Choose a video file to upload.");
@@ -294,12 +287,10 @@ export function UploadForm({ preview = false }: { preview?: boolean }) {
 
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" size="lg" loading={busy}>
-          {preview ? "Submit for review" : stageLabel(stage)}
+          {stageLabel(stage)}
         </Button>
         <p className="text-[13px] text-fg-muted">
-          {preview
-            ? "Needs an account — a submission has to belong to somebody."
-            : "Goes to review first. You will see the decision on your dashboard."}
+          Goes to review first. You will see the decision on your dashboard.
         </p>
       </div>
     </form>

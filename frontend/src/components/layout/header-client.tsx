@@ -26,7 +26,7 @@ interface NavItem {
   match: (path: string) => boolean;
 }
 
-export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean }) {
+export function HeaderClient({ user }: { user?: HeaderUser }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const bar = useRef<HTMLElement>(null);
@@ -36,13 +36,13 @@ export function HeaderClient({ user, demo }: { user?: HeaderUser; demo: boolean 
     { href: "/#feed", label: "Explore", match: (p) => p === "/" || p.startsWith("/watch") },
     { href: "/about", label: "How it works", match: (p) => p === "/about" },
   ];
-  if (user || demo)
+  if (user)
     nav.push({ href: "/dashboard", label: "Dashboard", match: (p) => p.startsWith("/dashboard") });
 
   // The phone menu has no account dropdown, so everything it holds is listed here.
   const menuNav: NavItem[] = [
     ...nav,
-    ...(user || demo
+    ...(user
       ? [
           { href: "/upload", label: "Upload", match: (p: string) => p === "/upload" },
           { href: "/settings", label: "Settings", match: (p: string) => p === "/settings" },

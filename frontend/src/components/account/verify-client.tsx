@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
-import { safeNext } from "@/lib/demo/cookie";
+import { safeNext } from "@/lib/redirect";
 import { ButtonLink, Spinner } from "../ui";
 
 export function VerifyClient() {

@@ -29,8 +29,12 @@ type Config struct {
 	AccessKey string
 	SecretKey string
 	PublicURL string // CDN or public base URL for reads
-	MaxBytes  int64
-	URLTTL    time.Duration
+	// MaxBytes caps a video upload.
+	MaxBytes int64
+	// PosterMaxBytes caps a poster image, which has no reason to be as large as
+	// a video and is downloaded by every visitor.
+	PosterMaxBytes int64
+	URLTTL         time.Duration
 }
 
 type Storage struct{ cfg Config }
@@ -41,6 +45,9 @@ func New(cfg Config) *Storage {
 	}
 	if cfg.MaxBytes == 0 {
 		cfg.MaxBytes = 2 << 30
+	}
+	if cfg.PosterMaxBytes == 0 {
+		cfg.PosterMaxBytes = 8 << 20
 	}
 	return &Storage{cfg: cfg}
 }
@@ -54,6 +61,20 @@ var allowedContentTypes = map[string]string{
 	"video/webm":       "webm",
 	"video/x-matroska": "mkv",
 }
+
+// allowedPosterTypes is the same allowlist for poster images. The omissions are
+// the point: no SVG, because an SVG is a document that can carry script and this
+// one would be served from the storage origin; and no GIF, because a "thumbnail"
+// is a single frame.
+var allowedPosterTypes = map[string]string{
+	"image/jpeg": "jpg",
+	"image/png":  "png",
+	"image/webp": "webp",
+}
+
+// posterPrefix namespaces poster objects, so a key answers "what is this" from
+// the string alone and an object cannot be reassigned between the two kinds.
+const posterPrefix = "posters/"
 
 // ErrUnsupportedType is returned for a content type outside the allowlist.
 var ErrUnsupportedType = errors.New("media: unsupported content type")
@@ -113,6 +134,57 @@ func (s *Storage) NewUpload(userID, contentType string, declaredSize int64) (Upl
 		ExpiresAt: now.Add(s.cfg.URLTTL),
 		MaxBytes:  s.cfg.MaxBytes,
 	}, nil
+}
+
+// NewPosterUpload is NewUpload for a poster image.
+//
+// It is a separate method rather than a flag because the two differ in every
+// parameter that matters: the type allowlist, the size ceiling, the key prefix
+// and therefore who may claim the object. A boolean would let a caller pick the
+// video rules for an image.
+func (s *Storage) NewPosterUpload(userID, contentType string, declaredSize int64) (Upload, error) {
+	ext, ok := allowedPosterTypes[contentType]
+	if !ok {
+		return Upload{}, ErrUnsupportedType
+	}
+	if declaredSize <= 0 || declaredSize > s.cfg.PosterMaxBytes {
+		return Upload{}, ErrTooLarge
+	}
+
+	suffix := make([]byte, 8)
+	if _, err := rand.Read(suffix); err != nil {
+		return Upload{}, fmt.Errorf("media: entropy: %w", err)
+	}
+	now := time.Now().UTC()
+	key := fmt.Sprintf("%s%s/%s/%s.%s",
+		posterPrefix, userID, now.Format("2006/01"), hex.EncodeToString(suffix), ext)
+
+	if s.IsLocal() {
+		return Upload{
+			URL:       fmt.Sprintf("%s/v1/uploads/local/%s", strings.TrimRight(s.cfg.Endpoint, "/"), key),
+			Key:       key,
+			ExpiresAt: now.Add(s.cfg.URLTTL),
+			MaxBytes:  s.cfg.PosterMaxBytes,
+		}, nil
+	}
+
+	signed, err := s.presignPut(key, contentType, now)
+	if err != nil {
+		return Upload{}, err
+	}
+	return Upload{
+		URL:       signed,
+		Key:       key,
+		ExpiresAt: now.Add(s.cfg.URLTTL),
+		MaxBytes:  s.cfg.PosterMaxBytes,
+	}, nil
+}
+
+// IsPosterKey reports whether a key names a poster object. A video key can never
+// be attached as a thumbnail, and the reverse is what would let a poster URL be
+// recorded as somebody's session recording.
+func (s *Storage) IsPosterKey(key string) bool {
+	return strings.HasPrefix(key, posterPrefix)
 }
 
 // PublicURL returns the read URL for a stored object.
@@ -247,5 +319,6 @@ func sha256sum(b []byte) []byte {
 // it before recording an upload, so a client cannot claim an object under
 // somebody else's prefix.
 func (s *Storage) OwnsKey(userID, key string) bool {
-	return strings.HasPrefix(key, "uploads/"+userID+"/")
+	return strings.HasPrefix(key, "uploads/"+userID+"/") ||
+		strings.HasPrefix(key, posterPrefix+userID+"/")
 }

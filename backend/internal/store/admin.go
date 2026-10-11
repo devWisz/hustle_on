@@ -201,3 +201,57 @@ func (s *Store) RecentNotes(ctx context.Context, limit int) ([]domain.AdminNote,
 	}
 	return out, normalize(rows.Err())
 }
+
+// --- operator corrections -------------------------------------------------
+
+// AdminEdit is the set of fields an operator may correct on somebody else's
+// submission.
+//
+// It is deliberately not the creator's own TimelapseUpdate, because the two
+// differ in one way that matters: here an absent field and an empty string are
+// different instructions. A creator edits their own write-up and rarely needs to
+// delete a link; an operator cleaning up a broken submission does, so an empty
+// string clears the column and a nil pointer leaves it alone.
+type AdminEdit struct {
+	Title          *string
+	Summary        *string
+	GitHubURL      *string
+	XURL           *string
+	SessionMinutes *int
+}
+
+// AdminUpdateTimelapse corrects a submission in any state except withdrawn.
+//
+// There is no status predicate beyond that: an operator has to be able to fix a
+// typo or a dead link on something already published, which is exactly the case
+// the creator's own endpoint refuses by design. The handler validates the values
+// and writes an audit line naming the fields it changed.
+func (s *Store) AdminUpdateTimelapse(ctx context.Context, id string, up AdminEdit) (domain.Timelapse, error) {
+	var updatedID string
+	err := s.pool.QueryRow(ctx, `
+		UPDATE timelapses SET
+			title           = COALESCE($2::text, title),
+			summary         = COALESCE($3::text, summary),
+			github_url      = CASE WHEN $4::text IS NULL THEN github_url ELSE NULLIF($4, '') END,
+			x_url           = CASE WHEN $5::text IS NULL THEN x_url ELSE NULLIF($5, '') END,
+			session_minutes = COALESCE($6::int, session_minutes)
+		WHERE id = $1 AND status <> 'removed'
+		RETURNING id::text`,
+		id, up.Title, up.Summary, up.GitHubURL, up.XURL, up.SessionMinutes).Scan(&updatedID)
+	if err != nil {
+		return domain.Timelapse{}, normalize(err)
+	}
+	return s.ByID(ctx, updatedID)
+}
+
+// SetThumbnail records the poster image for a submission. An empty reference
+// clears it, which is how an operator undoes a wrong choice rather than being
+// stuck with it.
+func (s *Store) SetThumbnail(ctx context.Context, id, ref string) (string, error) {
+	var title string
+	err := s.pool.QueryRow(ctx, `
+		UPDATE timelapses SET thumbnail_url = NULLIF($2, '')
+		WHERE id = $1 AND status <> 'removed'
+		RETURNING title`, id, ref).Scan(&title)
+	return title, normalize(err)
+}

@@ -2,8 +2,10 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/sardhana/backend/internal/domain"
 )
 
@@ -109,27 +111,153 @@ func (s *Store) OpenReportCount(ctx context.Context) (int, error) {
 	return n, normalize(err)
 }
 
-// SetFeatured features or unfeatures a published session.
+// MaxFeatured is how many sessions the curated front page holds.
+//
+// A shelf is a selection, not a queue: past a dozen entries a visitor reads it as
+// a second feed and the operator stops choosing. Featuring a thirteenth is
+// refused rather than accepted and then not shown, because a cap that silently
+// drops what it cannot display is worse than no cap at all.
+const MaxFeatured = 12
+
+// featuredOffset moves every position out of the way during a reorder. It is far
+// larger than any real shelf, so offsetting cannot collide with a new rank.
+const featuredOffset = 100000
+
+// SetFeatured puts a published session on the curated front page, or takes it
+// off.
+//
+// A newly featured session goes to the end of the shelf: the operator has said
+// "this belongs here", not "this belongs first", and inserting at the top would
+// silently rearrange work they had already placed. Positions are changed by
+// ReorderFeatured, which is the operation that actually means "move this".
 func (s *Store) SetFeatured(ctx context.Context, id string, featured bool, at time.Time) (string, error) {
 	var title string
-	err := s.pool.QueryRow(ctx, `
-		UPDATE timelapses SET featured_at = CASE WHEN $2::boolean THEN $3::timestamptz ELSE NULL END
-		WHERE id = $1 AND status = 'published'
-		RETURNING title`, id, featured, at).Scan(&title)
-	return title, normalize(err)
+	err := s.tx(ctx, func(tx pgx.Tx) error {
+		var status string
+		var rank *int
+		err := tx.QueryRow(ctx,
+			`SELECT title, status::text, featured_rank FROM timelapses WHERE id = $1 FOR UPDATE`,
+			id).Scan(&title, &status, &rank)
+		if err != nil {
+			return normalize(err)
+		}
+		if status != "published" {
+			return ErrNotPublished
+		}
+		if !featured {
+			_, err := tx.Exec(ctx,
+				`UPDATE timelapses SET featured_at = NULL, featured_rank = NULL WHERE id = $1`, id)
+			return normalize(err)
+		}
+		// Featuring something already on the shelf is not a move: leave its
+		// position alone rather than jumping it to the end on a double-click.
+		if rank != nil {
+			return nil
+		}
+		var held int
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*) FROM timelapses WHERE featured_rank IS NOT NULL`).Scan(&held); err != nil {
+			return normalize(err)
+		}
+		if held >= MaxFeatured {
+			return ErrShelfFull
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE timelapses
+			SET featured_at = $2,
+			    featured_rank = (SELECT COALESCE(max(featured_rank), 0) + 1
+			                       FROM timelapses WHERE featured_rank IS NOT NULL)
+			WHERE id = $1`, id, at)
+		return normalize(err)
+	})
+	if err != nil {
+		return "", err
+	}
+	return title, nil
 }
 
-// Featured lists the sessions an admin has featured, most recently featured first.
+// Featured lists the curated front page in the order the operator arranged it.
 func (s *Store) Featured(ctx context.Context, limit int) ([]domain.Timelapse, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
-		WHERE t.status = 'published' AND t.featured_at IS NOT NULL
-		ORDER BY t.featured_at DESC
+		WHERE t.status = 'published' AND t.featured_rank IS NOT NULL
+		ORDER BY t.featured_rank ASC
 		LIMIT $1`, limit)
 	if err != nil {
 		return nil, normalize(err)
 	}
 	return collectTimelapses(rows)
+}
+
+// ReorderFeatured rearranges the front page.
+//
+// ids must name exactly the sessions currently on the shelf — the same set, in
+// the order they should appear. Requiring a permutation rather than accepting
+// arbitrary ranks is what keeps membership and order separate operations: this
+// one can only move what is already there, and the feature and unfeature
+// endpoints are the only way in or out. That makes the common bug — a stale
+// client reordering a shelf it last saw ten minutes ago — a rejection instead of
+// a silent change to what the public sees.
+func (s *Store) ReorderFeatured(ctx context.Context, ids []string) ([]string, error) {
+	// The titles come back in the new order, so the audit line names what the
+	// operator actually arranged rather than a list of ids nobody can read.
+	titles := make([]string, 0, len(ids))
+	err := s.tx(ctx, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx,
+			`SELECT id::text, title FROM timelapses WHERE featured_rank IS NOT NULL ORDER BY featured_rank`)
+		if err != nil {
+			return normalize(err)
+		}
+		current := make(map[string]string, len(ids))
+		for rows.Next() {
+			var id, title string
+			if err := rows.Scan(&id, &title); err != nil {
+				rows.Close()
+				return normalize(err)
+			}
+			current[id] = title
+		}
+		rows.Close()
+		if err := normalize(rows.Err()); err != nil {
+			return err
+		}
+
+		if len(ids) != len(current) {
+			return fmt.Errorf("%w: the front page holds %d sessions, %d were named",
+				ErrConflict, len(current), len(ids))
+		}
+		seen := make(map[string]bool, len(ids))
+		for _, id := range ids {
+			title, ok := current[id]
+			if !ok {
+				return fmt.Errorf("%w: %s is not on the front page", ErrConflict, id)
+			}
+			if seen[id] {
+				return fmt.Errorf("%w: %s was named twice", ErrConflict, id)
+			}
+			seen[id] = true
+			titles = append(titles, title)
+		}
+
+		if _, err := tx.Exec(ctx,
+			`UPDATE timelapses SET featured_rank = featured_rank + $1 WHERE featured_rank IS NOT NULL`,
+			featuredOffset); err != nil {
+			return normalize(err)
+		}
+		ranks := make([]int32, len(ids))
+		for i := range ids {
+			ranks[i] = int32(i + 1)
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE timelapses t SET featured_rank = v.rank
+			FROM (SELECT id::uuid, rank FROM unnest($1::text[], $2::int[]) AS u(id, rank)) v
+			WHERE t.id = v.id`, ids, ranks)
+		return normalize(err)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return titles, nil
 }
 
 // CreatorContact is who to email about a decision on a session.

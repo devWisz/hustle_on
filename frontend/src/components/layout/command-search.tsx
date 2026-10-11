@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { API_URL } from "@/lib/api/client";
 import { canRemember } from "@/lib/consent";
-import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
 import { cx, formatSession } from "@/lib/format";
 import type { Page, Timelapse } from "@/lib/types";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
@@ -37,16 +36,6 @@ interface Item {
 function isTyping(): boolean {
   const el = document.activeElement as HTMLElement | null;
   return Boolean(el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)));
-}
-
-function localSearch(term: string): Timelapse[] {
-  const q = term.toLowerCase();
-  return SAMPLE_TIMELAPSES.filter(
-    (t) =>
-      t.title.toLowerCase().includes(q) ||
-      t.creator.displayName.toLowerCase().includes(q) ||
-      t.summary.toLowerCase().includes(q),
-  ).slice(0, 6);
 }
 
 export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -131,9 +120,9 @@ export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as Page<Timelapse>;
-        setResults(data.items.length ? data.items : localSearch(term));
+        setResults(data.items);
       } catch {
-        setResults(localSearch(term));
+        setResults([]);
       } finally {
         setLoading(false);
         setActive(0);

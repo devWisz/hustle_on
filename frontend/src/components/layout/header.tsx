@@ -13,7 +13,7 @@ export async function Header() {
         role: viewer.user.role,
       }
     : undefined;
-  return <HeaderClient user={user} demo={viewer.demo} />;
+  return <HeaderClient user={user} />;
 }
 
 export function HeaderFallback() {

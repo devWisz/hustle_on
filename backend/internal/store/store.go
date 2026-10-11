@@ -24,6 +24,15 @@ var ErrNotFound = errors.New("store: not found")
 // ErrConflict is returned when a uniqueness constraint rejects a write.
 var ErrConflict = errors.New("store: conflict")
 
+// ErrNotPublished is returned when an operation only makes sense for work the
+// public can see — featuring, most obviously.
+var ErrNotPublished = errors.New("store: not published")
+
+// ErrShelfFull is returned when the curated front page has no room left. It is
+// distinct from a generic conflict because the operator can act on it: unfeature
+// something first.
+var ErrShelfFull = errors.New("store: the front page is full")
+
 // Store holds the pool and exposes one method per query the API needs.
 type Store struct {
 	pool *pgxpool.Pool

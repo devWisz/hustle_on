@@ -7,7 +7,7 @@ import { ApiError, api } from "@/lib/api/client";
 import { useToast } from "../layout/toast";
 import type { Timelapse, TimelapseStatus } from "@/lib/types";
 import { cx, formatCount, formatSession, formatSol, timeAgo } from "@/lib/format";
-import { Button, EmptyState, Field, Input, StatusBadge, Textarea } from "../ui";
+import { Button, ButtonLink, EmptyState, Field, Input, StatusBadge, Textarea } from "../ui";
 import { FilmIcon } from "../ui/icons";
 
 const FILTERS: { id: "all" | TimelapseStatus; label: string }[] = [
@@ -17,7 +17,7 @@ const FILTERS: { id: "all" | TimelapseStatus; label: string }[] = [
   { id: "rejected", label: "Needs changes" },
 ];
 
-export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo: boolean }) {
+export function Submissions({ items: initial }: { items: Timelapse[] }) {
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initial);
@@ -26,17 +26,14 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const visible = filter === "all" ? items : items.filter((t) => t.status === filter);
-  const linkable = !demo;
 
   async function withdraw(t: Timelapse) {
     setBusy(t.id);
     try {
-      if (!demo) await api(`/v1/timelapses/${t.id}`, { method: "DELETE" });
+      await api(`/v1/timelapses/${t.id}`, { method: "DELETE" });
       setItems((list) => list.map((x) => (x.id === t.id ? { ...x, status: "removed" } : x)));
-      toast.success(
-        demo ? "Demo: withdrawn in this view only." : "Withdrawn. It is no longer public.",
-      );
-      if (!demo) router.refresh();
+      toast.success("Withdrawn. It is no longer public.");
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "That could not be withdrawn.");
     } finally {
@@ -48,7 +45,7 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
   function resubmitted(updated: Timelapse) {
     setItems((list) => list.map((x) => (x.id === updated.id ? updated : x)));
     setEditing(null);
-    if (!demo) router.refresh();
+    router.refresh();
   }
 
   return (
@@ -83,16 +80,26 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState
-          className="mt-5"
-          icon={<FilmIcon size={18} />}
-          title="Nothing here"
-          description="No submissions match this filter."
-        />
+        items.length === 0 ? (
+          <EmptyState
+            className="mt-5"
+            icon={<FilmIcon size={18} />}
+            title="No submissions yet"
+            description="Sessions you send to review appear here, with the reviewer's decision once it lands."
+            action={<ButtonLink href="/upload">Upload a timelapse</ButtonLink>}
+          />
+        ) : (
+          <EmptyState
+            className="mt-5"
+            icon={<FilmIcon size={18} />}
+            title="Nothing here"
+            description="No submissions match this filter."
+          />
+        )
       ) : (
         <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
           {visible.map((t) => {
-            const href = linkable && t.status === "published" ? `/watch/${t.slug}` : null;
+            const href = t.status === "published" ? `/watch/${t.slug}` : null;
             return (
               <li key={t.id} className="p-4 sm:p-5">
                 <div className="flex gap-4">
@@ -143,7 +150,6 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
                     {editing === t.id ? (
                       <ResubmitForm
                         timelapse={t}
-                        demo={demo}
                         onDone={resubmitted}
                         onCancel={() => setEditing(null)}
                       />
@@ -194,12 +200,10 @@ export function Submissions({ items: initial, demo }: { items: Timelapse[]; demo
 
 function ResubmitForm({
   timelapse,
-  demo,
   onDone,
   onCancel,
 }: {
   timelapse: Timelapse;
-  demo: boolean;
   onDone: (t: Timelapse) => void;
   onCancel: () => void;
 }) {
@@ -216,20 +220,18 @@ function ResubmitForm({
     setBusy(true);
     setFields({});
     try {
-      if (!demo) {
-        await api<Timelapse>(`/v1/timelapses/${timelapse.id}`, {
-          method: "PATCH",
-          body: {
-            title: title.trim(),
-            summary: summary.trim(),
-            ...(Number(minutes) > 0 ? { sessionMinutes: Number(minutes) } : {}),
-            ...(githubUrl.trim() ? { githubUrl: githubUrl.trim() } : {}),
-          },
-        });
-        await api(`/v1/timelapses/${timelapse.id}/submit`, { method: "POST" });
-      }
+      await api<Timelapse>(`/v1/timelapses/${timelapse.id}`, {
+        method: "PATCH",
+        body: {
+          title: title.trim(),
+          summary: summary.trim(),
+          ...(Number(minutes) > 0 ? { sessionMinutes: Number(minutes) } : {}),
+          ...(githubUrl.trim() ? { githubUrl: githubUrl.trim() } : {}),
+        },
+      });
+      await api(`/v1/timelapses/${timelapse.id}/submit`, { method: "POST" });
       onDone({ ...timelapse, title, summary, status: "in_review", reviewNote: undefined });
-      toast.success(demo ? "Demo: resubmitted in this view only." : "Sent back to review.");
+      toast.success("Sent back to review.");
     } catch (err) {
       if (err instanceof ApiError) {
         setFields(err.fields);
