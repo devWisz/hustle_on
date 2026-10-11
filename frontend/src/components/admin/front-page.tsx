@@ -8,6 +8,7 @@ import type { Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Badge, Button, EmptyState } from "../ui";
 import { ArrowDownIcon, ArrowUpIcon, FilmIcon, PlayIcon } from "../ui/icons";
+import { Panel, rowPad } from "./console";
 
 /** Which request is in flight: the verb, the session, or both. */
 type Busy = { op: "move" | "remove" | "add"; id?: string };
@@ -134,12 +135,12 @@ export function FrontPage({
           description="The front page is the first thing a visitor sees, so it is kept to a hand-picked selection rather than everything published. Use Add to put a session on it, in the order you want it read."
         />
       ) : (
-        <ol
-          aria-label="Front page order"
-          className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface"
-        >
+        <Panel as="ol" rows className="mt-5">
           {items.map((t, i) => (
-            <li key={t.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:p-5">
+            <li
+              key={t.id}
+              className={cx(rowPad, "flex flex-col gap-3 sm:flex-row sm:items-center")}
+            >
               <span
                 aria-hidden
                 className="w-6 shrink-0 font-mono text-[13px] tabular-nums text-fg-subtle"
@@ -215,7 +216,7 @@ export function FrontPage({
               </span>
             </li>
           ))}
-        </ol>
+        </Panel>
       )}
 
       <section aria-labelledby="add-heading" className="mt-8">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { formatDuration, timeAgo } from "@/lib/format";
+import { cx, formatDuration, timeAgo } from "@/lib/format";
 import type { AdminNote } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Avatar, Button, EmptyState, SearchField } from "../ui";
