@@ -23,6 +23,10 @@ const sections = [
     body: "Protects every change you make, such as uploading, posting a note or sponsoring, against cross-site request forgery. The page reads it and sends it back with each request so the server can confirm the request came from Hustle On. It lasts as long as your session.",
   },
   {
+    title: "hustleon_guest (essential until you sign in)",
+    body: "Only set if you choose Continue as guest on the sign-in page. It tells the interface to stop asking you to sign in and to explain what an account is for when you reach something that needs one. It grants nothing: uploading, commenting, saving and the admin console are all still refused without a session, and the API never sees this cookie. It lasts twelve hours, and signing in or choosing essential cookies only removes it.",
+  },
+  {
     title: "hustleon_consent (essential)",
     body: "Remembers the choice you made in the cookie banner, so we do not ask on every visit. It lasts six months.",
   },

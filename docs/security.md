@@ -44,6 +44,7 @@ Two cookies, with the flags each one needs rather than the same flags for both.
 | --- | --- | --- |
 | `hustleon_session` | **yes** | The credential. Unreachable from script, so an XSS bug cannot exfiltrate a session. |
 | `hustleon_session_csrf` | no, on purpose | The frontend must read it to echo it back in a header. It is not a credential: it is an HMAC of the session digest, so planting a value does not produce the matching token. |
+| `hustleon_guest` | no, on purpose | Set by the "Continue as guest" button and read by the server only to change copy. It is not sent to the API and unlocks nothing: a forged one buys the same browsing everyone already has, and every gated action is still refused on the session cookie. |
 
 Both are `Secure` whenever the web app is served over https, `SameSite=Lax`,
 `Path=/`, and host-only unless `SESSION_COOKIE_DOMAIN` says otherwise —

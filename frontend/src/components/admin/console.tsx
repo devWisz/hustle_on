@@ -80,7 +80,7 @@ export function Panel({
   className?: string;
   padded?: boolean;
   rows?: boolean;
-  as?: "div" | "section" | "ul" | "ol" | "form";
+  as?: "div" | "section" | "ul" | "ol" | "li" | "form";
   label?: string;
 }) {
   const named = Tag === "section" && label ? { "aria-labelledby": label } : {};
@@ -125,10 +125,10 @@ export function StatCard({
 }) {
   const body = (
     <>
-      <dt className="text-[12.5px] text-fg-muted">{label}</dt>
-      <dd className="tnum mt-3 text-[clamp(1.5rem,1.2rem+1vw,2.1rem)] font-semibold leading-none tracking-tight">
+      <p className="text-[12.5px] text-fg-muted">{label}</p>
+      <p className="tnum mt-3 text-[clamp(1.5rem,1.2rem+1vw,2.1rem)] font-semibold leading-none tracking-tight">
         {value}
-      </dd>
+      </p>
       <p className="mt-2 text-[12px] leading-relaxed text-fg-subtle">{hint}</p>
       {href ? (
         <span className="mt-3 inline-flex items-center gap-1 text-[12.5px] text-fg-muted transition-colors group-hover:text-fg">
@@ -171,7 +171,7 @@ export function FilterTabs<T extends string>({
   label: string;
   className?: string;
 }) {
-  function step(event: React.KeyboardEvent<HTMLDivElement>) {
+  function step(event: React.KeyboardEvent<HTMLElement>) {
     const delta = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
     if (!delta) return;
     event.preventDefault();

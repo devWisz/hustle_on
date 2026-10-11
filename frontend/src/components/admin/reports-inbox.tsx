@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { timeAgo } from "@/lib/format";
+import { cx, timeAgo } from "@/lib/format";
 import type { Report } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Avatar, Badge, Button, EmptyState, type Tone } from "../ui";
@@ -92,7 +92,8 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
         options={FILTERS.map((f) => ({
           value: f.value,
           label: f.label,
-          count: f.value === "all" ? reports.length : reports.filter((r) => r.status === f.value).length,
+          count:
+            f.value === "all" ? reports.length : reports.filter((r) => r.status === f.value).length,
         }))}
       />
 

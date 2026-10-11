@@ -9,14 +9,7 @@ import type { AdminMember, Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
 import { Avatar, Badge, Button, EmptyState, SearchField, Select, Textarea } from "../ui";
-import {
-  ArrowLeftIcon,
-  CheckIcon,
-  ExternalIcon,
-  GitHubIcon,
-  InboxIcon,
-  XIcon,
-} from "../ui/icons";
+import { ArrowLeftIcon, CheckIcon, ExternalIcon, GitHubIcon, InboxIcon, XIcon } from "../ui/icons";
 import { AdminPage, Panel, ShortcutLegend, memberIndex } from "./console";
 
 const TEMPLATES = [
@@ -174,7 +167,9 @@ export function ReviewDesk({
             d[action === "approve" ? "approved" : "rejected"] + 1,
         }));
         const done = action === "approve" ? "Approved and published." : "Sent back with your note.";
-        toast.success(following ? `${done} Next: ${following.title}.` : `${done} That is the queue.`);
+        toast.success(
+          following ? `${done} Next: ${following.title}.` : `${done} That is the queue.`,
+        );
         router.refresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "That decision did not go through.");
@@ -343,7 +338,11 @@ export function ReviewDesk({
                     data-detail
                     className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-fg-muted"
                   >
-                    <Avatar name={current.creator.displayName} src={current.creator.avatarUrl} size={22} />
+                    <Avatar
+                      name={current.creator.displayName}
+                      src={current.creator.avatarUrl}
+                      size={22}
+                    />
                     <span className="font-medium text-fg">{current.creator.displayName}</span>
                     <span>@{current.creator.handle}</span>
                     <span aria-hidden>·</span>

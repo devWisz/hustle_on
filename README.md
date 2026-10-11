@@ -120,7 +120,14 @@ Hustle On sets only essential cookies until you choose otherwise:
 |---|---|---|
 | `hustleon_session` | Keeps you signed in; `HttpOnly`, never readable by scripts | 30 days |
 | `hustleon_session_csrf` | Double-submit token that protects every change you make | 30 days |
+| `hustleon_guest` | Only if you choose **Continue as guest** on the sign-in page; a browsing preference that grants nothing | 12 hours |
 | `hustleon_consent` | Remembers your cookie choice | 6 months |
+
+A visitor who is not ready to sign in can choose **Continue as guest** and read
+everything published. That mode is a display preference, not a second kind of
+account: the API never sees the cookie, and uploading, commenting, saving and the
+console all still require a session. Reaching one of them as a guest explains what
+the account is for instead of bouncing to a form.
 
 A banner on the first visit asks whether preferences (theme, recent searches,
 saved sessions while signed out) may be remembered on the device. Choosing

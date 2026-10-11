@@ -481,8 +481,10 @@ export function LogoMark({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
       <rect width="32" height="32" rx="9" fill="currentColor" />
+      {/* An H, for Hustle On. The mark and the favicon in app/icon.svg are the
+          same drawing, so they are changed together. */}
       <path
-        d="M10 21.5c1.4 1.3 3.4 2 5.7 2 3.6 0 6-1.8 6-4.6 0-5.4-10.6-3.3-10.6-7.4 0-1.4 1.4-2.4 3.8-2.4 1.9 0 3.5.6 4.7 1.6"
+        d="M10.5 10.5v11M21.5 10.5v11M10.5 16h11"
         fill="none"
         stroke="var(--bg)"
         strokeWidth="2.6"

@@ -30,7 +30,7 @@ const sections = [
   },
   {
     title: "Cookies and local storage",
-    body: "A session cookie keeps you signed in and a companion cookie protects forms against cross-site requests; both are essential and set only when you sign in. Your theme choice, recent searches and, when signed out, your bookmarks are kept in your own browser's storage and never sent to us. There are no advertising or analytics cookies. Each one is listed in the Cookie Policy, and you choose whether preferences are remembered.",
+    body: "A session cookie keeps you signed in and a companion cookie protects forms against cross-site requests; both are essential and set only when you sign in. If you choose to browse as a guest, one more cookie records that choice for twelve hours so the site stops asking you to sign in; it grants no access and is forgotten if you sign in or choose essential cookies only. Your theme choice, recent searches and, when signed out, your bookmarks are kept in your own browser's storage and never sent to us. There are no advertising or analytics cookies. Each one is listed in the Cookie Policy, and you choose whether preferences are remembered.",
   },
   {
     title: "View counts",

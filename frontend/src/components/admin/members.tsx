@@ -94,6 +94,7 @@ export function Members({ initial }: { initial: AdminMember[] }) {
         <span className="font-mono tabular-nums">
           {m.timelapseCount}
           {m.inReview ? <span className="text-warning"> +{m.inReview}</span> : null}
+          {m.rejected ? <span className="text-danger"> {m.rejected} sent back</span> : null}
         </span>
       ),
     },

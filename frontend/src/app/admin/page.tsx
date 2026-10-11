@@ -35,11 +35,13 @@ export default async function AdminOverview() {
       title={`Welcome back, ${data.operator.displayName.split(" ")[0]}`}
       description="What needs you right now, and what the last thirty days looked like. Every number opens the page that acts on it."
     >
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Submissions waiting"
           value={<CountUp value={data.queue.length} format="plain" />}
-          hint={oldest ? `Oldest has waited ${formatWait(waitingMinutes(oldest))}` : "Queue is clear"}
+          hint={
+            oldest ? `Oldest has waited ${formatWait(waitingMinutes(oldest))}` : "Queue is clear"
+          }
           href="/admin/queue"
           cta="Open the review desk"
         />
@@ -75,12 +77,14 @@ export default async function AdminOverview() {
           label="Decisions · 30 days"
           value={<CountUp value={decisions} format="plain" />}
           hint={
-            decisions ? `${approvalRate}% approved, ${decisions - approved} sent back` : "No decisions yet"
+            decisions
+              ? `${approvalRate}% approved, ${decisions - approved} sent back`
+              : "No decisions yet"
           }
           href="/admin/audit"
           cta="Open the audit trail"
         />
-      </dl>
+      </div>
 
       <Panel padded>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
