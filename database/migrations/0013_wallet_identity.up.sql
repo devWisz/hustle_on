@@ -59,3 +59,30 @@ COMMENT ON COLUMN users.email IS
     'Optional contact address. Not a credential, not unique, never used to sign in.';
 COMMENT ON COLUMN wallet_challenges.purpose IS
     'signin challenges are created before an account exists; payout challenges re-point where money is sent.';
+
+-- 5. purge_expired_auth() still deletes from the table dropped above, so the
+--    first maintenance run after this migration would fail — and it runs at
+--    start-up, which means the API would not come up at all.
+--
+--    Its result names the categories it removed, so the return type changes and
+--    that is the one thing CREATE OR REPLACE cannot do. Hence the drop. The drop
+--    also takes 0009's EXECUTE grant with it, which is why it is re-made below:
+--    the API calls this function at boot and daily, and losing the grant would
+--    surface as a permission error on a maintenance path nobody watches.
+DROP FUNCTION IF EXISTS purge_expired_auth(interval);
+CREATE FUNCTION purge_expired_auth(keep interval DEFAULT interval '30 days')
+RETURNS TABLE (challenges bigint, sessions bigint) AS $$
+DECLARE
+    c bigint;
+    s bigint;
+BEGIN
+    DELETE FROM wallet_challenges WHERE expires_at < now() - keep;
+    GET DIAGNOSTICS c = ROW_COUNT;
+    DELETE FROM sessions
+     WHERE (expires_at < now() - keep) OR (revoked_at IS NOT NULL AND revoked_at < now() - keep);
+    GET DIAGNOSTICS s = ROW_COUNT;
+    RETURN QUERY SELECT c, s;
+END;
+$$ LANGUAGE plpgsql;
+
+GRANT EXECUTE ON FUNCTION purge_expired_auth(interval) TO sardhana_app;
