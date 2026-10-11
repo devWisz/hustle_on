@@ -73,7 +73,10 @@ async function main() {
   if (!programInfo.executable) {
     problems.push("the account exists but is not executable, so it is not a program");
   } else {
-    console.log(`  ok    program is deployed and executable (${programInfo.data.length} bytes)`);
+    // The program *account* holds no code — that lives in a separate programdata
+    // account — so its data length is a meaningless number to report. Saying the
+    // program is executable is the whole of the useful answer.
+    console.log("  ok    program is deployed and executable");
   }
 
   // 2. The account `sponsor` cannot run without.

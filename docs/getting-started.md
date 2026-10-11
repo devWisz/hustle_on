@@ -96,12 +96,31 @@ rather than showing a placeholder.
 
 ```bash
 make dev          # api and web together
+make e2e          # walk the whole creator journey against the running API
 make test         # go test ./... in both modules, plus tsc
 make lint         # go vet, next lint
 make fmt          # gofmt, prettier
 make db-status    # applied and pending migrations
 make db-rollback  # revert the most recent migration
 ```
+
+### The end-to-end check
+
+`make e2e` signs in with a wallet signature, uploads a file, creates a draft,
+submits it, confirms a stranger cannot see it, approves it, confirms it reaches
+the feed and the creator's page and the audit log, then sponsors it from a second
+wallet and checks that a malformed signature and an unknown transaction are both
+refused. It needs `make dev` running and a Solana keypair — but **no SOL**, since
+every step except the transfer itself is free.
+
+It exists because the failures worth catching here have not been unit failures.
+The rules are pure functions with good tests; what breaks is the seam between
+them — a column one query reads and another forgets, a budget that throttles the
+retry loop it was meant to protect. Every one of those compiled and passed its
+tests and was still wrong.
+
+It leaves its rows behind, because the API's role cannot delete rows by design.
+`make e2e-clean` removes them.
 
 ## Common problems
 

@@ -3,10 +3,10 @@ SHELL := /bin/bash
 
 .PHONY: help setup dev dev-api dev-web build test lint fmt \
         db-migrate db-rollback db-status db-seed preflight \
-        program-build program-check program-deploy clean
+        program-build program-check program-deploy e2e e2e-clean clean
 
 help: ## List available targets
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
 
 setup: ## Install dependencies for every workspace
@@ -65,6 +65,16 @@ program-check: ## Check the deployed program is usable (exit 0 only if sponsorsh
 
 program-deploy: ## Build, deploy and initialize the program, then verify it
 	@bash scripts/deploy-program.sh
+
+e2e: ## Walk the whole creator journey against a running API (needs make dev)
+	cd backend && go run ./cmd/e2echeck
+
+e2e-clean: ## Remove what the end-to-end check left behind
+	@set -a; . ./.env; set +a; \
+	  psql "$$DATABASE_URL_DIRECT" -q \
+	    -c "DELETE FROM donations; DELETE FROM timelapses; DELETE FROM users WHERE handle LIKE 'hustler\\_%';" \
+	    -c "SELECT * FROM recount_totals();" && \
+	  rm -rf backend/data && echo "removed the end-to-end check's rows and local uploads"
 
 clean: ## Remove build output
 	rm -rf backend/bin backend/data frontend/.next
