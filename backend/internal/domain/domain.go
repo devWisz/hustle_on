@@ -41,9 +41,9 @@ type SelfUser struct {
 	// WalletAddress is the address that signs in for this account, shown back
 	// so the holder can recognise which key they used.
 	WalletAddress string `json:"walletAddress,omitempty"`
-	// Email is a contact address held on the account, kept for the accounts
-	// that predate wallet sign-in. It is not a credential: nothing signs in with
-	// it, nothing is sent to it, and nothing currently edits it.
+	// Email is the address the account signs in with when it has a password, and
+	// nothing else: nothing is ever sent to it, because there is no mail path left
+	// to send with. It is shown back so somebody can see which account they are in.
 	Email string `json:"email,omitempty"`
 	Role  string `json:"role"`
 	// True when donations go to an address this account has proven it controls

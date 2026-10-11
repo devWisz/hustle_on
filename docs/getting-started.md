@@ -43,11 +43,22 @@ DATABASE_URL=postgres://postgres:sardhana@localhost:5432/sardhana?sslmode=disabl
 
 ## What the development conveniences do
 
-**Sign-in.** There is nothing to deliver. The API returns the exact text to sign
-from `POST /v1/auth/signin/challenge`, the browser asks a Solana wallet to sign
-it, and `POST /v1/auth/signin/verify` starts the session. Signing a message is
-free and works on any cluster, so a wallet extension is the whole prerequisite.
-The first sign-in creates the account.
+**Sign-in.** There are two paths, and both create the same kind of account.
+
+*Email and password.* `POST /v1/auth/signup` with `{ name, email, password }`
+creates the account and signs it in; `POST /v1/auth/login` signs an existing one
+in. Nothing is emailed — there is no verification link and no reset link — so a
+forgotten password can only be changed while signed in, or set by an operator
+with `backend/cmd/setpassword` (see below).
+
+*Solana wallet.* There is nothing to deliver. The API returns the exact text to
+sign from `POST /v1/auth/signin/challenge`, the browser asks a Solana wallet to
+sign it, and `POST /v1/auth/signin/verify` starts the session. Signing a message
+is free and works on any cluster, so a wallet extension is the whole
+prerequisite. The first sign-in creates the account.
+
+A wallet is only required to receive money. An email account can upload, be
+reviewed and be sponsored, and links a payout wallet later from settings.
 
 **Object storage.** With no `STORAGE_ACCESS_KEY_ID`, uploads are written to
 `backend/data/uploads` and served back from the API. The upload flow works end
@@ -80,17 +91,32 @@ ADMIN_WALLETS=<your-wallet-address>
 Then `/admin` shows the review queue. Until an admin approves something, the
 feed stays empty — that is the product working, not a bug.
 
-The seed creates nothing at all, and that is deliberate. It used to create an
-admin at `reviewer@hustleon.test`, which is now meaningless: sign-in is a wallet
-signature, so a seeded account with no key is one nobody can use. It also creates
-no content, because the only sessions this site shows are ones a person recorded
-and a reviewer approved, and a seeded imitation of that is precisely what the
-review step exists to prevent.
+### Or create an operator account
 
-So the honest first run is: sign in with your wallet, upload something real from
-`/upload`, and approve it from `/admin/queue`. Every screen has a considered
-empty state until you do — including the console, which says what will appear
-rather than showing a placeholder.
+An account with an email and a password can be promoted without a wallet:
+
+```bash
+cd backend && go run ./cmd/setpassword --email you@example.com --name "Your Name" --admin
+```
+
+It creates the account if the address is new, or sets a new password on the
+existing one, and prints the generated password once. Leave off `--admin` to make
+an ordinary account. This is also the only way back into an account whose
+password has been forgotten — there is no reset link, because nothing is emailed.
+The operator's credentials belong in the gitignored `ADMIN-ACCESS.md`, not in the
+repository.
+
+The seed creates nothing at all, and that is deliberate. It used to create an
+admin at `reviewer@hustleon.test`, which would now mean a password committed to
+the repository — a working credential that everyone with a checkout holds. It
+also creates no content, because the only sessions this site shows are ones a
+person recorded and a reviewer approved, and a seeded imitation of that is
+precisely what the review step exists to prevent.
+
+So the honest first run is: sign in with a wallet or with the operator account
+you just made, upload something real from `/upload`, and approve it from
+`/admin/queue`. Every screen has a considered empty state until you do — including
+the console, which says what will appear rather than showing a placeholder.
 
 ## Everyday commands
 
@@ -111,7 +137,8 @@ submits it, confirms a stranger cannot see it, approves it, confirms it reaches
 the feed and the creator's page and the audit log, then sponsors it from a second
 wallet and checks that a malformed signature and an unknown transaction are both
 refused. It needs `make dev` running and a Solana keypair — but **no SOL**, since
-every step except the transfer itself is free.
+every step except the transfer itself is free. It exercises wallet sign-in only;
+the email + password path is covered by the module's unit tests.
 
 It exists because the failures worth catching here have not been unit failures.
 The rules are pure functions with good tests; what breaks is the seam between
@@ -120,7 +147,10 @@ retry loop it was meant to protect. Every one of those compiled and passed its
 tests and was still wrong.
 
 It leaves its rows behind, because the API's role cannot delete rows by design.
-`make e2e-clean` removes them.
+`make e2e-clean` removes them — disarming the append-only audit trigger, deleting
+the test rows, and re-arming it, because an account with audit lines cannot be
+deleted while the trigger is armed (see
+[database.md](database.md#the-audit-trail-is-append-only)).
 
 ## Common problems
 

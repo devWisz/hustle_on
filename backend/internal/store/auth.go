@@ -186,6 +186,20 @@ func (s *Store) RevokeUserSessions(ctx context.Context, userID string, at time.T
 	return normalize(err)
 }
 
+// RevokeOtherSessions ends every session for an account except one.
+//
+// Keeping one is the difference between "sign out everywhere else" and "sign
+// yourself out": changing a password is something people do when they think an
+// account is compromised, and being thrown out of the device you are holding —
+// with no reset link to get back in — is a punishment rather than a protection.
+func (s *Store) RevokeOtherSessions(ctx context.Context, userID string, keepDigest []byte, at time.Time) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE sessions SET revoked_at = $2
+		WHERE user_id = $1 AND revoked_at IS NULL AND token_hash <> $3`,
+		userID, at, keepDigest)
+	return normalize(err)
+}
+
 // CreateWalletChallenge records a nonce awaiting a signature.
 //
 // user_id is NULL for a sign-in challenge: the account it will belong to may not

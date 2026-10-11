@@ -136,11 +136,16 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) er
 	if err := s.store.RecordAudit(r.Context(), user.ID, "account.password", "user", user.ID, nil); err != nil {
 		s.log.WarnContext(r.Context(), "audit password change", "error", err)
 	}
-	// Every other session is ended. A password change is what somebody does when
-	// they think an account is compromised, and leaving the other sessions alive
-	// would defeat the only remedy available without a reset link.
-	if err := s.auth.RevokeAll(r.Context(), user.ID); err != nil {
-		s.log.WarnContext(r.Context(), "revoke sessions after a password change", "error", err)
+	// Every OTHER session is ended, and this one is kept. A password change is what
+	// somebody does when they think an account is compromised, so the other sessions
+	// have to go; but signing them out of the device they are holding — with no
+	// reset link to get back in — would be a punishment rather than a protection.
+	var current string
+	if c, err := r.Cookie(s.cfg.SessionCookieName); err == nil {
+		current = c.Value
+	}
+	if err := s.auth.RevokeOthers(r.Context(), user.ID, current); err != nil {
+		s.log.WarnContext(r.Context(), "revoke other sessions after a password change", "error", err)
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"status":  "ok",

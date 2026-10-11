@@ -43,11 +43,18 @@ Generated: $(date -u '+%Y-%m-%d %H:%M UTC')
 
 ## Signing in
 
-**There is no password anywhere in this system, and no email.** There is nothing
-to reset and nothing to leak from a credential database, because the only thing
-that can authenticate an account is an ed25519 signature from a Solana wallet.
+**Two ways in: an email address with a password, or a Solana wallet signature.**
+Nothing is emailed — there is no verification link and no reset link — so a
+forgotten password is changed by the operator, not by a self-service flow. The
+operator account below is the one to use.
 
 The flow, which is the whole of it:
+
+**With a password:** sign in at \`/login\` with the address and password below. No
+wallet is involved. A wallet is only needed to *receive* sponsorships, and can be
+linked later in settings.
+
+**With a wallet:**
 
 1. The browser asks the API for a challenge (\`POST /v1/auth/signin/challenge\`).
 2. Your wallet is asked to sign a message naming this site, your address, and a

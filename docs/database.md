@@ -1,6 +1,6 @@
 # Database
 
-Thirteen migrations, eleven tables of product state (plus `schema_migrations`). The
+Fourteen migrations, eleven tables of product state (plus `schema_migrations`). The
 schema is small because the product is one path, and every table on it earns its
 place.
 
@@ -31,6 +31,7 @@ users ──┬──< timelapses ──< timelapse_views
 | `0011_featured_rank` | `timelapses.featured_rank` — an explicit, unique position on the curated front page |
 | `0012_profile_onboarding` | `users.onboarded_at` — whether the account holder has chosen their own name |
 | `0013_wallet_identity` | `users.wallet_address` as the account identity; `users.email` becomes optional and loses `UNIQUE`; `email_verified_at` and `magic_link_tokens` are dropped; `wallet_challenges` gains a nullable `user_id` and a `purpose`; `purge_expired_auth()` is redefined for the two remaining tables |
+| `0014_email_password` | `users.password_hash` (nullable); `users_email_unique_idx`, a partial unique index on `users (email) WHERE email IS NOT NULL`; and the `users_identity_check` and `users_password_needs_email_check` constraints. Email + password becomes a second way into an account alongside wallet sign-in, so an email address identifies exactly one account while wallet-only rows keep it NULL, nobody can be left with no way in, and a password always has an address to be looked up by. Nothing emails, so there is no verification link and no reset link |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -59,6 +60,16 @@ CHECK ((payout_address IS NULL) = (payout_verified_at IS NULL))
 ```
 An address is never on file without the signature that established it. The
 column is also `UNIQUE`, so one address belongs to one account.
+
+**Nobody can be locked out, and a password can always be looked up.**
+```sql
+CHECK (email IS NOT NULL OR wallet_address IS NOT NULL)
+CHECK (password_hash IS NULL OR email IS NOT NULL)
+```
+The first refuses a row with neither identity — the state `0013` left the
+pre-existing email-only accounts in, and the reason one had to be cleaned up by
+hand. The second refuses a password on an account with no address, because the
+address is the key a password sign-in uses to find the row.
 
 **Links point where they claim to.**
 ```sql
@@ -97,13 +108,15 @@ PRIMARY KEY (note_id, user_id)
 The same shape as the view deduplication: the tally cannot be inflated by asking
 twice, because the second ask is not a row.
 
-**An account is not a profile.** The first sign-in creates a row from a Solana
+**An account is not a profile.** A wallet sign-in creates a row from a Solana
 address — a generated placeholder handle, a display name identical to that
 handle — which is enough to own a session and not enough to be credited for one.
 `users.onboarded_at` records that the person has chosen their own. It is
 deliberately not backfilled: an existing account has never been asked, so treating
 it as complete would mean nobody ever is, and the derived default would become the
-product's idea of a name.
+product's idea of a name. An email sign-up skips that state entirely: the handle
+is derived from the real name supplied and `onboarded_at` is set in the same
+insert, so the row is complete the moment it exists.
 
 **The front page is a shelf, not a flag.** `featured_at` records that an operator
 chose a session; `featured_rank` records where they put it. Splitting the two is
@@ -120,6 +133,16 @@ target position is still occupied by the row being moved.
 **One `users` table, not `users` plus `profiles`.** At this scale a profile
 table would share the same primary key and be joined on every single read. The
 six profile columns live on the account row.
+
+**The credential lives beside the identity, not on the wire.**
+`users.password_hash` is nullable, because a wallet-only account has never had
+one, and it holds an Argon2id encoded hash that carries its own parameters and
+salt, so the cost can be raised later without invalidating a stored password.
+`users.email` is `citext`, so casing never creates a second account, and the
+partial unique index from `0014` makes it the lookup key for a password sign-in
+without forcing an address onto a wallet account. The hash is never selected onto
+a wire type: `PasswordCredentials` returns it beside the user rather than on it,
+so it cannot travel into a response with a `User`.
 
 **Counters are denormalised** (`timelapse_count`, `donation_count`,
 `donation_total_lamports`) and maintained by the API inside the same transaction
@@ -252,6 +275,11 @@ One consequence worth knowing before it surprises you: `audit_log.actor_id` is
 `UPDATE`. So an account cannot be hard-deleted while the trigger is armed. With
 it disarmed the delete succeeds and the account's decisions remain, attributed to
 nobody, which is the record `0002` intended.
+
+`make e2e-clean` is that procedure written down: it disables the trigger, deletes
+the rows the end-to-end check left behind, and re-enables it, all inside one
+transaction — because the test accounts have audit lines, and so cannot be
+deleted while the trigger is armed.
 
 ## Running migrations
 

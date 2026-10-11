@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -173,9 +175,36 @@ func (s *stubStore) SessionByHash(context.Context, []byte) (Session, error) {
 	return Session{}, ErrNotFound
 }
 
-func (s *stubStore) TouchSession(context.Context, string, time.Time) error       { return nil }
-func (s *stubStore) RevokeSession(context.Context, []byte, time.Time) error      { return nil }
-func (s *stubStore) RevokeUserSessions(context.Context, string, time.Time) error { return nil }
+func (s *stubStore) TouchSession(context.Context, string, time.Time) error  { return nil }
+func (s *stubStore) RevokeSession(context.Context, []byte, time.Time) error { return nil }
+func (s *stubStore) RevokeUserSessions(_ context.Context, userID string, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, sess := range s.sessions {
+		if sess.UserID != userID || sess.RevokedAt != nil {
+			continue
+		}
+		revoked := at
+		sess.RevokedAt = &revoked
+		s.sessions[id] = sess
+	}
+	return nil
+}
+func (s *stubStore) RevokeOtherSessions(_ context.Context, userID string, keep []byte, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, sess := range s.sessions {
+		if sess.UserID != userID || at.Before(sess.CreatedAt) {
+			continue
+		}
+		if bytes.Equal(sess.TokenHash, keep) {
+			continue
+		}
+		sess.RevokedAt = &at
+		s.sessions[id] = sess
+	}
+	return nil
+}
 
 func (s *stubStore) CreateWalletChallenge(_ context.Context, c WalletChallenge) error {
 	s.mu.Lock()
@@ -228,4 +257,67 @@ func (s *stubStore) spent(address, nonce string) bool {
 	defer s.mu.Unlock()
 	_, ok := s.challenges[challengeKey(address, nonce)]
 	return !ok
+}
+
+// RevokeOthers is what a password change uses, and the whole point of it is the
+// one session it leaves alone: signing somebody out of the device they are holding
+// — with no reset link to get back in — would be a punishment, not a protection.
+func TestRevokeOthersKeepsExactlyOneSession(t *testing.T) {
+	svc, store := newPasswordService(t)
+	ctx := context.Background()
+	user, err := svc.SignUp(ctx, "Ada", "ada@example.com", "correct horse battery")
+	if err != nil {
+		t.Fatalf("sign up: %v", err)
+	}
+
+	// Three sessions, as if the account were open on three devices.
+	const keep = "the-session-holding-the-cookie"
+	for _, secret := range []string{keep, "another-device", "a-third-device"} {
+		if err := store.CreateSession(ctx, Session{
+			UserID: user.ID, TokenHash: Digest(secret), CreatedAt: time.Now(),
+		}); err != nil {
+			t.Fatalf("create session: %v", err)
+		}
+	}
+
+	if err := svc.RevokeOthers(ctx, user.ID, keep); err != nil {
+		t.Fatalf("revoke others: %v", err)
+	}
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	for id, sess := range store.sessions {
+		revoked := sess.RevokedAt != nil
+		wantRevoked := !bytes.Equal(sess.TokenHash, Digest(keep))
+		if revoked != wantRevoked {
+			t.Errorf("session %s revoked=%v, want %v", id, revoked, wantRevoked)
+		}
+	}
+}
+
+// A cookie that names no session keeps nothing, because the safe reading of "keep
+// this one" when there is no this one is not to keep a stranger's.
+func TestRevokeOthersWithoutACookieEndsEverything(t *testing.T) {
+	svc, store := newPasswordService(t)
+	ctx := context.Background()
+	user, err := svc.SignUp(ctx, "Ada", "ada@example.com", "correct horse battery")
+	if err != nil {
+		t.Fatalf("sign up: %v", err)
+	}
+	if err := store.CreateSession(ctx, Session{
+		UserID: user.ID, TokenHash: Digest("some-session"), CreatedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	if err := svc.RevokeOthers(ctx, user.ID, ""); err != nil {
+		t.Fatalf("revoke others: %v", err)
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	for id, sess := range store.sessions {
+		if sess.RevokedAt == nil {
+			t.Errorf("session %s survived an empty cookie", id)
+		}
+	}
 }

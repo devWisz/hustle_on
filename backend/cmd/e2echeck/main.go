@@ -160,6 +160,98 @@ func main() {
 		map[string]any{"contentType": "video/mp4", "sizeBytes": 1024}, nil)
 	check("a stranger cannot get an upload URL", code == 401, http_(code))
 
+	// --- an email account can publish too ------------------------------------
+	// The other path in, and the one the owner actually asked for. It gets its own
+	// pass because it is a different identity with different rules: no wallet, no
+	// profile step, and a password instead of a signature.
+	//
+	// The name is chosen so the derived handle is recognisable, which is what lets
+	// `make e2e-clean` find these rows afterwards.
+	emailAccount := fmt.Sprintf("e2e-%d@example.com", time.Now().UnixNano())
+	emailPassword := "a long enough password"
+	email := newClient()
+
+	var signedUp map[string]any
+	code = call(email, "POST", "/v1/auth/signup", map[string]any{
+		"name": "E2E Email Check", "email": emailAccount, "password": emailPassword,
+	}, &signedUp)
+	check("sign up with an email and a password", code == 200, http_(code))
+	check("the handle is derived from the name",
+		strings.HasPrefix(str(signedUp["handle"]), "e2e_email_check"), str(signedUp["handle"]))
+	// This is the regression guard for the thing that stopped the owner uploading:
+	// a new account used to be sent to a profile step before it could do anything.
+	check("an email account needs no profile step", signedUp["onboarded"] == true,
+		fmt.Sprint(signedUp["onboarded"]))
+	check("an email account has no wallet yet", str(signedUp["walletAddress"]) == "",
+		str(signedUp["walletAddress"]))
+
+	// A wrong password is refused identically to an unknown address.
+	wrong := newClient()
+	code = call(wrong, "POST", "/v1/auth/login",
+		map[string]any{"email": emailAccount, "password": "not the password"}, nil)
+	check("a wrong password is refused", code == 401, http_(code))
+	code = call(wrong, "POST", "/v1/auth/login",
+		map[string]any{"email": "nobody-at-all@example.com", "password": emailPassword}, nil)
+	check("an unknown address is refused the same way", code == 401, http_(code))
+
+	// And the right one works from a fresh client, so the session is not what let
+	// the earlier requests through.
+	fresh := newClient()
+	code = call(fresh, "POST", "/v1/auth/login",
+		map[string]any{"email": emailAccount, "password": emailPassword}, &map[string]any{})
+	check("logging in with that password works", code == 200, http_(code))
+
+	// The whole publishing path, as this account.
+	var emailUpload struct {
+		URL string `json:"url"`
+		Key string `json:"key"`
+	}
+	code = call(fresh, "POST", "/v1/uploads",
+		map[string]any{"contentType": "video/mp4", "sizeBytes": len(payload)}, &emailUpload)
+	check("an email account can ask for an upload URL", code == 201, http_(code))
+	if code != 201 {
+		// Nothing downstream can work without an upload URL, and continuing would
+		// only produce a second, more confusing failure.
+		report()
+		return
+	}
+	check("and put bytes into storage", putBytes(fresh, emailUpload.URL, payload) == 204, "")
+
+	var emailTL struct {
+		ID   string `json:"id"`
+		Slug string `json:"slug"`
+	}
+	code = call(fresh, "POST", "/v1/timelapses", map[string]any{
+		"title":          "Email account check " + time.Now().UTC().Format("150405"),
+		"summary":        "A temporary session published by the end-to-end check to prove an email account can submit one.",
+		"storageKey":     emailUpload.Key,
+		"sessionMinutes": 15,
+	}, &emailTL)
+	check("an email account can create a session", code == 201, http_(code))
+	check("mark it uploaded",
+		call(fresh, "POST", "/v1/timelapses/"+emailTL.ID+"/uploaded",
+			map[string]any{"sizeBytes": len(payload), "durationSeconds": 60}, nil) == 200, "")
+	check("submit it for review",
+		call(fresh, "POST", "/v1/timelapses/"+emailTL.ID+"/submit", nil, nil) == 200, "")
+
+	var emailQueue struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	call(session, "GET", "/v1/admin/queue?limit=50", nil, &emailQueue)
+	inQueue := false
+	for _, it := range emailQueue.Items {
+		inQueue = inQueue || it.ID == emailTL.ID
+	}
+	check("it reaches the review queue", inQueue, fmt.Sprintf("%d queued", len(emailQueue.Items)))
+
+	check("and an operator can approve it",
+		call(session, "POST", "/v1/admin/timelapses/"+emailTL.ID+"/approve", nil, nil) == 200, "")
+	check("it is public afterwards",
+		call(stranger, "GET", "/v1/timelapses/"+emailTL.Slug, nil, nil) == 200, "")
+	call(session, "DELETE", "/v1/admin/timelapses/"+emailTL.ID, nil, nil)
+
 	// --- sponsorship --------------------------------------------------------
 	// A second account, because sponsoring your own work is refused and because
 	// sign-in needs nothing but a signature — so this costs no SOL.
@@ -211,8 +303,9 @@ func main() {
 	fmt.Printf("\nleft behind (the API's role cannot delete rows, by design):\n")
 	fmt.Printf("  timelapse %s  (status: removed)\n", tl.Slug)
 	fmt.Printf("  donor account %s\n", donorAddr)
+	fmt.Printf("  email account %s (handle e2e_email_check…)\n", emailAccount)
 	fmt.Printf("\nremove them with the owner connection:\n")
-	fmt.Printf("  psql \"$DATABASE_URL_DIRECT\" -c \"DELETE FROM donations; DELETE FROM timelapses; DELETE FROM users WHERE handle LIKE 'hustler\\_%%';\"\n")
+	fmt.Println("  make e2e-clean")
 
 	fmt.Println()
 	if failed == 0 {
@@ -367,6 +460,18 @@ func addCSRF(c *http.Client, req *http.Request) {
 			req.Header.Set("X-Hustleon-CSRF", ck.Value)
 		}
 	}
+}
+
+// report prints the outcome and exits. Used when a step failed so completely that
+// everything after it would fail for the same reason.
+func report() {
+	fmt.Println()
+	if failed == 0 {
+		fmt.Println("EVERY STEP PASSED")
+		return
+	}
+	fmt.Printf("%d STEP(S) FAILED\n", failed)
+	os.Exit(1)
 }
 
 func check(what string, ok bool, detail string) {

@@ -83,3 +83,18 @@ func (s *Service) RevokeAll(ctx context.Context, userID string) error {
 	}
 	return nil
 }
+
+// RevokeOthers ends every session for a user except the one behind this cookie.
+//
+// A cookie value that names no session — the caller was not authenticated by one,
+// or it has already gone — falls back to ending all of them, because the safe
+// reading of "keep this one" when there is no this one is not to keep a stranger's.
+func (s *Service) RevokeOthers(ctx context.Context, userID, cookieValue string) error {
+	if cookieValue == "" {
+		return s.RevokeAll(ctx, userID)
+	}
+	if err := s.store.RevokeOtherSessions(ctx, userID, Digest(cookieValue), s.now()); err != nil {
+		return fmt.Errorf("auth: revoke other sessions: %w", err)
+	}
+	return nil
+}

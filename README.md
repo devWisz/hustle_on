@@ -40,7 +40,7 @@ record yourself ──▶ make a timelapse ──▶ upload with a write-up ─�
 ```
 hustleon/
 ├── backend/        # Go HTTP API, the only writer to the database
-├── auth/           # Go module: wallet sign-in, sessions, CSRF, wallet proofs
+├── auth/           # Go module: sign-in rules, sessions, CSRF, password policy, wallet proofs
 ├── frontend/       # Next.js app: public site, creator dashboard, admin console
 ├── database/       # Postgres migrations and seed data
 ├── contracts/      # Anchor sponsorship program (hustleon_pay)
@@ -53,6 +53,7 @@ hustleon/
 ## Features
 
 **For creators**
+- Sign in with an email address and password, or with a Solana wallet; link a payout wallet only when you are ready to be paid
 - Upload with drag and drop, a live preview, and a checklist of what reviewers look for
 - A dashboard with every submission, its status and the reviewer's note
 - Edit and resubmit anything that was sent back, or withdraw a session at any time
@@ -113,6 +114,12 @@ the promotion is written to the audit log. `ADMIN_WALLETS` is required in
 production and validated at boot, so a typo stops the process with the offending
 value named rather than leaving nobody able to reach the console.
 
+An **operator account** can also be created with an email and a password from the
+machine holding the database:
+`cd backend && go run ./cmd/setpassword --email you@example.com --name "Your Name" --admin`
+prints the generated password once. The operator's own credentials live in the
+gitignored `ADMIN-ACCESS.md`.
+
 ## Cookies
 
 Hustle On sets only essential cookies until you choose otherwise:
@@ -140,8 +147,15 @@ live on the account, on the server, and never in the browser.
 
 The short version; [docs/security.md](docs/security.md) is the real one.
 
-- **No passwords exist**, so none can leak. Sign-in is a Solana wallet signature
-  over a single-use, short-lived nonce, and sessions are stored as SHA-256 digests.
+- **Passwords are real credentials, and hashed.** Email + password sign-in stores
+  an Argon2id hash (`m=64 MiB, t=3, p=1`) with a random salt per password, in a
+  PHC string that carries its own parameters. Login refusals are identical for a
+  wrong password, an unknown address and a wallet-only account, and an unknown
+  address still costs a real hash verification, so neither the message nor the
+  timing says whether an account exists. There is **no password reset**: nothing
+  is emailed, so a forgotten password is changed while signed in, or set by an
+  operator with `backend/cmd/setpassword`. Wallet sign-in is unchanged, and
+  sessions are stored as SHA-256 digests.
 - **Every state-changing request** passes one CSRF middleware (an allowlisted
   `Origin` plus a double-submit token bound to the session) before any handler runs.
 - **Rate limits are per class of work**: reads, writes, uploads, sponsorships,
@@ -173,10 +187,13 @@ scripts/create-api-role.sh --write-env   # the API's least-privilege login role
 make dev                      # API on :8085, web on :3001
 ```
 
-Locally there is nothing external to set up: sign-in is a wallet signature, so a
-browser wallet is enough, and uploads write to disk. The dev seed creates no
-accounts at all — put your own wallet in `ADMIN_WALLETS` and sign in with it to
-get an operator account. None of these shortcuts exist in production.
+Locally there is nothing external to set up: sign in with an email address and
+password, or with a browser wallet, and uploads write to disk. The dev seed
+creates no accounts at all — for a wallet operator, put your own address in
+`ADMIN_WALLETS` and sign in with it; for an email operator, run
+`cd backend && go run ./cmd/setpassword --email you@example.com --name "Your Name" --admin`,
+which creates the account and prints the generated password once. None of these
+shortcuts exist in production.
 
 Every list on the site is built from real records, so an empty site renders empty
 states that say what will appear there. There is no fallback content and no
@@ -214,7 +231,7 @@ detail is in [contracts/README.md](contracts/README.md).
 | **Backend** | Go, net/http |
 | **Database** | PostgreSQL on Neon |
 | **Payments** | Solana (wallet to wallet, no custody); the `hustleon_pay` program records sponsorships on chain |
-| **Auth** | Solana wallet signatures, CSRF tokens, digest-only sessions |
+| **Auth** | Email + password (Argon2id) or Solana wallet signatures, CSRF tokens, digest-only sessions |
 
 ## Documentation
 

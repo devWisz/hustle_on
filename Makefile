@@ -74,10 +74,10 @@ e2e-clean: ## Remove what the end-to-end check left behind
 	  psql "$$DATABASE_URL_DIRECT" -q -v ON_ERROR_STOP=1 \
 	    -c "BEGIN;" \
 	    -c "ALTER TABLE audit_log DISABLE TRIGGER audit_log_append_only;" \
-	    -c "DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE handle LIKE 'hustler\\_%');" \
+	    -c "DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%');" \
 	    -c "DELETE FROM donations;" \
 	    -c "DELETE FROM timelapses;" \
-	    -c "DELETE FROM users WHERE handle LIKE 'hustler\\_%';" \
+	    -c "DELETE FROM users WHERE handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%';" \
 	    -c "ALTER TABLE audit_log ENABLE TRIGGER audit_log_append_only;" \
 	    -c "COMMIT;" \
 	    -c "SELECT * FROM recount_totals();" && \

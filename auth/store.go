@@ -112,6 +112,10 @@ type Store interface {
 	TouchSession(ctx context.Context, id string, at time.Time) error
 	RevokeSession(ctx context.Context, digest []byte, at time.Time) error
 	RevokeUserSessions(ctx context.Context, userID string, at time.Time) error
+	// RevokeOtherSessions ends every session for an account except the one whose
+	// digest is given, so a password change does not sign the person out of the
+	// device they are using to make it.
+	RevokeOtherSessions(ctx context.Context, userID string, keepDigest []byte, at time.Time) error
 
 	CreateWalletChallenge(ctx context.Context, c WalletChallenge) error
 	// CountOpenChallenges reports how many unspent, unexpired nonces this

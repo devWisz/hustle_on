@@ -1,6 +1,6 @@
 # 9. Sign in with a Solana wallet signature
 
-**Status:** accepted
+**Status:** accepted; partly superseded by [0010](0010-email-and-password-authentication.md)
 **Supersedes:** [0002](0002-passwordless-authentication.md)
 
 ## Context

@@ -54,8 +54,11 @@ const (
 	// allowance is sized for a person who mistypes, cancels a wallet prompt and
 	// tries again — not for a person who must not be allowed a second attempt.
 	budgetAuth = "auth"
-	// budgetVerify covers spending a sign-in challenge. It is the endpoint that
-	// checks a signature, so it stays the tighter of the two.
+	// budgetVerify covers spending a sign-in challenge: checking a signature. It is
+	// the same size as asking for one, because the distinguishing factor is not
+	// that this endpoint is more dangerous — a signature cannot be guessed — but
+	// that both are anonymous and both deserve a human-sized allowance. It was half
+	// this, which the token bucket turns into a burst of two.
 	budgetVerify = "verify"
 	// budgetAdmin covers operator console reads. Higher than a public read
 	// because the console loads several lists at once.
@@ -105,7 +108,7 @@ func buildBudgets(cfg config.Config) map[string]*budget {
 			"Too many confirmation attempts. Wait a moment and try again."),
 		mk(budgetAuth, cfg.RateLimitAuth, true,
 			"Too many sign-in attempts from here. Wait a moment and try again."),
-		mk(budgetVerify, cfg.RateLimitAuth/2, true,
+		mk(budgetVerify, cfg.RateLimitAuth, true,
 			"Too many sign-in attempts from here. Wait a moment and try again."),
 		mk(budgetAdmin, cfg.RateLimitAdmin, false,
 			"Too many console requests. Wait a moment and try again."),

@@ -242,17 +242,25 @@ if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
     warn "could not read schema_migrations over the owner connection; expected $total applied"
   fi
 
-  # An account with no wallet_address cannot sign in. That is not a hypothetical:
-  # it is every account that existed before migration 0013, because email used to
-  # be the identity and nobody had linked a wallet yet. Left alone, those
-  # accounts are simply gone as far as their owners are concerned.
-  stranded="$(query "select count(*) from users where wallet_address is null")"
+  # An account needs a way in, and since migration 0014 there are two: a wallet
+  # address, or an email address with a password. Either is enough. An account with
+  # neither cannot be signed into by anybody, which is not hypothetical — it is what
+  # the pre-0013 accounts became when email stopped being an identity.
+  stranded="$(query "select count(*) from users where wallet_address is null and password_hash is null")"
   if [[ "$stranded" =~ ^[0-9]+$ ]]; then
     if (( stranded == 0 )); then
-      pass "every account has a wallet address and can sign in"
+      pass "every account can sign in (wallet or password)"
     else
-      fail "$stranded account(s) have no wallet address and cannot sign in — each needs a wallet linked, or should be removed"
+      fail "$stranded account(s) have neither a wallet nor a password and cannot sign in — give each one a way in, or remove it"
     fi
+  fi
+
+  # A password with no email could never be used, because the email is what a
+  # password sign-in looks the account up by. The database refuses this too; asking
+  # here means the failure is reported rather than raised as a constraint error.
+  orphan_pw="$(query "select count(*) from users where password_hash is not null and email is null")"
+  if [[ "$orphan_pw" =~ ^[0-9]+$ ]] && (( orphan_pw > 0 )); then
+    fail "$orphan_pw account(s) have a password but no email address, so the password can never be used"
   fi
 
   admins="$(query "select count(*) from users where role = 'admin'")"

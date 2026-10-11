@@ -8,6 +8,7 @@ verification.
 | Asset | Protected by | Compromise means |
 | --- | --- | --- |
 | Sessions | Digest-only storage, HttpOnly cookie, CSRF | Impersonation |
+| Passwords | Argon2id, per-password salt, parameter-carrying hashes | Offline cracking if the database leaks |
 | Payout addresses | ed25519 proof, `UNIQUE`, paired `CHECK` | Donations redirected |
 | The public feed | `requireAdmin` + `audit_log` | Unreviewed content published |
 | Donations | On-chain re-verification, `UNIQUE` signature | Fabricated totals |
@@ -21,20 +22,51 @@ displays; they cannot take the money, because it never passes through here.
 
 ## Authentication
 
-No password exists anywhere in the schema, so there is nothing to leak, reset or
-reuse. Sign-in is a Solana wallet signature, and session tokens are stored as
-SHA-256 digests; a session's plaintext lives only in a browser cookie. Nothing is
-emailed, so there is no inbox to compromise and no third party in the path.
+Passwords exist, and are hashed with Argon2id — `m=64 MiB, t=3, p=1`, with a
+random 16-byte salt per password, encoded in a PHC string that carries its own
+parameters so the cost can be raised later without invalidating stored passwords.
+The implementation is `backend/internal/password`; the rules about what a
+password may be are in `auth/password.go`. No plaintext password is stored
+anywhere.
+
+The honest reading of that: there is now a password store to protect, and a leak
+of `users.password_hash` is an offline guessing target. That is why the hash is
+deliberately expensive and salted per row, and why it is never selected onto a
+wire type — `PasswordCredentials` returns it beside the user rather than on it.
+It also means the product owns the problems passwords bring — reuse, phishing, a
+sign-in form that can be attacked — and the rules below are what it does about
+them.
+
+Sign-in by Solana wallet signature is unchanged, session tokens are stored as
+SHA-256 digests, and a session's plaintext lives only in a browser cookie.
+Nothing is emailed, so there is no inbox to compromise and no third party in the
+path.
 
 Full detail in [auth.md](auth.md). The properties that matter:
 
 - `signin/challenge` looks up no account and answers identically for every
   address, so it cannot be used to enumerate accounts.
+- **Password login refusals are indistinguishable.** A wrong password, an unknown
+  address, a malformed address and an account that has only ever used a wallet
+  all return the same `401` message. When the address is unknown the server still
+  performs a real Argon2id verification against a decoy hash, so response time
+  does not leak whether the address exists either.
+- **There is no password reset.** Nothing is emailed — no verification link and
+  no reset link, because the mail path was removed deliberately — so a forgotten
+  password cannot be recovered by the person who forgot it. It can be changed
+  while signed in, which requires the current password when the account has one,
+  or an operator with access to the database machine can set a new one with
+  `backend/cmd/setpassword`.
+- **Password rules are enforced, not suggested.** 10–200 characters, not only
+  whitespace, not equal to the email address, and at least 4 distinct
+  characters; a name of 1–60 characters with at least one letter or digit; an
+  address of at most 254 characters, parsed and normalised.
 - Sign-in nonces are single-use, enforced by `consumed_at IS NULL` inside the
   same `UPDATE` that reads the row — two concurrent requests race on the row
   lock.
-- An account is created only when a signature verifies, so an address that has
-  proved nothing can never hold a handle or a session.
+- A wallet that has proved nothing can never hold a handle or a session: a
+  challenge creates nothing, and the account appears only when the signature
+  verifies. An email sign-up is the other, deliberate way a row appears.
 - `next` must be a local path; absolute and protocol-relative values are
   rejected, or a crafted link becomes an open redirect.
 
@@ -181,9 +213,10 @@ route to abuse (asking for a sign-in challenge, which is anonymous and cheap to
 mint in bulk) run at the same rate as reading the feed. The route table names the
 budget per route, so a new endpoint cannot be registered without one.
 
-Sign-in and sign-in-token budgets are charged to the **address** even for a
-signed-in caller; the rest are charged to the account id when there is a session
-and to the address otherwise. A per-address ceiling wraps session resolution
+The sign-in budgets — wallet challenge, wallet verify, password sign-up and
+password sign-in — are charged to the **address** even for a signed-in caller;
+the rest are charged to the account id when there is a session and to the address
+otherwise. A per-address ceiling wraps session resolution
 itself, bounding the work one address can cause before we know who is asking, and
 is deliberately loose so an office or a carrier NAT is not treated as one abusive
 client.

@@ -106,10 +106,60 @@ ignored.
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| `POST` | `/v1/auth/signup` | `{ name, email, password }`. Creates the account, signs it in and returns the profile. `409 conflict` with `fields.email` when the address is taken; `422` with the failing field when a rule is broken |
+| `POST` | `/v1/auth/login` | `{ email, password }`. Signs an existing account in and returns the profile. `401` for every kind of bad credential, `403` when the account is suspended |
 | `POST` | `/v1/auth/signin/challenge` | `{ address }` → `{ message, nonce, issuedAt }`. The exact text to sign. 200, and it looks up no account |
 | `POST` | `/v1/auth/signin/verify` | `{ address, nonce, signature, issuedAt }`. Sets the session and CSRF cookies and returns the profile; creates the account the first time the address signs in |
 | `POST` | `/v1/auth/logout` | Revokes the session |
 | `GET` | `/v1/auth/session` | `{ authenticated, user? }`. Never fails |
+
+### Signing up and in with a password
+
+Both endpoints set the session and CSRF cookies and return the same profile
+object as `GET /v1/me`. Neither sends mail: the address is never verified, and
+there is no reset link.
+
+```json
+// POST /v1/auth/signup
+{ "name": "Ada Lovelace", "email": "ada@example.com", "password": "correct horse battery" }
+```
+
+```json
+// POST /v1/auth/login
+{ "email": "ada@example.com", "password": "correct horse battery" }
+```
+
+```json
+// 200, from either endpoint (empty optional fields are omitted)
+{
+  "id": "…", "handle": "ada_lovelace", "displayName": "Ada Lovelace",
+  "timelapseCount": 0, "donationCount": 0, "donationTotalLamports": 0,
+  "joinedAt": "2026-10-12T00:00:00Z",
+  "email": "ada@example.com", "role": "member",
+  "payoutVerified": false, "onboarded": true
+}
+```
+
+An email sign-up is onboarded immediately: the handle is derived from the name
+(`ada_lovelace`, with `_1`, `_2`, `_3` suffixes on collision and a generated
+`hustler_…` fallback) and the profile step is skipped. A wallet sign-in still gets
+a placeholder handle and an `onboarded: false` profile that the client sends to
+`/welcome`.
+
+| Status | Body | When |
+| --- | --- | --- |
+| `409` | `conflict`, with `fields.email` | Sign-up with an address that already identifies an account |
+| `422` | `validation_failed`, with `fields.name`, `fields.email` or `fields.password` | A name, address or password that breaks a stated rule |
+| `401` | `unauthorized`, `That email address and password do not match an account.` | A wrong password, an unknown address, a malformed address, or an account that has only ever used a wallet — one answer for all four |
+| `403` | `forbidden`, `This account is suspended.` | The credentials were right, but the account is not allowed a session |
+
+Nothing is emailed, so a forgotten password cannot be reset. It can be changed
+while signed in, or an operator can set a new one from the machine holding the
+database with `backend/cmd/setpassword`. The rules: a password of 10–200
+characters, not only whitespace, not equal to the email address, with at least 4
+distinct characters; a name of 1–60 characters containing a letter or digit; an
+address of at most 254 characters, trimmed and lowercased. Passwords are hashed
+with Argon2id (see [auth.md](auth.md#passwords)).
 
 ## The signed-in account
 
@@ -117,6 +167,7 @@ ignored.
 | --- | --- | --- |
 | `GET` | `/v1/me` | Private profile |
 | `PATCH` | `/v1/me` | `{ displayName?, handle?, bio? }`. Absent keys are left alone |
+| `POST` | `/v1/me/password` | `{ currentPassword, newPassword }`. Sets or changes the password on the signed-in account. `422` with `fields.currentPassword` when the current one is wrong; revokes the account's other sessions |
 | `GET` | `/v1/me/timelapses` | Every state, including drafts and rejections. `?limit=` (50, 100) |
 | `GET` | `/v1/me/donations` | Received. `?limit=` (50, 100) |
 | `POST` | `/v1/me/wallet/challenge` | `{ address }` → the message to sign |
@@ -128,6 +179,12 @@ ignored.
 | `DELETE` | `/v1/me/avatar` | Back to initials |
 | `PUT` | `/v1/me/bookmarks/{slug}` | Save. Idempotent |
 | `DELETE` | `/v1/me/bookmarks/{slug}` | Unsave. Removing one that was never saved is a 204 |
+
+`currentPassword` is required when the account already has a password, and
+ignored when it does not. The account must have an email address — that is what a
+later password sign-in looks the account up by — so a wallet-only account with no
+address on file cannot set one here. A successful change revokes the account's
+other sessions.
 
 ## Peer notes
 
@@ -221,14 +278,17 @@ working: the API signs the link on the way out.
 
 ### The profile step
 
-Signing in creates an account from a Solana address: a generated placeholder
-handle and a display name identical to it. That is enough to own a session and not
-enough to be credited for one, so `GET /v1/me` (and `/v1/auth/session`) reports
-`onboarded`, and the client sends an un-onboarded account to the profile step
-once. `POST /v1/me/onboarding` writes the handle, display name, bio and picture
-together and stamps `onboarded_at` once — re-running it later cannot claim a
-second onboarding. A handle that is already taken is a `409` with the field
-named, exactly like `PATCH /v1/me`.
+A **wallet** sign-in creates an account from a Solana address: a generated
+placeholder handle and a display name identical to it. That is enough to own a
+session and not enough to be credited for one, so `GET /v1/me` (and
+`/v1/auth/session`) reports `onboarded`, and the client sends an un-onboarded
+account to the profile step once. `POST /v1/me/onboarding` writes the handle,
+display name, bio and picture together and stamps `onboarded_at` once — re-running
+it later cannot claim a second onboarding. A handle that is already taken is a
+`409` with the field named, exactly like `PATCH /v1/me`.
+
+An email sign-up never reaches this step: it already supplied a real name, so the
+handle is derived from it and `onboarded` is true from the first response.
 
 Avatars are a separate namespace from posters (`avatars/` against `posters/`) with
 the same allowlist and ceiling, because they belong to different things: a poster
@@ -289,20 +349,22 @@ policy and a new endpoint cannot be added without choosing one.
 | --- | --- | --- | --- |
 | read | `RATE_LIMIT_ANON` 300 | caller | Public GETs and `/health` |
 | engage | `RATE_LIMIT_ENGAGE` 60 | caller | Views, notes, votes, bookmarks, logout |
-| write | `RATE_LIMIT_WRITE` 60 | caller | Creating, editing and submitting work |
+| write | `RATE_LIMIT_WRITE` 60 | caller | Creating, editing and submitting work, and changing the password |
 | upload | `RATE_LIMIT_UPLOAD` 10 | caller | Issuing a video upload URL |
 | poster | `RATE_LIMIT_POSTER` 60 | caller | Issuing a poster-image upload URL, which is admin-only and small |
 | donate | `RATE_LIMIT_DONATE` 10 | caller | Recording a sponsorship: fixes a recipient and an amount |
 | donate_check | `RATE_LIMIT_DONATE_CHECK` 60 | caller | Confirming a sponsorship — polled by the browser until the chain finalizes |
-| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 20 | **address** | Asking for a sign-in challenge |
-| verify | `RATE_LIMIT_AUTH_ATTEMPTS`/2 10 | **address** | Verifying a sign-in signature — the tighter of the two, since it is where a signature is checked |
+| auth | `RATE_LIMIT_AUTH_ATTEMPTS` 20 | **address** | Asking for a sign-in challenge, and email + password sign-up |
+| verify | `RATE_LIMIT_AUTH_ATTEMPTS` 20 | **address** | Verifying a wallet signature, and signing in with email + password. Sized like the challenge budget rather than half of it: the token bucket hands out a quarter of the budget as a burst, so half meant two attempts — not enough for somebody who signs out, signs back in and mistypes once |
 | admin | `RATE_LIMIT_ADMIN` 240 | caller | Operator console reads and decisions |
 
 "Caller" means the account id when a session is present and the address
-otherwise — the reason the limiter sits *after* session resolution. The two
-sign-in budgets are always charged to the address: they are anonymous by
-definition, and keying them on an account would let one session mint as many
-challenges as it liked.
+otherwise — the reason the limiter sits *after* session resolution. The sign-in
+budgets are always charged to the address: they are anonymous by definition, and
+keying them on an account would let one session mint as many challenges as it
+liked. Password sign-up and sign-in join the challenge and verify budgets
+respectively; a password change is an ordinary session-bearing write, so it is
+charged to the account like any other.
 
 Two coarser layers sit above and below this:
 

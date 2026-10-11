@@ -1,6 +1,24 @@
 # Authentication
 
-Hustle On has two wallet signatures, and they answer different questions.
+Two ways lead to the same kind of account:
+
+| Way in | What it proves | Lives in |
+| --- | --- | --- |
+| **Email + password** | Something you know | `auth/password.go`, `backend/internal/password` |
+| **Solana wallet signature** | A key you hold | `auth/signin.go`, `auth/session.go` |
+
+Either one produces an ordinary account that can upload, be reviewed and be
+sponsored. **A wallet is only required to receive money.** An email account can
+do everything else, and links a payout wallet later from settings by the same
+wallet-proof flow described below.
+
+Wallet-only sign-in was a deliberate choice once — [ADR 0009](adr/0009-wallet-only-authentication.md)
+records the reasoning — and email + password was added back alongside it, not in
+place of it. [ADR 0010](adr/0010-email-and-password-authentication.md) records
+why, and what it cost.
+
+There is also a third signature, which is not a way in at all: the **payout
+proof**. The two wallet signatures answer different questions.
 
 | Signature | Answers | Lives in |
 | --- | --- | --- |
@@ -15,12 +33,70 @@ nonce, so the signature that got somebody signed in is not the signature that
 decides where their SOL goes. The payout address is pinned to a key, and
 claiming one already held elsewhere is a conflict rather than a transfer.
 
-There is no password anywhere in the system. There is no column for one, so
-there is nothing to leak, reset, reuse across sites, or phish.
+## Passwords
+
+Passwords are hashed with **Argon2id**, the current recommendation for new
+passwords: memory-hard, so the cost of a guessing attack is dominated by RAM
+rather than by raw compute, which is what makes GPUs and purpose-built crackers
+bad at it. The parameters are `m=64 MiB, t=3, p=1`, and every password gets a
+fresh random 16-byte salt. The stored value is a PHC string that carries its own
+parameters and salt:
+
+```
+$argon2id$v=19$m=65536,t=3,p=1$<salt>$<hash>
+```
+
+Verification reads the cost back out of the hash rather than from the current
+constants, so the cost can be raised later without invalidating a single stored
+password. Hashing lives in `backend/internal/password`, behind a `PasswordHasher`
+interface defined in the `auth` module — `auth` depends only on the standard
+library, so the arithmetic is left to a well-reviewed library while the rules
+about what a password may be stay in `auth/password.go`.
+
+**What a password may be** is stated as rules rather than a strength meter:
+
+| Field | Rule |
+| --- | --- |
+| Password | At least 10 characters, at most 200 |
+| Password | Not only whitespace, and not equal to the email address |
+| Password | At least 4 distinct characters |
+| Name | 1–60 characters, and at least one letter or digit |
+| Email | At most 254 characters; trimmed, lowercased and parsed before use |
+
+A failure names the field it is about, so a form can put the message beside the
+input that caused it.
+
+**There is no password reset.** Nothing is emailed — there is no verification
+link and no reset link, because the mail path was removed deliberately — so a
+forgotten password cannot be recovered by the person who forgot it. What is
+possible is narrower: change it while signed in, or, if you have access to the
+machine holding the database, set a new one with `backend/cmd/setpassword`,
+which prints the generated password once. That is the whole recovery path, and
+it is a small one.
 
 ---
 
 ## Signing in
+
+### Email and password
+
+```
+  POST /v1/auth/signup   { name, email, password }   ← creates the account
+  POST /v1/auth/login    { email, password }         ← signs an existing one in
+       │  the address is parsed and normalised (trimmed, lowercased);
+       │  the password is verified against the stored Argon2id hash
+       ▼
+  Set-Cookie: hustleon_session       (HttpOnly, Secure, SameSite=Lax)
+  Set-Cookie: hustleon_session_csrf  (readable, by design)
+```
+
+Both endpoints end by issuing a session, exactly as a verified wallet signature
+does. There is no verification step to pass first, because nothing is delivered
+to prove the address. An account made this way is stamped onboarded at sign-up —
+the handle is derived from the name that was just given — so it never sees the
+`/welcome` profile step. See [The profile step](#the-profile-step).
+
+### Solana wallet signature
 
 ```
   POST /v1/auth/signin/challenge      { address }
@@ -38,7 +114,7 @@ there is nothing to leak, reset, reuse across sites, or phish.
   Set-Cookie: hustleon_session_csrf  (readable, by design)
 ```
 
-### What each step guarantees
+### What the wallet steps guarantee
 
 **The challenge is not a directory.** `signin/challenge` looks up no account. It
 answers identically for an address that has one and an address that has never
@@ -75,6 +151,38 @@ address can never occupy a handle or a session.
 which accepts only a single-slash path and rejects protocol-relative `//host`
 and backslash forms. Without that check, a crafted `?next=` is an open redirect
 that lands a freshly signed-in visitor on somebody else's page.
+
+### What the password steps guarantee
+
+**Refusals are indistinguishable.** A wrong password, an unknown address, a
+malformed address and an account that has only ever used a wallet all return the
+same `401` message. One error value (`auth.ErrBadCredentials`) stands for all of
+them, because telling them apart is exactly what turns a login form into a
+directory of who has an account here.
+
+**Response time does not leak either.** When the address is unknown — or belongs
+to an account with no password — the server still runs a real Argon2id
+verification against a decoy hash before refusing, so "no such account" does not
+come back faster than "wrong password".
+
+**Nothing is emailed.** There is no verification link and no reset link. The
+address is never proven, and a forgotten password cannot be reset by the person
+who forgot it; [Passwords](#passwords) above says what is possible instead.
+
+**A change requires the current password.** `POST /v1/me/password` needs the
+session, and when the account already has a password it also needs that current
+password. Without it, a session left open on a shared machine would be enough to
+lock the owner out of their own account — which matters more here than usual,
+because there is no reset link to fall back on. A successful change revokes the
+account's other sessions.
+
+**The handle comes from the name.** An email sign-up derives the handle from the
+display name — "Ada Lovelace" becomes `ada_lovelace` — trying `_1`, `_2` and
+`_3` on collision and falling back to a generated `hustler_…` handle after that.
+Because the name is real, the account is stamped onboarded when it is created and
+never sees `/welcome`. A wallet sign-in is the opposite: nothing is known about
+the account, so it gets a placeholder handle and does go through the profile
+step.
 
 ---
 
@@ -188,19 +296,36 @@ review anything. Every address is validated at boot and `config.Load` refuses to
 start a production process without at least one, so a typo names the offending
 value instead of leaving nobody able to reach the console.
 
+Separately, an **operator account** can be created with an email and password
+from the machine holding the database:
+
+```bash
+cd backend && go run ./cmd/setpassword --email you@example.com --name "Your Name" --admin
+```
+
+It prints the generated password once, and running it again on the same address
+sets a new one. The operator's own credentials live in the gitignored
+`ADMIN-ACCESS.md`.
+
 ---
 
 ## The profile step
 
-The first sign-in creates the account: a generated placeholder handle and a
-display name identical to it. The handle is generated rather than asked for,
-because a form between somebody and the account they have just proved they own is
+Only a wallet sign-in goes through it. That path creates the account before
+anything is known about the person: a generated placeholder handle and a display
+name identical to it. The handle is generated rather than asked for, because a
+form between somebody and the account they have just proved they own is
 ceremony, and the handle is public decoration that onboarding replaces a moment
 later. That much is enough to own a session and not enough to be credited for
 one, so the name is asked for immediately afterwards, once
 (`users.onboarded_at`). Everything in it is public and editable later; an account
 that has not been through it is sent to `/welcome` before it can upload or open
 its dashboard, rather than publishing work under a name nobody chose.
+
+An email sign-up does not see it at all. It already has a real name, so the
+handle is derived from that name and `onboarded_at` is set in the same insert:
+there is nothing left to ask, and no reason to make somebody fill in a form with
+information the server already holds.
 
 ## Wallet linking
 
@@ -224,6 +349,9 @@ the same proof loses the race and is refused.
 | --- | --- | --- |
 | Reading | 300/min per caller | `RATE_LIMIT_ANON`; also the backstop on every route |
 | Sign-in challenge | 20/min per **address** | `RATE_LIMIT_AUTH_ATTEMPTS`. This used to be 5 because every request sent an email; a signature sends nothing, and the token bucket hands out a quarter of the budget as a burst, so 5 meant one attempt and then a twelve-second wait |
+| Email + password sign-up | 20/min per **address** | The same `auth` budget as asking for a challenge, because each request writes an account and does an expensive hash |
+| Email + password sign-in | 10/min per **address** | The `verify` budget, half of `RATE_LIMIT_AUTH_ATTEMPTS`. This is the endpoint where guessing a password is the whole attack, so it is the tighter of the two |
+| Password change | `RATE_LIMIT_WRITE` 60/min per caller | The `write` budget; it requires a session, so it is charged to the account rather than to an address |
 | Open challenges per address | 5 | A fixed cap; stops one address filling the table with unspent nonces |
 | Per address, before the session is read | 1200/min | `RATE_LIMIT_IP_CEILING`; loose on purpose |
 
@@ -268,26 +396,41 @@ account. The nonce makes it single-use; the timestamp makes it expire.
 challenge and the verification render it from the stored nonce — which is what
 stops the two from drifting apart.
 
-### Why there is no email
+### Why nothing is emailed
 
 Sign-in used to depend on a third party's mail delivery: no API key, no way in; a
 bounced message, no way in; and every attempt wrote a row whose only purpose was
-to hold a secret in flight. A signature has none of that — the key never leaves
-the wallet, and the only thing the server keeps is a public address that has
-already proved itself. `users.email` survives as a nullable, non-unique contact
-address — carried over for the accounts that predate migration 0013 — and it is
-never a credential and never used to sign in. Nothing currently edits it; it is
-kept so that an operator can recognise an account, not so that anybody signs in
-with one.
-See [ADR 0009](adr/0009-wallet-only-authentication.md).
+to hold a secret in flight. The mailer and its templates were removed for that
+reason, and adding email + password did not bring them back — there is still
+nothing to deliver and nothing to configure for delivery. A signature proves a
+key that never leaves the wallet; a password is checked against a stored hash.
+Neither needs an inbox.
 
-### When a signature is refused
+The honest cost is that a forgotten password cannot be reset. The address on a
+password account is not proven, and there is no code that sends anything, so
+there is no reset link to click. An account can change its password while signed
+in — supplying the current one when it has one — and an operator with access to
+the machine holding the database can set a new one with
+`backend/cmd/setpassword`. `users.email` is now a real credential for the
+accounts that have one: it is unique (through a partial unique index, so
+wallet-only rows keep it NULL) and is what a password sign-in looks the account
+up by.
+
+See [ADR 0009](adr/0009-wallet-only-authentication.md) for why the mail path was
+removed, and [ADR 0010](adr/0010-email-and-password-authentication.md) for why
+passwords came back without it.
+
+### When sign-in is refused
 
 | What the caller sees | What it means |
 | --- | --- |
 | `That signature does not match the wallet.` (401) | The signed bytes are not the message the server rebuilt — a different wallet, a mangled paste, or text edited by a page. The nonce is not spent, so the same challenge can be tried again. |
 | `That sign-in request has expired. Try again.` (400) | The nonce was already spent, or the challenge aged out. Ask for a fresh one. |
-| `This account is suspended.` (403) | The signature is valid, but the account it belongs to is not allowed a session. |
+| `That email address and password do not match an account.` (401) | Password sign-in. A wrong password, an unknown address, a malformed address and an account that has only ever used a wallet all get this one answer, on purpose. |
+| `An account already exists for that email address.` (409, with `fields.email`) | Sign-up with an address that already identifies an account. |
+| A rule, with the field named (422) | Sign-up with a name, address or password that breaks one of the stated rules. |
+| `This account is suspended.` (403) | The signature or the password was valid, but the account is not allowed a session. |
+| `That is not your current password.` (422, with `fields.currentPassword`) | A password change on an account that has a password, where the current one did not match. |
 | `Too many sign-in attempts. Wait a moment and try again.` (429) | The sign-in budget or the open-challenge cap. Check the rate limits above. |
 
 ---
@@ -297,6 +440,10 @@ See [ADR 0009](adr/0009-wallet-only-authentication.md).
 | Question | File |
 | --- | --- |
 | How is a sign-in challenge issued and verified? | `auth/signin.go` |
+| What may a password, a name or an address be? | `auth/password.go` |
+| How are passwords hashed and verified? | `backend/internal/password/argon2id.go` |
+| How are sign-up, login and password change handled? | `backend/internal/server/password_handlers.go` |
+| How is an operator password set from the command line? | `backend/cmd/setpassword/main.go` |
 | How is a session created and revoked? | `auth/session.go` |
 | How are cookies flagged? | `auth/cookie.go` |
 | How is CSRF derived and checked? | `auth/csrf.go` |
@@ -304,5 +451,7 @@ See [ADR 0009](adr/0009-wallet-only-authentication.md).
 | Where does any of it touch Postgres? | `backend/internal/store/auth.go` |
 
 The `auth` module owns the rules and knows nothing about Postgres; the backend
-implements `auth.Store` over it. That split is what lets the rules be tested in
-memory, with no database at all.
+implements `auth.Store` over it. It is also standard-library-only, which is why
+the arithmetic of Argon2id sits behind the `auth.PasswordHasher` interface and is
+implemented in `backend/internal/password` rather than here. That split is what
+lets the rules be tested in memory, with no database at all.
