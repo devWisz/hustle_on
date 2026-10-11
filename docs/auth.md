@@ -170,6 +170,32 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 
 ---
 
+## The profile step
+
+Verifying an address creates the account: a handle derived from the local part of
+the email, and a display name identical to it. That is enough to own a session
+and not enough to be credited for one, so the address is verified first and the
+name is asked for immediately afterwards, once (`users.onboarded_at`). Everything
+in it is public and editable later; an account that has not been through it is
+sent to `/welcome` before it can upload or open its dashboard, rather than
+publishing work under a name nobody chose.
+
+## Wallet linking
+
+The payout address is proved by a signature, never by typing an address in:
+
+1. `POST /v1/me/wallet/challenge` stores a nonce and returns the exact message to
+   sign. The message is rebuilt on the server from the stored nonce, so a
+   signature over text of the caller's choosing proves nothing.
+2. `POST /v1/me/wallet/verify` checks the ed25519 signature against the address,
+   and only then spends the nonce.
+
+That order matters. The nonce is consumed *after* verification, so one rejected
+attempt — a wallet that signed slightly different text, a paste that lost a
+character — does not force the person to start again. It is still single-use: the
+only path that reaches the consume has already verified, and a second request with
+the same proof loses the race and is refused.
+
 ## Rate limits
 
 | Surface | Default | Why |

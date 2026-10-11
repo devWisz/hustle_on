@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"context"
 	"crypto/ed25519"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/sardhana/auth/internal/base58"
 )
@@ -73,5 +76,64 @@ func TestValidateSignature(t *testing.T) {
 		if err := ValidateSignature(bad); err == nil {
 			t.Errorf("signature %q was accepted", bad)
 		}
+	}
+}
+
+// recordingWalletStore counts what the link flow asked it to do, so a test can
+// tell "refused" from "refused and spent the nonce anyway".
+type recordingWalletStore struct {
+	stubStore
+	consumed int
+	linked   int
+}
+
+func (s *recordingWalletStore) ConsumeWalletChallenge(context.Context, string, string, string, time.Time) error {
+	s.consumed++
+	return nil
+}
+
+func (s *recordingWalletStore) SetPayoutAddress(context.Context, string, string, time.Time) error {
+	s.linked++
+	return nil
+}
+
+// A rejected signature must not cost the person their challenge. Wallets sign
+// slightly different text more often than anyone would like — a stray newline, a
+// truncated paste — and being sent back to request a fresh nonce for it is pure
+// friction, since the nonce is single-use either way.
+func TestARejectedSignatureDoesNotSpendTheChallenge(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	address := base58.Encode(pub)
+	issued := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	const nonce = "nonce-1"
+	message := fmt.Sprintf(WalletProofTemplate, address, nonce, issued.Format(time.RFC3339))
+
+	store := &recordingWalletStore{}
+	svc, err := NewService(Config{
+		AppURL:  "https://sardhana.com",
+		CSRFKey: []byte("0123456789abcdef0123456789abcdef"),
+	}, store, LogMailer{Out: discard{}})
+	if err != nil {
+		t.Fatalf("build service: %v", err)
+	}
+	svc.SetClock(func() time.Time { return issued.Add(time.Minute) })
+
+	wrong := base58.Encode(ed25519.Sign(priv, []byte(message+" tampered")))
+	if err := svc.CompleteWalletLink(context.Background(), "u1", address, nonce, wrong, issued); err == nil {
+		t.Fatal("a signature over different text was accepted")
+	}
+	if store.consumed != 0 {
+		t.Fatalf("the challenge was consumed by a rejected attempt (%d times)", store.consumed)
+	}
+
+	right := base58.Encode(ed25519.Sign(priv, []byte(message)))
+	if err := svc.CompleteWalletLink(context.Background(), "u1", address, nonce, right, issued); err != nil {
+		t.Fatalf("the same nonce was refused after a failed attempt: %v", err)
+	}
+	if store.consumed != 1 || store.linked != 1 {
+		t.Fatalf("successful link consumed=%d linked=%d, want 1 and 1", store.consumed, store.linked)
 	}
 }

@@ -122,6 +122,10 @@ ignored.
 | `POST` | `/v1/me/wallet/challenge` | `{ address }` → the message to sign |
 | `POST` | `/v1/me/wallet/verify` | `{ address, nonce, signature, issuedAt }` |
 | `GET` | `/v1/me/bookmarks` | Saved timelapses, most recently saved first. `?limit=` (100, 200) |
+| `POST` | `/v1/me/onboarding` | `{ handle, displayName, bio?, avatarKey? }`. The one-off profile step; sets `onboarded` |
+| `POST` | `/v1/uploads/avatar` | `{ contentType, sizeBytes }` → presigned `PUT` for a JPEG, PNG or WebP |
+| `PUT` | `/v1/me/avatar` | `{ key }`. Must be an avatar this account uploaded |
+| `DELETE` | `/v1/me/avatar` | Back to initials |
 | `PUT` | `/v1/me/bookmarks/{slug}` | Save. Idempotent |
 | `DELETE` | `/v1/me/bookmarks/{slug}` | Unsave. Removing one that was never saved is a 204 |
 
@@ -187,6 +191,8 @@ because the settle worker finishes anything left open.
 | `POST` | `/v1/admin/members/{id}/reinstate` | `{ note? }` |
 | `GET` | `/v1/admin/ledger` | Sponsorships, newest first. `?status=`, `?limit=` (100, 200) |
 | `GET` | `/v1/admin/activity` | One row per day. `?days=` (7–90) and **not** paged |
+| `GET` | `/v1/admin/chain` | `{ cluster, reachable, detail, checkedAt }` — the node is asked a live health question |
+| `POST` | `/v1/admin/donations/{id}/recheck` | Re-verifies one sponsorship against the chain now |
 
 ### The operator's editing desk
 
@@ -212,6 +218,38 @@ carry script), its own ceiling (`UPLOAD_POSTER_MAX_BYTES`, default 8 MiB) and it
 own key prefix, so a video can never be attached as a thumbnail or the reverse.
 It is stored as a media reference like a playback URL, so a private bucket keeps
 working: the API signs the link on the way out.
+
+### The profile step
+
+Signing in creates an account from an email address: a handle derived from it and
+a display name identical to that handle. That is enough to own a session and not
+enough to be credited for one, so `GET /v1/me` (and `/v1/auth/session`) reports
+`onboarded`, and the client sends an un-onboarded account to the profile step
+once. `POST /v1/me/onboarding` writes the handle, display name, bio and picture
+together and stamps `onboarded_at` once — re-running it later cannot claim a
+second onboarding. A handle that is already taken is a `409` with the field
+named, exactly like `PATCH /v1/me`.
+
+Avatars are a separate namespace from posters (`avatars/` against `posters/`) with
+the same allowlist and ceiling, because they belong to different things: a poster
+is attached to a session an operator curates, an avatar to an account its holder
+owns. A key must be an avatar *and* one this account uploaded — knowing an
+object's path is not permission to wear it.
+
+### The money side
+
+`GET /v1/admin/chain` reports the cluster the API verifies against and whether
+the RPC endpoint answered, because a deployment pointed at devnet while the site
+tells donors to send SOL is a mistake that costs real money and is otherwise
+invisible.
+
+`POST /v1/admin/donations/{id}/recheck` runs the same verification the donor's own
+confirmation runs — the amount and the recipient come from the stored intent, never
+from the request — and is the answer to "I paid and it is not showing" given while
+the person is still on the page. A confirmed donation returns `200`; one the
+network has not finalized returns `202`; one the chain contradicts is marked
+failed and returns `400`. The settle worker retries unconfirmed donations on its
+own every two minutes, so this only shortens the wait.
 
 ### The curated front page
 

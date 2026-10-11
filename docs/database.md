@@ -30,6 +30,7 @@ users ──┬──< timelapses ──< timelapse_views
 | `0009_purge_grant` | Lets the API call the purge function 0008 restricted |
 | `0010_reports_and_featured` | `reports`, the report enums, and `timelapses.featured_at` |
 | `0011_featured_rank` | `timelapses.featured_rank` — an explicit, unique position on the curated front page |
+| `0012_profile_onboarding` | `users.onboarded_at` — whether the account holder has chosen their own name |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -95,6 +96,14 @@ PRIMARY KEY (note_id, user_id)
 ```
 The same shape as the view deduplication: the tally cannot be inflated by asking
 twice, because the second ask is not a row.
+
+**An account is not a profile.** Signing in creates a row from an email address —
+a handle derived from it, a display name identical to that handle — which is
+enough to own a session and not enough to be credited for one.
+`users.onboarded_at` records that the person has chosen their own. It is
+deliberately not backfilled: an existing account has never been asked, so treating
+it as complete would mean nobody ever is, and the derived default would become the
+product's idea of a name.
 
 **The front page is a shelf, not a flag.** `featured_at` records that an operator
 chose a session; `featured_rank` records where they put it. Splitting the two is

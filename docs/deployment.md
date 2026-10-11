@@ -54,6 +54,47 @@ The API should connect as a login role that inherits `sardhana_app`, not as the
 database owner — the owner is for migrations. See
 [database.md](database.md#the-application-role).
 
+## Before you deploy
+
+```bash
+make preflight          # or: scripts/preflight.sh [env-file]
+```
+
+`config.Load` already refuses to start without the things that would be unsafe to
+run without. The preflight checks the things that are merely *easy to get wrong*
+and therefore reach production anyway:
+
+- `SESSION_COOKIE_NAME` and `NEXT_PUBLIC_SESSION_COOKIE` agreeing. If they
+  disagree the frontend reads a cookie that is not there, and every
+  state-changing request fails its CSRF check with nothing to explain why.
+- Origins that still point at localhost, an `EMAIL_FROM` on a local domain, an
+  `sslmode` that would let the database connection fall back to plaintext.
+- `SOLANA_CLUSTER` not being `mainnet-beta`, and the public RPC endpoint, which
+  rate limits under load.
+- A storage endpoint that is not https — which would make the API serve uploads
+  off local disk in production.
+- `TRUSTED_PROXY_HOPS` at zero behind a load balancer, so every visitor looks
+  like the proxy and the per-address limits act on the whole site at once.
+- The console reachable from anywhere, and admin sessions that never expire.
+- Development-seed accounts still holding a login, migrations not applied, and a
+  `DATABASE_URL` that connects as the **owner** of the tables — which makes every
+  least-privilege grant inert.
+
+It exits non-zero and names what to fix. Warnings are the settings worth a
+second look rather than blockers.
+
+## The two halves have to agree
+
+The web app is built with `NEXT_PUBLIC_*` baked in, so **redeploy it after
+changing any of them**:
+
+| Setting | Where it must match |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | The API's public https origin |
+| `NEXT_PUBLIC_SITE_URL` | The web app's public https origin; must equal `WEB_PUBLIC_URL` |
+| `NEXT_PUBLIC_SESSION_COOKIE` | `SESSION_COOKIE_NAME` |
+| `INTERNAL_PROXY_SECRET` | The API's, at runtime — this is what lets a page render be rate limited per visitor instead of per web server |
+
 ## Build
 
 ```bash

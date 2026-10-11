@@ -104,3 +104,24 @@ recipient comes from an address the creator proved they control.
 
 If the API is compromised, an attacker can lie about what is displayed. They
 cannot take the money, because it never passes through here.
+
+## When a donation has not appeared
+
+A sponsor's money moves wallet to wallet; what this API decides is what it
+believes happened on chain. Three things can be true when somebody says they paid
+and cannot see it:
+
+| What the chain says | What the ledger shows | What to do |
+| --- | --- | --- |
+| The transfer is finalized and matches | `Confirmed` | Nothing — the counters were credited by the confirmation |
+| Not finalized yet | `Confirming` | Wait, or use **Re-check** on the row to ask again now |
+| The transaction failed, or is not the one this intent promised | `Failed` | Nothing is credited, and the signature is retired so it cannot be offered again |
+
+**Re-check** runs the same verification the donor's own confirmation runs. The
+amount and the recipient come from the stored intent rather than from the request,
+so an operator cannot credit a transfer the chain does not support — the button
+shortens the wait for the settle loop, it does not bypass it.
+
+The ledger also reports which cluster it verified against and whether the RPC
+endpoint is answering, because every sponsorship depends on that endpoint and
+nothing else on the site makes its failure visible.

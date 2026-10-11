@@ -97,7 +97,7 @@ The console is also where live content is edited, because nobody else can:
 | **Reports** | Sessions and notes that people flagged, with the note attached |
 | **Notes** | Every note on the site, with removal |
 | **Members** | Search, suspend and reinstate; suspended accounts lose their sessions immediately |
-| **Ledger** | Every sponsorship with its on-chain signature |
+| **Ledger** | Every sponsorship with its on-chain signature, the cluster it was verified against, whether the RPC endpoint is answering, and a re-check for one that has not confirmed |
 | **Audit trail** | Every action above, filterable and exportable |
 
 Editing something already published moves no status, so the audit line is what

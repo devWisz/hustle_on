@@ -57,12 +57,22 @@ func (s *Service) CompleteWalletLink(ctx context.Context, userID, address, nonce
 		return err
 	}
 	now := s.now()
-	if err := s.store.ConsumeWalletChallenge(ctx, userID, address, nonce, now); err != nil {
-		return ErrInvalidToken
-	}
 	message := fmt.Sprintf(WalletProofTemplate, address, nonce, issuedAt.UTC().Format(time.RFC3339))
+
+	// The signature is checked before the nonce is spent.
+	//
+	// It used to be the other way round, which meant a single rejected attempt —
+	// a wallet that signed slightly different text, a copy-paste that lost a
+	// character — consumed the challenge and made the person start over. Checking
+	// first costs nothing: the nonce is still single-use, because the only path
+	// that reaches the consume below is one that has already verified, and a
+	// second request with the same signature loses the race on `consumed_at IS
+	// NULL` and is refused there.
 	if err := VerifySolanaSignature(address, message, signatureB58); err != nil {
 		return err
+	}
+	if err := s.store.ConsumeWalletChallenge(ctx, userID, address, nonce, now); err != nil {
+		return ErrInvalidToken
 	}
 	if err := s.store.SetPayoutAddress(ctx, userID, address, now); err != nil {
 		return fmt.Errorf("auth: set payout address: %w", err)
