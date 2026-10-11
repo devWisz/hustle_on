@@ -236,6 +236,12 @@ export function UploadForm() {
     }
   }
 
+  /** Validate, then run the request — the one path both buttons take. */
+  function send() {
+    if (!file || !validate()) return;
+    void resume(file, duration);
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     setFileError("");
@@ -250,9 +256,7 @@ export function UploadForm() {
       setFileError(problem);
       return;
     }
-    if (!validate()) return;
-
-    void resume(file, duration);
+    send();
   }
 
   /** Back to an empty sequence, for an operator with a second recording. */
@@ -549,13 +553,7 @@ export function UploadForm() {
 
           <div className="flex flex-wrap items-center gap-4">
             {done ? null : reviewError ? (
-              <Button
-                type="button"
-                size="lg"
-                onClick={() => {
-                  if (file) void resume(file, duration);
-                }}
-              >
+              <Button type="button" size="lg" onClick={send}>
                 Try again
               </Button>
             ) : (

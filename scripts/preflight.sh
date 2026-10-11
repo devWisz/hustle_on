@@ -224,14 +224,15 @@ if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
   fi
 
   if [[ "${ALLOW_OWNER_ROLE:-}" != "true" ]]; then
-    owner="$(query "select count(*) from pg_roles where rolname='sardhana_app'")"
-    if [[ "$owner" == "1" ]]; then
-      app_role="$(query "select count(*) from pg_roles r where r.rolname = session_user and pg_has_role(session_user, 'sardhana_app', 'member')")"
-      if [[ "$app_role" == "1" ]]; then
-        pass "the API's database role inherits sardhana_app"
-      else
-        warn "the session role does not inherit sardhana_app; the API would run with owner privileges (set ALLOW_OWNER_ROLE=true to accept)"
-      fi
+    # Ownership of a table, not membership of a role: delegating CREATEROLE means
+    # the creator is automatically a member of any role it creates, so a
+    # membership test says "fine" about exactly the connection this is looking
+    # for. Owning the table is what makes every REVOKE in migration 0008 inert.
+    owns="$(query "select count(*) from pg_tables where tablename = 'timelapses' and tableowner = session_user")"
+    if [[ "$owns" == "1" ]]; then
+      fail "DATABASE_URL connects as the owner of the tables: the least-privilege grants are inert (set ALLOW_OWNER_ROLE=true only if that is deliberate)"
+    elif [[ -n "$owns" ]]; then
+      pass "the API's database role does not own the tables"
     fi
   fi
   echo

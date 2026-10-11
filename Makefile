@@ -53,5 +53,8 @@ db-status: ## Show applied and pending migrations
 db-seed: ## Load development seed data
 	@bash scripts/migrate.sh seed
 
+preflight: ## Check the environment for production readiness
+	@bash scripts/preflight.sh
+
 clean: ## Remove build output
 	rm -rf backend/bin backend/data frontend/.next
