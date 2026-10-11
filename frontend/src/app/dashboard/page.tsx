@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const data = await getDashboard();
   if (data === "signin") redirect("/login?next=/dashboard");
+  if (!data.me.onboarded) redirect("/welcome?next=/dashboard");
   const { me, items, donations } = data;
 
   const views = items.reduce((n, t) => n + t.viewCount, 0);

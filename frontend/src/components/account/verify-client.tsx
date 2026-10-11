@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
 import { safeNext } from "@/lib/redirect";
+import type { SelfUser } from "@/lib/types";
 import { ButtonLink, Spinner } from "../ui";
 
 export function VerifyClient() {
@@ -21,9 +22,16 @@ export function VerifyClient() {
       return;
     }
 
-    api("/v1/auth/verify", { body: { token } })
-      .then(() => {
-        window.location.replace(safeNext(params.get("next"), "/dashboard"));
+    api<SelfUser>("/v1/auth/verify", { body: { token } })
+      .then((me) => {
+        const wanted = safeNext(params.get("next"), "/dashboard");
+        // A brand-new account has no name of its own yet — the sign-in flow built
+        // one out of the email address — so it is sent to choose one first, with
+        // wherever it was going remembered.
+        const destination = me?.onboarded
+          ? wanted
+          : `/welcome?next=${encodeURIComponent(wanted)}`;
+        window.location.replace(destination);
       })
       .catch((err: unknown) => {
         setError(

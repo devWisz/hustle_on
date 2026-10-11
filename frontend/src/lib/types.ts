@@ -20,6 +20,8 @@ export interface SelfUser extends PublicUser {
   emailVerified: boolean;
   role: "member" | "admin";
   payoutVerified: boolean;
+  /** False until the account holder has chosen their own handle and name. */
+  onboarded: boolean;
 }
 
 export type TimelapseStatus =

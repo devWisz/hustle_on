@@ -24,6 +24,7 @@ const CHECKLIST = [
 export default async function UploadPage() {
   const me = await getAccount();
   if (me === "signin") redirect("/login?next=/upload");
+  if (!me.onboarded) redirect("/welcome?next=/upload");
 
   return (
     <Container width="wide" className="pt-10 sm:pt-14">
