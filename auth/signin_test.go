@@ -34,7 +34,7 @@ func newSignInFixture(t *testing.T) *signInFixture {
 		AppURL:      testAppURL,
 		ProductName: "Hustle On",
 		CSRFKey:     []byte("0123456789abcdef0123456789abcdef"),
-	}, store)
+	}, store, stubHasher{})
 	if err != nil {
 		t.Fatalf("build service: %v", err)
 	}

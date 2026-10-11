@@ -91,6 +91,27 @@ ADMIN_WALLETS=$( [[ -n "${ADMIN_WALLETS:-}" ]] && echo "${ADMIN_WALLETS},<your-a
 Then restart the API (\`make dev\`) and sign in with that wallet. The promotion is
 automatic and one-time.
 
+### Your sign-in
+
+There is no password anywhere in the *code*, but an account can have one. This is
+the operator account, set with \`backend/cmd/setpassword\`:
+
+| | |
+|---|---|
+| Email | \`${ADMIN_EMAIL:-not set}\` |
+| Password | \`${ADMIN_PASSWORD:-not set}\` |
+
+Sign in with those on the site, and the admin console appears in your account
+menu. To change the password:
+
+\`\`\`bash
+cd backend && go run ./cmd/setpassword --email ${ADMIN_EMAIL:-you@example.com} --admin
+\`\`\`
+
+With no \`--password\` it generates one and prints it once. **There is no reset
+link** — nothing sends email, by design — so if this is lost, that command is the
+only way back in. It works because you have access to the machine.
+
 ### The console
 
 - Admin console: \`${ADMIN_PUBLIC_URL:-http://localhost:3001}/admin\` — the console

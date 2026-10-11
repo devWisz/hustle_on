@@ -23,6 +23,16 @@ const authTestKey = "0123456789abcdef0123456789abcdef"
 // quietly pass.
 type stubAuthStore struct{ auth.Store }
 
+// stubHasher satisfies auth.PasswordHasher for tests that never touch a password.
+// The real one is Argon2id and deliberately slow; paying that in a CSRF test would
+// only make the suite slower.
+type stubHasher struct{}
+
+func (stubHasher) Hash(password string) (string, error) { return "stub$" + password, nil }
+func (stubHasher) Verify(encoded, password string) (bool, error) {
+	return encoded == "stub$"+password, nil
+}
+
 func testAuth(t *testing.T) *auth.Service {
 	t.Helper()
 	svc, err := auth.NewService(auth.Config{
@@ -30,7 +40,7 @@ func testAuth(t *testing.T) *auth.Service {
 		CookieName: "hustleon_session",
 		Secure:     true,
 		CSRFKey:    []byte(authTestKey),
-	}, stubAuthStore{})
+	}, stubAuthStore{}, stubHasher{})
 	if err != nil {
 		t.Fatalf("build auth service: %v", err)
 	}

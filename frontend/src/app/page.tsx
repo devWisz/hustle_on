@@ -75,14 +75,7 @@ function Hero() {
   return (
     <section className="grid-backdrop">
       <Container width="wide" className="pb-12 pt-14 sm:pb-16 sm:pt-20 lg:pb-20 lg:pt-28">
-        <Reveal immediate className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[12.5px] text-fg-muted">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
-            Every session read by a person before it goes up
-          </span>
-        </Reveal>
-
-        <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
+        <div className="grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
           <SplitHeading as="h1" onScroll={false} className="text-display lg:col-span-8">
             Rewards your hustle.
           </SplitHeading>
@@ -237,9 +230,9 @@ const PRINCIPLES = [
   },
   {
     icon: ZapIcon,
-    claim: "Rejections carry a reason",
+    claim: "Sent back with a reason",
     detail:
-      "The API refuses a decline with no note, and so does the database. Creators read the reason on their dashboard.",
+      "If your session is not accepted, you get a specific reason and can fix it and resend it.",
   },
   {
     icon: WalletIcon,
@@ -284,12 +277,12 @@ function Closing({ signedIn }: { signedIn: boolean }) {
   return (
     <section className="pt-24 sm:pt-36">
       <Container width="wide">
-        <Reveal className="relative overflow-hidden rounded-[var(--radius-panel)] bg-inverse px-6 py-14 text-inverse-fg sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+        <Reveal className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface px-6 py-14 text-fg shadow-[var(--shadow-raised)] sm:px-12 sm:py-20 lg:px-16 lg:py-24">
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] opacity-60">Start here</p>
           <SplitHeading className="text-headline mt-5 max-w-3xl">
             Record it. Write it down. Get paid for it.
           </SplitHeading>
-          <p className="mt-6 max-w-lg text-[15px] leading-relaxed opacity-70">
+          <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-fg-muted">
             Your first upload goes to review the same day. An account is one wallet signature.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -303,7 +296,7 @@ function Closing({ signedIn }: { signedIn: boolean }) {
               href={signedIn ? "/dashboard" : "/login"}
               size="lg"
               variant="ghost"
-              className="w-full text-inverse-fg/70 hover:bg-inverse-fg/10 hover:text-inverse-fg sm:w-auto"
+              className="w-full sm:w-auto"
             >
               {signedIn ? "Open your dashboard" : "Create an account"}
             </ButtonLink>

@@ -13,15 +13,15 @@ import (
 
 var _ auth.Store = (*Store)(nil)
 
-const authUserColumns = `u.id::text, COALESCE(u.wallet_address::text, ''), u.handle::text,
-	u.display_name, u.role::text, u.status::text`
+const authUserColumns = `u.id::text, COALESCE(u.wallet_address::text, ''), COALESCE(u.email::text, ''),
+	u.handle::text, u.display_name, u.role::text, u.status::text`
 
 // The same projection without the table alias. `INSERT ... RETURNING` has no
 // alias to qualify against, and using the aliased list there fails at runtime
 // with "missing FROM-clause entry" — which no unit test would have caught,
 // because the rule they exercise lives above the SQL.
-const authUserColumnsBare = `id::text, COALESCE(wallet_address::text, ''), handle::text,
-	display_name, role::text, status::text`
+const authUserColumnsBare = `id::text, COALESCE(wallet_address::text, ''), COALESCE(email::text, ''),
+	handle::text, display_name, role::text, status::text`
 
 func (s *Store) UserByID(ctx context.Context, id string) (auth.User, error) {
 	return s.scanAuthUser(ctx, `SELECT `+authUserColumns+` FROM users u WHERE u.id = $1`, id)
@@ -39,7 +39,7 @@ func (s *Store) UserByWallet(ctx context.Context, address string) (auth.User, er
 func (s *Store) scanAuthUser(ctx context.Context, query string, arg any) (auth.User, error) {
 	var u auth.User
 	err := s.pool.QueryRow(ctx, query, arg).Scan(
-		&u.ID, &u.WalletAddress, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
+		&u.ID, &u.WalletAddress, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
 	if err != nil {
 		if errors.Is(normalize(err), ErrNotFound) {
 			return auth.User{}, auth.ErrNotFound
@@ -59,7 +59,7 @@ func (s *Store) CreateUser(ctx context.Context, walletAddress, handle, displayNa
 		VALUES ($1, $2, $3)
 		RETURNING `+authUserColumnsBare,
 		walletAddress, handle, displayName).Scan(
-		&u.ID, &u.WalletAddress, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
+		&u.ID, &u.WalletAddress, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
 	if err != nil {
 		if isUniqueViolationOn(err, "handle") {
 			return auth.User{}, auth.ErrHandleTaken
@@ -73,6 +73,62 @@ func (s *Store) CreateUser(ctx context.Context, walletAddress, handle, displayNa
 		return auth.User{}, normalize(err)
 	}
 	return u, nil
+}
+
+// CreatePasswordUser registers an account from an email address and an encoded
+// password hash.
+//
+// A duplicate address is returned as ErrEmailTaken rather than retried: unlike a
+// generated handle colliding, two people claiming one address is a fact the person
+// signing up needs to be told, not a coincidence to paper over.
+func (s *Store) CreatePasswordUser(ctx context.Context, email, handle, displayName, passwordHash string) (auth.User, error) {
+	var u auth.User
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO users (email, password_hash, handle, display_name)
+		VALUES ($1, $2, $3, $4)
+		RETURNING `+authUserColumnsBare,
+		email, passwordHash, handle, displayName).Scan(
+		&u.ID, &u.WalletAddress, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status)
+	if err != nil {
+		if isUniqueViolationOn(err, "email") {
+			return auth.User{}, auth.ErrEmailTaken
+		}
+		if isUniqueViolationOn(err, "handle") {
+			return auth.User{}, auth.ErrHandleTaken
+		}
+		return auth.User{}, normalize(err)
+	}
+	return u, nil
+}
+
+// PasswordCredentials looks up an account for a password sign-in.
+//
+// The hash is returned beside the user rather than on it, so it cannot reach a
+// response payload by travelling with a User. An account with no password comes
+// back with an empty hash and no error: that is a real state — the account exists
+// and signs in with a wallet — and the caller has to answer it the same way it
+// answers a wrong password.
+func (s *Store) PasswordCredentials(ctx context.Context, email string) (auth.User, string, error) {
+	var u auth.User
+	var hash *string
+	err := s.pool.QueryRow(ctx, `
+		SELECT `+authUserColumns+`, u.password_hash
+		FROM users u WHERE u.email = $1`, email).Scan(
+		&u.ID, &u.WalletAddress, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status, &hash)
+	if err != nil {
+		if errors.Is(normalize(err), ErrNotFound) {
+			return auth.User{}, "", auth.ErrNotFound
+		}
+		return auth.User{}, "", normalize(err)
+	}
+	return u, deref(hash), nil
+}
+
+// SetPasswordHash stores a new encoded hash.
+func (s *Store) SetPasswordHash(ctx context.Context, userID, passwordHash string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE users SET password_hash = $2 WHERE id = $1`, userID, passwordHash)
+	return normalize(err)
 }
 
 // PromoteToAdmin grants the operator role to a wallet listed in ADMIN_WALLETS.

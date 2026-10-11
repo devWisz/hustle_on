@@ -40,6 +40,12 @@ func (s *Server) routes() {
 	// signing in simply by asking repeatedly.
 	s.route("POST /v1/auth/signin/challenge", budgetAuth, s.handleSignInChallenge)
 	s.route("POST /v1/auth/signin/verify", budgetVerify, s.handleSignInVerify)
+	// Password sign-up and sign-in. Sign-up gets the tight "auth" budget because
+	// each request writes an account and does an expensive hash; sign-in gets the
+	// tighter "verify" budget, because it is the one endpoint where guessing is
+	// the whole attack.
+	s.route("POST /v1/auth/signup", budgetAuth, s.handleSignUp)
+	s.route("POST /v1/auth/login", budgetVerify, s.handleLogIn)
 	s.route("POST /v1/auth/logout", budgetEngage, s.handleLogout)
 	s.route("POST /v1/auth/logout-all", budgetEngage, s.handleLogoutAll)
 	s.route("GET /v1/auth/session", budgetRead, s.handleSession)
@@ -47,6 +53,7 @@ func (s *Server) routes() {
 	// --- the signed-in account -------------------------------------------
 	s.route("GET /v1/me", budgetRead, s.handleMe)
 	s.route("PATCH /v1/me", budgetWrite, s.handleUpdateMe)
+	s.route("POST /v1/me/password", budgetWrite, s.handleChangePassword)
 	s.route("GET /v1/me/timelapses", budgetRead, s.handleMyTimelapses)
 	s.route("GET /v1/me/donations", budgetRead, s.handleMyDonations)
 	s.route("POST /v1/me/wallet/challenge", budgetEngage, s.handleWalletChallenge)

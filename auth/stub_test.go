@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"fmt"
 	"sync"
 	"time"
@@ -22,6 +25,8 @@ type stubStore struct {
 
 	challenges map[string]WalletChallenge // "address|nonce" -> challenge
 	sessions   map[string]Session         // by id
+	emails     map[string]string          // email -> user id
+	hashes     map[string]string          // user id -> encoded password hash
 }
 
 func newStubStore() *stubStore {
@@ -31,10 +36,31 @@ func newStubStore() *stubStore {
 		handles:    map[string]bool{},
 		challenges: map[string]WalletChallenge{},
 		sessions:   map[string]Session{},
+		emails:     map[string]string{},
+		hashes:     map[string]string{},
 	}
 }
 
 func challengeKey(address, nonce string) string { return address + "|" + nonce }
+
+// stubHasher satisfies PasswordHasher for tests. It is deliberately not a
+// password hash: these tests are about the rules around passwords, and the
+// arithmetic is the one part that should be well-reviewed library code rather
+// than something reimplemented here and trusted because it passes its own tests.
+type stubHasher struct{}
+
+func (stubHasher) Hash(password string) (string, error) {
+	sum := sha256.Sum256([]byte("stub:" + password))
+	return "stub$" + base64.RawStdEncoding.EncodeToString(sum[:]), nil
+}
+
+func (h stubHasher) Verify(encoded, password string) (bool, error) {
+	want, err := h.Hash(password)
+	if err != nil {
+		return false, err
+	}
+	return subtle.ConstantTimeCompare([]byte(encoded), []byte(want)) == 1, nil
+}
 
 func (s *stubStore) UserByID(_ context.Context, id string) (User, error) {
 	s.mu.Lock()
@@ -74,6 +100,53 @@ func (s *stubStore) CreateUser(_ context.Context, address, handle, displayName s
 	s.users[u.ID] = u
 	s.walletOf[address] = u.ID
 	return u, nil
+}
+
+func (s *stubStore) CreatePasswordUser(_ context.Context, email, handle, displayName, passwordHash string) (User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.emails == nil {
+		s.emails = map[string]string{}
+	}
+	if _, taken := s.emails[email]; taken {
+		return User{}, ErrEmailTaken
+	}
+	if s.handles[handle] {
+		return User{}, ErrHandleTaken
+	}
+	s.handles[handle] = true
+	u := User{
+		ID:          fmt.Sprintf("u%d", len(s.users)+1),
+		Email:       email,
+		Handle:      handle,
+		DisplayName: displayName,
+		Role:        "member",
+		Status:      "active",
+	}
+	s.users[u.ID] = u
+	s.emails[email] = u.ID
+	s.hashes[u.ID] = passwordHash
+	return u, nil
+}
+
+func (s *stubStore) PasswordCredentials(_ context.Context, email string) (User, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, ok := s.emails[email]
+	if !ok {
+		return User{}, "", ErrNotFound
+	}
+	return s.users[id], s.hashes[id], nil
+}
+
+func (s *stubStore) SetPasswordHash(_ context.Context, userID, passwordHash string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.users[userID]; !ok {
+		return ErrNotFound
+	}
+	s.hashes[userID] = passwordHash
+	return nil
 }
 
 func (s *stubStore) PromoteToAdmin(_ context.Context, userID string) error {

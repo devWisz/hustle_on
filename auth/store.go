@@ -14,10 +14,14 @@ import (
 type User struct {
 	ID            string
 	WalletAddress string
-	Handle        string
-	DisplayName   string
-	Role          string
-	Status        string
+	// Email is an identity for an account that signs in with a password, and
+	// optional contact information for one that signs in with a wallet. It is
+	// never both roles at once in practice: an account gets it when it needs it.
+	Email       string
+	Handle      string
+	DisplayName string
+	Role        string
+	Status      string
 }
 
 // Active reports whether the account may hold a session at all.
@@ -83,6 +87,20 @@ type Store interface {
 	// holds the matching key. The handle is a generated placeholder; onboarding
 	// replaces it.
 	CreateUser(ctx context.Context, walletAddress, handle, displayName string) (User, error)
+
+	// CreatePasswordUser registers an account from an email address and an encoded
+	// password hash. It returns ErrEmailTaken when the address already has an
+	// account, which is a case the caller reports rather than retries.
+	CreatePasswordUser(ctx context.Context, email, handle, displayName, passwordHash string) (User, error)
+
+	// PasswordCredentials looks up an account by email for a password sign-in. The
+	// hash is returned beside the user rather than on it, so it cannot travel
+	// anywhere a User travels by accident. An account with no password returns an
+	// empty hash and no error.
+	PasswordCredentials(ctx context.Context, email string) (User, string, error)
+
+	// SetPasswordHash stores a new encoded hash.
+	SetPasswordHash(ctx context.Context, userID, passwordHash string) error
 
 	// PromoteToAdmin grants the operator role. It is called when a wallet that
 	// appears in ADMIN_WALLETS signs in, so admin access is a property of the

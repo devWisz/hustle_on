@@ -15,6 +15,7 @@ import (
 	"github.com/sardhana/backend/internal/db"
 	"github.com/sardhana/backend/internal/logging"
 	"github.com/sardhana/backend/internal/media"
+	"github.com/sardhana/backend/internal/password"
 	"github.com/sardhana/backend/internal/server"
 	"github.com/sardhana/backend/internal/solana"
 	"github.com/sardhana/backend/internal/store"
@@ -66,7 +67,7 @@ func run() error {
 		SessionTTL:   cfg.SessionTTL,
 		ChallengeTTL: cfg.ChallengeTTL,
 		CSRFKey:      cfg.SessionSecret,
-	}, st)
+	}, st, password.New())
 	if err != nil {
 		return err
 	}

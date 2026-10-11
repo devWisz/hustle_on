@@ -85,23 +85,9 @@ func (s *Server) handleSignInVerify(w http.ResponseWriter, r *http.Request) erro
 		return apierr.Internal(err)
 	}
 
-	user = s.grantAdminIfListed(r.Context(), user)
-
-	cookie, err := s.auth.Issue(r.Context(), user, clientIP(r), userAgent(r))
-	if err != nil {
-		return apierr.Internal(err)
-	}
-	http.SetCookie(w, cookie)
-	http.SetCookie(w, s.auth.CSRFCookie(s.auth.CSRFToken(cookie.Value), s.cfg.SessionTTL))
-
-	// The profile is read by id rather than through selfUser: the session was
-	// issued a line ago and exists only in the Set-Cookie header, so this
-	// request's context still has no user attached to it.
-	self, err := s.store.SelfProfile(r.Context(), user.ID)
-	if err != nil {
-		return storeErr(err, "Profile")
-	}
-	return writeJSON(w, http.StatusOK, self)
+	// One path for every way of signing in, so the cookie flags, the CSRF token
+	// and the operator promotion cannot differ between them.
+	return s.startSession(w, r, user)
 }
 
 // grantAdminIfListed gives the operator role to a wallet named in ADMIN_WALLETS.

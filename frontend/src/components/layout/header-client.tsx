@@ -148,43 +148,23 @@ export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={openCommandSearch}
-            className="press hidden h-9 items-center gap-2 rounded-full border border-border bg-surface pl-3 pr-1.5 text-[13px] text-fg-subtle transition-colors hover:border-border-strong hover:text-fg-muted sm:flex"
-          >
-            <SearchIcon size={14} />
-            <span className="pr-6">Search</span>
-            <span className="kbd">/</span>
-          </button>
+          {/* One icon instead of a search field: the palette is opened with / or
+              ⌘K from anywhere, so this only has to be a visible affordance. */}
           <button
             type="button"
             onClick={openCommandSearch}
             aria-label="Search"
-            className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted hover:bg-surface-raised hover:text-fg sm:hidden"
+            title="Search (press / or ⌘K)"
+            className="press flex h-9 w-9 items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg"
           >
             <SearchIcon size={17} />
           </button>
           <ThemeToggle />
 
           {user ? null : (
-            <>
-              {guest ? (
-                <span
-                  className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11.5px] text-fg-subtle md:inline-flex"
-                  title="Browsing without an account. Everything published is open; uploading needs one."
-                >
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-fg-subtle" />
-                  Guest
-                </span>
-              ) : null}
-              <Link
-                href="/login"
-                className={buttonClass("ghost", "sm", "hidden md:inline-flex")}
-              >
-                Sign in
-              </Link>
-            </>
+            <Link href="/login" className={buttonClass("ghost", "sm", "hidden md:inline-flex")}>
+              Sign in
+            </Link>
           )}
           {user || guest ? (
             <Link

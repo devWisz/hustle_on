@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -57,16 +58,25 @@ func (c *Config) withDefaults() {
 // store, a mailer and a URL builder; now it involves a store and a signature,
 // and there is no third party left that a sign-in can depend on.
 type Service struct {
-	cfg   Config
-	store Store
-	now   func() time.Time
+	cfg    Config
+	store  Store
+	hasher PasswordHasher
+	now    func() time.Time
+	// dummyHash is a real hash of a value nobody knows, verified against when an
+	// email address is not found. Doing the same work for a miss as for a hit is
+	// what keeps the response time from answering the question the error message
+	// deliberately refuses to.
+	dummyHash string
 }
 
 // NewService validates the configuration and returns a ready Service.
-func NewService(cfg Config, store Store) (*Service, error) {
+func NewService(cfg Config, store Store, hasher PasswordHasher) (*Service, error) {
 	cfg.withDefaults()
 	if store == nil {
 		return nil, errors.New("auth: store is required")
+	}
+	if hasher == nil {
+		return nil, errors.New("auth: password hasher is required")
 	}
 	if cfg.AppURL == "" {
 		return nil, errors.New("auth: AppURL is required")
@@ -74,7 +84,14 @@ func NewService(cfg Config, store Store) (*Service, error) {
 	if len(cfg.CSRFKey) < 32 {
 		return nil, errors.New("auth: CSRFKey must be at least 32 bytes")
 	}
-	return &Service{cfg: cfg, store: store, now: time.Now}, nil
+	// The verifier for an unknown address needs a genuine hash to work against, or
+	// it would return instantly and defeat its own purpose. Generated once, here,
+	// so no request ever pays for it.
+	dummy, err := hasher.Hash("this is not a password anybody has")
+	if err != nil {
+		return nil, fmt.Errorf("auth: build timing decoy: %w", err)
+	}
+	return &Service{cfg: cfg, store: store, hasher: hasher, now: time.Now, dummyHash: dummy}, nil
 }
 
 // SetClock replaces the time source. Tests use it; production does not.

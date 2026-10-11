@@ -11,7 +11,7 @@ func testService(t *testing.T) *Service {
 	svc, err := NewService(Config{
 		AppURL:  "https://hustleon.com",
 		CSRFKey: []byte("0123456789abcdef0123456789abcdef"),
-	}, newStubStore())
+	}, newStubStore(), stubHasher{})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
