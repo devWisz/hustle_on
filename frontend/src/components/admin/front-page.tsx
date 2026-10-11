@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
+import { cx } from "@/lib/format";
 import type { Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Badge, Button, EmptyState } from "../ui";
@@ -237,9 +238,9 @@ export function FrontPage({
             Every published session is already on the front page.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+          <Panel as="ul" rows className="mt-4">
             {candidates.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 p-4 sm:p-5">
+              <li key={t.id} className={cx(rowPad, "flex items-center gap-3")}>
                 <span className="aspect-video w-16 shrink-0 overflow-hidden rounded-md bg-surface-raised">
                   {t.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -273,7 +274,7 @@ export function FrontPage({
                 </Button>
               </li>
             ))}
-          </ul>
+          </Panel>
         )}
       </section>
     </div>

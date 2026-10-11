@@ -1,3 +1,5 @@
+import { endGuestSession } from "./guest";
+
 export type Consent = "essential" | "all";
 
 export const CONSENT_COOKIE = "hustleon_consent";
@@ -29,6 +31,10 @@ export function writeConsent(value: Consent) {
         break;
       }
     }
+    // Guest mode is a convenience, not something the site needs to work, so
+    // "essential only" forgets it too — otherwise choosing not to be remembered
+    // would leave a cookie behind saying how they were browsing.
+    endGuestSession();
   }
   window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: value }));
 }
