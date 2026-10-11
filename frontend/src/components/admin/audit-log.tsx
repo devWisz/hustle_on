@@ -143,8 +143,12 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
         <EmptyState
           className="mt-5"
           icon={<ListIcon size={18} />}
-          title="No matching entries"
-          description="Every approval, rejection and takedown is recorded here."
+          title={entries.length === 0 ? "No decisions recorded yet" : "No matching entries"}
+          description={
+            entries.length === 0
+              ? "Every approval, rejection and takedown is written here, newest first."
+              : "Try another action filter, or clear it to see everything."
+          }
         />
       ) : (
         <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">

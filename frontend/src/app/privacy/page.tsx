@@ -30,7 +30,7 @@ const sections = [
   },
   {
     title: "Cookies and local storage",
-    body: "A session cookie keeps you signed in and a companion cookie protects forms against cross-site requests; both are essential and set only when you sign in. A demo cookie remembers that you chose to explore the demo. Your theme choice, recent searches and, when signed out, your bookmarks are kept in your own browser's storage and never sent to us. There are no advertising or analytics cookies. Each one is listed in the Cookie Policy, and you choose whether preferences are remembered.",
+    body: "A session cookie keeps you signed in and a companion cookie protects forms against cross-site requests; both are essential and set only when you sign in. Your theme choice, recent searches and, when signed out, your bookmarks are kept in your own browser's storage and never sent to us. There are no advertising or analytics cookies. Each one is listed in the Cookie Policy, and you choose whether preferences are remembered.",
   },
   {
     title: "View counts",

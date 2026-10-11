@@ -15,21 +15,17 @@ src/components/timelapse     card, feed, hero showcase, player, preview
 src/components/watch         donate panel, discussion, share card, up next
 src/components/account       login, upload, settings, submissions, saved list
 src/components/admin         admin nav, data table, activity chart, review desk, tables
-src/components/demo          demo banner and demo labels
 src/lib/api                  browser client and server fetcher
-src/lib/demo                 demo content, admin demo data, demo cookie and actions
-src/lib/data.ts              every page's data, with the demo fallback
+src/lib/data.ts              every page's server-side data, read straight from the API
 src/middleware.ts            security headers and cache rules
-public/demo                  generated demo timelapses (scripts/gen_demo_videos.py)
 ```
 
-## Demo mode
+## Data
 
-Every page reads through `lib/data.ts`. When the API cannot be reached, or the
-visitor starts the demo from the login page, pages render sample data and the
-generated demo videos, labelled as demo throughout. Nothing a demo visitor does
-is sent anywhere. When the API comes back, an open page notices and reloads its
-data.
+Every page reads through `lib/data.ts`. There is no fallback content: when the API
+is unreachable, or returns nothing, a surface renders an intentional empty state
+or `null` rather than invented records. When the API comes back, an open page
+notices and reloads its data.
 
 ## Motion
 

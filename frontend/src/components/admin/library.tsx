@@ -163,11 +163,20 @@ export function Library({ initial }: { initial: Timelapse[] }) {
       searchLabel="Search sessions or creators"
       filename="sardhana-library.csv"
       defaultSort={{ key: "published", dir: "desc" }}
-      empty={{
-        title: "No sessions match",
-        description: "Try another search or creator.",
-        icon: <FilmIcon size={18} />,
-      }}
+      empty={
+        items.length === 0
+          ? {
+              title: "The library is empty",
+              description:
+                "Published sessions appear here as soon as they clear review. If you expected some, the API may not have answered.",
+              icon: <FilmIcon size={18} />,
+            }
+          : {
+              title: "No sessions match",
+              description: "Try another search or creator.",
+              icon: <FilmIcon size={18} />,
+            }
+      }
       filters={
         <Select
           value={creator}

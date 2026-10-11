@@ -23,10 +23,6 @@ const sections = [
     body: "Protects every change you make, such as uploading, posting a note or sponsoring, against cross-site request forgery. The page reads it and sends it back with each request so the server can confirm the request came from Sardhana. It lasts as long as your session.",
   },
   {
-    title: "sardhana_guest (essential)",
-    body: "Set only if you choose to explore the demo. It tells pages to show sample data and lasts twelve hours.",
-  },
-  {
     title: "sardhana_consent (essential)",
     body: "Remembers the choice you made in the cookie banner, so we do not ask on every visit. It lasts six months.",
   },
