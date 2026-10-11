@@ -77,8 +77,20 @@ recorded in the write-ahead log. The procedure and its consequences are in
 
 ## Seed data
 
-The seed mirrors the demo library the frontend ships with: one reviewer, eight
-creators, six published sessions that play the recordings in
-`frontend/public/demo`, two waiting for review, one sent back with a note, and
-the sponsorships, notes, bookmarks and audit entries that go with them. It is
-generated so the Solana addresses and signatures have valid shapes.
+The seed creates one thing: an administrator, `reviewer@sardhana.test`.
+
+It used to generate eight creators and nine sessions with recordings shipped in
+`frontend/public/demo`. That is gone, deliberately. A seeded imitation of a
+recorded session is the one thing this product must not display, and the review
+queue it filled was a rehearsal of a workflow rather than the workflow. Sign in
+as the administrator, upload a real session from `/upload`, and approve it from
+`/admin/queue`.
+
+To make that account yours, sign in with your own address once and then promote
+it — roles are granted in the database on purpose, so no bug in an endpoint can
+create one:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+DELETE FROM users WHERE email = 'reviewer@sardhana.test';
+```

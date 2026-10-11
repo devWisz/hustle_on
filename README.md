@@ -103,7 +103,6 @@ Sardhana sets only essential cookies until you choose otherwise:
 |---|---|---|
 | `sardhana_session` | Keeps you signed in; `HttpOnly`, never readable by scripts | 30 days |
 | `sardhana_session_csrf` | Double-submit token that protects every change you make | 30 days |
-| `sardhana_guest` | Only if you start the demo | 12 hours |
 | `sardhana_consent` | Remembers your cookie choice | 6 months |
 
 A banner on the first visit asks whether preferences (theme, recent searches,
@@ -139,7 +138,7 @@ The short version; [docs/security.md](docs/security.md) is the real one.
 cp .env.example .env          # fill in DATABASE_URL, SESSION_SECRET, INTERNAL_PROXY_SECRET
 make setup                    # install dependencies
 make db-migrate               # apply migrations
-make db-seed                  # optional: a reviewer, eight creators and a full review queue
+make db-seed                  # optional: empties the tables and creates one admin account
 make dev                      # API on :8085, web on :3001
 ```
 
@@ -147,9 +146,11 @@ Locally there is no email provider, object storage or SOL to set up: sign-in
 links print to the API log and uploads write to disk. None of these shortcuts
 exist in production.
 
-If the API cannot be reached, the site switches to a clearly labelled demo mode
-with sample sessions so it never looks broken. Demo mode never includes the admin
-console.
+Every list on the site is built from real records, so an empty site renders empty
+states that say what will appear there. There is no fallback content and no
+sample mode: if the API cannot be reached the page says so, and the browser is
+never shown a session that nobody recorded. The first real session appears when
+somebody uploads one and a reviewer approves it.
 
 ## Deploying
 
@@ -198,11 +199,12 @@ Until then the API writes sign-in links to its log.
 | [**docs/database.md**](docs/database.md) | Schema, constraints, the application role and the audit trail |
 | [**docs/deployment.md**](docs/deployment.md) | Render, Vercel, Neon and the launch checklist |
 | [**docs/design-system.md**](docs/design-system.md) | Typography, colours, radii, shadows |
+| [**docs/workflow.md**](docs/workflow.md) | Upload, review, publish and sponsor, end to end |
 
 ## Design principles
 
 - **Typography-led**: a quiet palette with a single blue accent
-- **No unlabelled fake data**: sample sessions appear only in demo mode, always tagged
+- **No invented content, ever**: every record on the site was uploaded by a person and approved by a reviewer; empty states say so rather than filling the space
 - **No emoji, no glow**: inline SVG icons; depth from shadow, border and motion
 - **Motion with purpose**: GSAP reveals, split headings and counted figures, all of which collapse under `prefers-reduced-motion`
 - **Responsive from 320px**: no horizontal scroll on any page

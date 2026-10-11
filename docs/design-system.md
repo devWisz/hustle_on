@@ -78,17 +78,15 @@ a coloured dot. Colour reinforces; it never carries the meaning alone.
 **Empty states say what to do.** `EmptyState` takes an action for a reason. "No
 submissions yet" with an upload button beats an empty grid.
 
-**Never fabricate content that is not labelled as such.** Real data and
-invented data must never be indistinguishable. Outside guest preview the rule is
-absolute: no placeholder avatars of invented people, no sample metrics, no
-simulated player — an empty state is honest, silent fake data is not.
+**Never fabricate content.** No placeholder people, no sample metrics, no
+simulated player, no invented session — not even a labelled one. An empty state
+that says what will appear there is honest; a plausible-looking fake is not, and
+the difference is invisible to the person reading it. Every session on the site
+was uploaded by somebody and approved by a reviewer, or it is not there.
 
-Guest preview is the single exception, and it is an exception about labelling
-rather than about honesty. Everything it renders comes from `lib/sample.ts`,
-every surface built from it carries a `SampleTag` or a `SampleNote`, real data
-always wins when there is any, and sample slugs are prefixed `sample-` so a
-preview URL can never collide with a real one. A sample page also returns
-`robots: noindex`. See [guest-preview.md](guest-preview.md).
+This was once a rule with an exception: a guest preview rendered invented records
+with a "sample" tag. The exception is gone, because the tag does not survive a
+screenshot, a share, or a visitor who arrives halfway down a page.
 
 **Focus is always visible.** One treatment, defined once in `globals.css`.
 Keyboard users must never have to guess where they are.

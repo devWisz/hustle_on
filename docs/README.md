@@ -13,7 +13,6 @@ Start with whichever question you actually have.
 | [payments.md](payments.md) | How is a donation verified? |
 | [security.md](security.md) | What is defended, and how? |
 | [design-system.md](design-system.md) | What are the interface rules? |
-| [guest-preview.md](guest-preview.md) | What can somebody see without an account? |
 | [deployment.md](deployment.md) | How does this go to production? |
 | [contributing.md](contributing.md) | How do I change it? |
 
