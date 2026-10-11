@@ -114,7 +114,9 @@ export interface WatchData {
   timelapse: Timelapse;
   payoutAddress?: string;
   donations: Donation[];
+  donationsCursor?: string;
   notes: Note[];
+  notesCursor?: string;
   upNext: Timelapse[];
   signedIn: boolean;
   /** The signed-in viewer is the creator of this session. */
@@ -130,15 +132,20 @@ async function loadWatch(slug: string): Promise<WatchData | null> {
 
   const [creator, donations, notes, feed] = await Promise.all([
     apiServer<PublicUser>(`/v1/creators/${live.creator.handle}`, 0),
-    apiServer<Page<Donation>>(`/v1/timelapses/${slug}/donations`, 0),
-    apiServer<Page<Note>>(`/v1/timelapses/${slug}/notes`, 0),
+    apiServer<Page<Donation>>(
+      `/v1/timelapses/${slug}/donations?limit=${SUPPORTERS_PAGE_SIZE}`,
+      0,
+    ),
+    apiServer<Page<Note>>(`/v1/timelapses/${slug}/notes?limit=${NOTES_PAGE_SIZE}`, 0),
     apiServer<Page<Timelapse>>("/v1/timelapses?limit=5", 0),
   ]);
   return {
     timelapse: live,
     payoutAddress: creator?.payoutAddress,
     donations: donations?.items ?? [],
+    donationsCursor: donations?.nextCursor,
     notes: notes?.items ?? [],
+    notesCursor: notes?.nextCursor,
     upNext: (feed?.items ?? []).filter((t) => t.slug !== slug).slice(0, 4),
     signedIn: Boolean(viewer.user),
     isOwner: viewer.user?.handle === live.creator.handle,
@@ -150,16 +157,24 @@ async function loadCreator(
 ): Promise<Sourced<{ creator: PublicUser; items: Timelapse[] }> | null> {
   const [live, items] = await Promise.all([
     apiServer<PublicUser>(`/v1/creators/${handle}`, 0),
-    apiServer<Page<Timelapse>>(`/v1/creators/${handle}/timelapses`, 0),
+    apiServer<Page<Timelapse>>(
+      `/v1/creators/${handle}/timelapses?limit=${CREATOR_SESSIONS_PAGE_SIZE}`,
+      0,
+    ),
   ]);
   if (!live) return null;
-  return { data: { creator: live, items: items?.items ?? [] } };
+  return {
+    data: { creator: live, items: items?.items ?? [] },
+    nextCursor: items?.nextCursor,
+  };
 }
 
 export interface DashboardData {
   me: SelfUser;
   items: Timelapse[];
+  itemsCursor?: string;
   donations: Donation[];
+  donationsCursor?: string;
 }
 
 export const getWatch = cache(loadWatch);
@@ -169,13 +184,15 @@ export async function getDashboard(): Promise<DashboardData | "signin"> {
   const viewer = await getViewer();
   if (viewer.user) {
     const [mine, received] = await Promise.all([
-      apiServer<Page<Timelapse>>("/v1/me/timelapses", 0),
-      apiServer<Page<Donation>>("/v1/me/donations", 0),
+      apiServer<Page<Timelapse>>(`/v1/me/timelapses?limit=${MY_SUBMISSIONS_PAGE_SIZE}`, 0),
+      apiServer<Page<Donation>>(`/v1/me/donations?limit=${MY_SPONSORSHIPS_PAGE_SIZE}`, 0),
     ]);
     return {
       me: viewer.user,
       items: mine?.items ?? [],
+      itemsCursor: mine?.nextCursor,
       donations: received?.items ?? [],
+      donationsCursor: received?.nextCursor,
     };
   }
   return signInOrRetry(viewer);

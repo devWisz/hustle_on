@@ -5,7 +5,7 @@ import { formatDate, shortAddress } from "@/lib/format";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
-import { TimelapseGrid } from "@/components/timelapse/grid";
+import { CreatorSessions } from "@/components/timelapse/creator-sessions";
 import { Avatar, Container, EmptyState } from "@/components/ui";
 import { FilmIcon } from "@/components/ui/icons";
 
@@ -86,7 +86,11 @@ export default async function CreatorPage({ params }: Props) {
         <h2 className="text-title">Sessions</h2>
         <div className="mt-8">
           {items.length > 0 ? (
-            <TimelapseGrid items={items} />
+            <CreatorSessions
+              handle={creator.handle}
+              initial={items}
+              initialCursor={result.nextCursor}
+            />
           ) : (
             <EmptyState
               icon={<FilmIcon size={18} />}
