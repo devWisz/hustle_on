@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getViewer } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
-import { LoginForm } from "@/components/account/login-form";
+import { WalletSignIn } from "@/components/account/wallet-signin";
 import { ContinueAsGuest } from "@/components/account/guest-actions";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
@@ -10,7 +10,7 @@ import { AlertIcon, ShieldIcon } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Hustle On with an email link.",
+  description: "Sign in to Hustle On with your Solana wallet.",
   robots: { index: false, follow: false },
 };
 
@@ -40,16 +40,16 @@ export default async function LoginPage({
         <Reveal immediate delay={0.2}>
           <p className="mt-4 text-[15px] leading-relaxed text-fg-muted">
             {sponsoring
-              ? "Sponsorships are tied to an account, so the creator knows who backed them and every transfer can be verified. "
+              ? "Sponsorships are tied to an account so the creator knows who backed them. "
               : uploading
                 ? "Uploads are tied to an account so reviewers can reach you and sponsors can find you. "
                 : null}
-            Enter your email and we send you a link. Your account is created the first time you open
-            one, so there is nothing separate to sign up for.
+            Your wallet signs one message. Your account is created the first time you do, so there is
+            nothing separate to sign up for.
           </p>
 
           {viewer.online ? (
-            <LoginForm next={destination === "/" ? undefined : destination} className="mt-8" />
+            <WalletSignIn next={destination === "/" ? undefined : destination} className="mt-8" />
           ) : (
             <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft p-4 text-[13.5px] leading-relaxed text-warning">
               <AlertIcon size={18} className="mt-0.5 shrink-0" />
@@ -63,8 +63,7 @@ export default async function LoginPage({
           <div className="mt-8 border-t border-border pt-6">
             <p className="text-[13.5px] font-medium text-fg">Not ready to sign in?</p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
-              Look around first. Every published session is open to anyone; an account is only
-              needed to upload, comment or save something.
+              Look around first. Every published session is open to anyone.
             </p>
             <ContinueAsGuest next={destination} className="mt-4" />
           </div>
@@ -72,8 +71,9 @@ export default async function LoginPage({
           <div className="mt-8 flex gap-3 border-t border-border pt-6">
             <ShieldIcon size={18} className="mt-0.5 shrink-0 text-fg-subtle" />
             <p className="text-[13px] leading-relaxed text-fg-muted">
-              No password is stored here, so there is none to breach. The link works once and expires
-              in fifteen minutes. We will never ask for a seed phrase or private key.
+              No password is stored here, so there is none to breach, and nothing is emailed to you.
+              Signing in signs a message — it authorises no transfer and costs nothing. We will never
+              ask for a seed phrase or private key.
             </p>
           </div>
         </Reveal>
