@@ -1,6 +1,8 @@
 import "server-only";
+import { cookies } from "next/headers";
 import { cache } from "react";
 import { apiServer, apiServerAllPages, apiServerResult } from "./api/server";
+import { GUEST_COOKIE } from "./guest";
 import type {
   ActivityDay,
   AdminAccess,
@@ -24,12 +26,21 @@ export interface Viewer {
   adminAccess?: AdminAccess;
   online: boolean;
   uncertain: boolean;
+  /**
+   * The visitor chose to look around without an account. It changes copy and
+   * nothing else: every gated action is still refused by the API, which never
+   * sees this cookie.
+   */
+  guest: boolean;
 }
 
 const liveStats = cache(() => apiServer<Stats>("/v1/stats", 60));
 
 export const getViewer = cache(async (): Promise<Viewer> => {
-  const session = await apiServerResult<SessionResponse>("/v1/auth/session", 0);
+  const [session, jar] = await Promise.all([
+    apiServerResult<SessionResponse>("/v1/auth/session", 0),
+    cookies(),
+  ]);
   const online = session.status !== 0;
   const uncertain = online && session.data === null;
   const user = session.data?.authenticated ? session.data.user : undefined;
@@ -38,6 +49,8 @@ export const getViewer = cache(async (): Promise<Viewer> => {
     adminAccess: session.data?.adminAccess,
     online,
     uncertain,
+    // A signed-in visitor is never a guest, whatever the cookie says.
+    guest: !user && jar.has(GUEST_COOKIE),
   };
 });
 

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { cx } from "@/lib/format";
 import { SpinnerIcon } from "./icons";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "inverse";
-type ButtonSize = "sm" | "md" | "lg";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "inverse";
+export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
   "press group inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium " +
@@ -33,7 +33,7 @@ export function buttonClass(
   return cx(base, variants[variant], sizes[size], extra);
 }
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
