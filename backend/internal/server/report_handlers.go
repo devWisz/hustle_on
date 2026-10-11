@@ -1,19 +1,13 @@
 package server
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"html"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/sardhana/auth"
 	"github.com/sardhana/backend/internal/store"
 	"github.com/sardhana/backend/internal/validate"
 	"github.com/sardhana/backend/pkg/apierr"
+	"net/http"
+	"strconv"
+	"time"
 )
 
 var reportReasons = map[string]bool{
@@ -168,4 +162,3 @@ func (s *Server) handleFeatured(w http.ResponseWriter, r *http.Request) error {
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
-

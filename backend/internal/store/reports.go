@@ -259,4 +259,3 @@ func (s *Store) ReorderFeatured(ctx context.Context, ids []string) ([]string, er
 	}
 	return titles, nil
 }
-

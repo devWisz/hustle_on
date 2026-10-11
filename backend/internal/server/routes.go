@@ -33,9 +33,13 @@ func (s *Server) routes() {
 
 	// --- authentication --------------------------------------------------
 	// Sign-in gets its own tight budgets, charged by address rather than by
-	// account: these are the two endpoints that send mail and consume secrets.
-	s.route("POST /v1/auth/request-link", budgetAuth, s.handleRequestLink)
-	s.route("POST /v1/auth/verify", budgetVerify, s.handleVerifyLink)
+	// account: these two hand out nonces and consume them, and they are the only
+	// endpoints where guessing is a useful attack. The two are budgeted
+	// separately so that asking for challenges cannot exhaust the allowance for
+	// spending them, which would let one caller lock everybody else out of
+	// signing in simply by asking repeatedly.
+	s.route("POST /v1/auth/signin/challenge", budgetAuth, s.handleSignInChallenge)
+	s.route("POST /v1/auth/signin/verify", budgetVerify, s.handleSignInVerify)
 	s.route("POST /v1/auth/logout", budgetEngage, s.handleLogout)
 	s.route("POST /v1/auth/logout-all", budgetEngage, s.handleLogoutAll)
 	s.route("GET /v1/auth/session", budgetRead, s.handleSession)

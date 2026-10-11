@@ -87,6 +87,20 @@ type Config struct {
 // IsProduction reports whether relaxed development behaviour is forbidden.
 func (c Config) IsProduction() bool { return c.Env == "production" }
 
+// IsAdminWallet reports whether an address is listed as an operator.
+//
+// The comparison is exact and case-sensitive on purpose: base58 is a
+// case-sensitive encoding, so folding case here would let two different
+// addresses compare equal and one of them would be granted the role.
+func (c Config) IsAdminWallet(address string) bool {
+	for _, w := range c.AdminWallets {
+		if w == address {
+			return true
+		}
+	}
+	return false
+}
+
 // loadDotEnv finds and loads .env from current or parent directories if not already set.
 func loadDotEnv() {
 	paths := []string{".env", "../.env", "../../.env"}
