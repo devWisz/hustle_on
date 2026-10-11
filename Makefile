@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 .PHONY: help setup dev dev-api dev-web build test lint fmt \
-        db-migrate db-rollback db-status db-seed clean
+        db-migrate db-rollback db-status db-seed preflight clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
