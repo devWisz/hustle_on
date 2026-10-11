@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAccount } from "@/lib/data";
+import { getAccount, getViewer } from "@/lib/data";
+import { GuestNotice } from "@/components/account/guest-notice";
 import { UploadForm } from "@/components/account/upload-form";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
@@ -22,6 +23,26 @@ const CHECKLIST = [
 ];
 
 export default async function UploadPage() {
+  const viewer = await getViewer();
+  if (!viewer.user) {
+    // A guest is told what an account is for rather than bounced to a form they
+    // have already declined once.
+    if (viewer.guest) {
+      return (
+        <Container width="narrow" className="py-14 sm:py-20">
+          <p className="text-eyebrow">Upload</p>
+          <h1 className="text-headline mt-4">Send a session for review</h1>
+          <GuestNotice
+            what="Uploading"
+            next="/upload"
+            reason="A submission has to belong to somebody a reviewer can write back to, and a sponsorship has to have somewhere to land."
+          />
+        </Container>
+      );
+    }
+    redirect("/login?next=/upload");
+  }
+
   const me = await getAccount();
   if (me === "signin") redirect("/login?next=/upload");
   if (!me.onboarded) redirect("/welcome?next=/upload");

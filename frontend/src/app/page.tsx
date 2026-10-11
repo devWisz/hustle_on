@@ -2,7 +2,6 @@ import { FEED_PAGE_SIZE, getFeatured, getFeed, getStats, getViewer } from "@/lib
 import type { Stats } from "@/lib/types";
 import { CountUp } from "@/components/motion/count-up";
 import { Magnetic } from "@/components/motion/magnetic";
-import { Marquee } from "@/components/motion/marquee";
 import { ProgressRail } from "@/components/motion/progress-rail";
 import { Reveal } from "@/components/motion/reveal";
 import { ScrollScale } from "@/components/motion/scroll-scale";
@@ -39,7 +38,6 @@ export default async function HomePage({
         </ScrollScale>
       </Container>
 
-      <Claims />
 
       {stats ? <Figures stats={stats.data} /> : null}
 
@@ -91,8 +89,8 @@ function Hero() {
 
           <Reveal immediate delay={0.35} className="lg:col-span-4 lg:pb-3">
             <p className="text-lede text-fg-muted">
-              Record the session. Write down what you actually did. People who watch it can sponsor
-              you in SOL, wallet to wallet, or hire you for the next one.
+              Record the session. Say what you did. Viewers can sponsor you in SOL, or hire you for
+              the next one.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Magnetic className="inline-flex w-full sm:w-auto">
@@ -107,41 +105,13 @@ function Hero() {
                 size="lg"
                 className="w-full sm:w-auto"
               >
-                Browse sessions
+                Browse as a guest
               </ButtonLink>
             </div>
           </Reveal>
         </div>
       </Container>
     </section>
-  );
-}
-
-const CLAIMS = [
-  "0% platform cut",
-  "Human review on every upload",
-  "Wallet to wallet",
-  "Rejections carry a reason",
-  "Verified on-chain",
-  "No passwords stored",
-  "Your keys, always",
-];
-
-function Claims() {
-  return (
-    <div className="mt-16 border-y border-border py-6 sm:mt-24">
-      <Marquee speed={45}>
-        {CLAIMS.map((claim) => (
-          <span
-            key={claim}
-            className="flex items-center gap-8 pr-8 text-[clamp(1.1rem,0.9rem+1vw,1.6rem)] font-medium tracking-tight text-fg-muted"
-          >
-            {claim}
-            <span aria-hidden className="h-1.5 w-1.5 rotate-45 bg-border-strong" />
-          </span>
-        ))}
-      </Marquee>
-    </div>
   );
 }
 

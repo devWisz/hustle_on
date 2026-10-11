@@ -3,13 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { cx, formatSession } from "@/lib/format";
+import { cx, formatSession, timeAgo } from "@/lib/format";
 import { formatWait, reviewFlags, waitingMinutes } from "@/lib/review";
-import type { Timelapse } from "@/lib/types";
+import type { AdminMember, Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
 import { Avatar, Badge, Button, EmptyState, SearchField, Select, Textarea } from "../ui";
-import { ArrowLeftIcon, CheckIcon, ExternalIcon, GitHubIcon, InboxIcon, XIcon } from "../ui/icons";
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  ExternalIcon,
+  GitHubIcon,
+  InboxIcon,
+  XIcon,
+} from "../ui/icons";
+import { AdminPage, Panel, ShortcutLegend, memberIndex } from "./console";
 
 const TEMPLATES = [
   "The write-up does not say what changed or why. Describe what you set out to do and what you ended up with.",
@@ -24,15 +32,48 @@ const CHECKS = [
   "Nothing in it is someone else's work",
 ];
 
+/** The rejection rule, unchanged: the API refuses anything outside this too. */
+const NOTE_MIN = 10;
+const NOTE_MAX = 500;
+
+const SHORTCUTS = [
+  { keys: ["A"], label: "approve and publish" },
+  { keys: ["R"], label: "send back with a note" },
+  { keys: ["J"], label: "next submission" },
+  { keys: ["K"], label: "previous submission" },
+  { keys: ["Esc"], label: "close this submission" },
+];
+
 type Sort = "oldest" | "newest" | "longest";
 
-export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initialId?: string }) {
+/**
+ * One submission, decided without leaving the desk.
+ *
+ * The recording, the whole write-up and the creator's record sit together in the
+ * pane on the right, so a decision never depends on a second tab. Every action on
+ * this page is a real button or a documented key: `A` approves, `R` opens the note
+ * and puts the cursor in it, `J`/`K` (or the arrow keys) move, and Escape closes
+ * the pane. None of them fire while the reviewer is typing.
+ *
+ * A decision removes the row and the desk moves on by itself, saying which
+ * submission it moved to — the next thing to read is on screen before the
+ * previous one is forgotten.
+ */
+export function ReviewDesk({
+  initial,
+  initialId,
+  members = [],
+}: {
+  initial: Timelapse[];
+  initialId?: string;
+  members?: AdminMember[];
+}) {
   const router = useRouter();
   const toast = useToast();
   const [queue, setQueue] = useState(initial);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("oldest");
-  const [selectedId, setSelectedId] = useState<string | undefined>(initialId ?? undefined);
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialId);
   const [mobileDetail, setMobileDetail] = useState(Boolean(initialId));
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
@@ -41,6 +82,8 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
   const [decided, setDecided] = useState({ approved: 0, rejected: 0 });
   const detail = useRef<HTMLDivElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  const memberById = useMemo(() => memberIndex(members), [members]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,14 +101,18 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
     );
   }, [queue, query, sort]);
 
-  const current = visible.find((t) => t.id === selectedId) ?? visible[0];
+  const current = visible.find((t) => t.id === selectedId);
   const index = current ? visible.indexOf(current) : -1;
+  const currentId = current?.id;
+  const member = current ? memberById.get(current.creator.id) : undefined;
 
+  // The pane is per-submission state, so it is cleared the moment the submission
+  // changes: a half-written note must never attach itself to the wrong creator.
   useEffect(() => {
     setRejecting(false);
     setNote("");
     setChecks(CHECKS.map(() => false));
-  }, [current?.id]);
+  }, [currentId]);
 
   useGSAP(
     () => {
@@ -74,7 +121,7 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
         gsap.from("[data-detail]", { y: 14, autoAlpha: 0, stagger: 0.05, duration: 0.5 });
       });
     },
-    { scope: detail, dependencies: [current?.id] },
+    { scope: detail, dependencies: [currentId] },
   );
 
   const select = useCallback((id: string | undefined) => {
@@ -84,33 +131,50 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
 
   const move = useCallback(
     (delta: number) => {
-      const next = visible[Math.min(visible.length - 1, Math.max(0, index + delta))];
-      if (next) setSelectedId(next.id);
+      if (!visible.length) return;
+      const at = index === -1 ? (delta > 0 ? -1 : 0) : index;
+      const next = visible[Math.min(visible.length - 1, Math.max(0, at + delta))];
+      if (next) select(next.id);
     },
-    [visible, index],
+    [visible, index, select],
   );
+
+  const openRejection = useCallback(() => {
+    setRejecting(true);
+    requestAnimationFrame(() => noteRef.current?.focus());
+  }, []);
+
+  const closeDetail = useCallback(() => {
+    setRejecting(false);
+    setSelectedId(undefined);
+    setMobileDetail(false);
+  }, []);
 
   const decide = useCallback(
     async (action: "approve" | "reject") => {
       if (!current || busy) return;
-      if (action === "reject" && note.trim().length < 10) return;
+      if (action === "reject" && note.trim().length < NOTE_MIN) return;
       setBusy(true);
+      // Read the neighbour before the row leaves the list, so the desk can name
+      // where it is about to put the reviewer.
+      const following = visible[index + 1] ?? visible[index - 1];
       try {
         await api(`/v1/admin/timelapses/${current.id}/${action}`, {
           method: "POST",
           body: action === "reject" ? { note: note.trim() } : undefined,
         });
-        const next = visible[index + 1] ?? visible[index - 1];
         setQueue((q) => q.filter((t) => t.id !== current.id));
-        setSelectedId(next?.id);
+        setSelectedId(following?.id);
+        setMobileDetail(Boolean(following));
+        setRejecting(false);
+        setNote("");
         setDecided((d) => ({
           ...d,
           [action === "approve" ? "approved" : "rejected"]:
             d[action === "approve" ? "approved" : "rejected"] + 1,
         }));
-        toast.success(
-          action === "approve" ? "Published." : "Sent back to the creator with your note.",
-        );
+        const done = action === "approve" ? "Approved and published." : "Sent back with your note.";
+        toast.success(following ? `${done} Next: ${following.title}.` : `${done} That is the queue.`);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "That decision did not go through.");
@@ -123,57 +187,73 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const el = document.activeElement as HTMLElement | null;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
-        if (e.key === "Escape") {
+      const el = document.activeElement;
+      const tag = el instanceof HTMLElement ? el.tagName : "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        if (e.key === "Escape" && el instanceof HTMLElement) {
+          e.preventDefault();
           el.blur();
           setRejecting(false);
         }
         return;
       }
-      if (e.key === "j") move(1);
-      else if (e.key === "k") move(-1);
-      else if (e.key === "a") void decide("approve");
-      else if (e.key === "r") {
+      // A letter key on a focused control is that control's, not the desk's.
+      if (el instanceof HTMLElement && el.closest("button, a, [role='button']")) return;
+
+      const next = e.key === "j" || e.key === "J" || e.key === "ArrowDown";
+      const previous = e.key === "k" || e.key === "K" || e.key === "ArrowUp";
+      if (next || previous) {
         e.preventDefault();
-        setRejecting(true);
-        requestAnimationFrame(() => noteRef.current?.focus());
+        move(next ? 1 : -1);
+        return;
+      }
+      if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        void decide("approve");
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        openRejection();
+      } else if (e.key === "Escape") {
+        closeDetail();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [move, decide]);
+  }, [move, decide, openRejection, closeDetail]);
 
   const flags = current ? reviewFlags(current) : [];
+  const noteLength = note.trim().length;
 
   return (
-    <div>
+    <AdminPage
+      title="Review desk"
+      description="Nothing reaches the feed without a decision here. Read the write-up against the recording, then decide."
+    >
+      <ShortcutLegend items={SHORTCUTS} className="text-fg-muted" />
+
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-fg-muted">
         <span>
-          <span className="font-mono text-fg">{queue.length}</span> waiting
+          <span className="font-mono tabular-nums text-fg">{queue.length}</span> waiting
         </span>
         <span>
-          <span className="font-mono text-fg">{decided.approved}</span> approved and{" "}
-          <span className="font-mono text-fg">{decided.rejected}</span> sent back this session
+          <span className="font-mono tabular-nums text-fg">{decided.approved}</span> approved and{" "}
+          <span className="font-mono tabular-nums text-fg">{decided.rejected}</span> sent back this
+          session
         </span>
-        <span className="ml-auto hidden items-center gap-1.5 md:flex">
-          <span className="kbd">J</span>
-          <span className="kbd">K</span> move
-          <span className="kbd ml-2">A</span> approve
-          <span className="kbd ml-2">R</span> send back
+        <span aria-live="polite" className="text-fg-subtle">
+          {current ? `Reading: ${current.title}` : "No submission open"}
         </span>
       </div>
 
       {queue.length === 0 ? (
         <EmptyState
-          className="mt-6"
           icon={<InboxIcon size={18} />}
           title="The queue is clear"
           description="Every submission has a decision. New ones appear here as they arrive."
         />
       ) : (
-        <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
           <div className={cx("space-y-3", mobileDetail && "hidden lg:block")}>
             <SearchField
               placeholder="Search the queue"
@@ -191,7 +271,11 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
               <option value="newest">Newest first</option>
               <option value="longest">Longest session</option>
             </Select>
-            <ul className="space-y-1.5" aria-label="Submissions">
+            <ul
+              id="review-queue"
+              aria-label="Submissions"
+              className="max-h-[70vh] space-y-1.5 overflow-y-auto pr-1"
+            >
               {visible.map((t) => {
                 const itemFlags = reviewFlags(t);
                 const selected = t.id === current?.id;
@@ -208,22 +292,24 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                           : "border-border bg-surface hover:border-border-strong",
                       )}
                     >
-                      <p className="line-clamp-2 text-[14px] font-medium leading-snug">{t.title}</p>
-                      <p className="mt-1.5 flex items-center gap-2 text-[12px] text-fg-subtle">
-                        <Avatar name={t.creator.displayName} size={18} />
+                      <span className="line-clamp-2 block text-[14px] font-medium leading-snug">
+                        {t.title}
+                      </span>
+                      <span className="mt-1.5 flex items-center gap-2 text-[12px] text-fg-subtle">
+                        <Avatar name={t.creator.displayName} src={t.creator.avatarUrl} size={18} />
                         <span className="truncate">{t.creator.displayName}</span>
                         <span className="ml-auto shrink-0 font-mono">
                           {formatWait(waitingMinutes(t))}
                         </span>
-                      </p>
+                      </span>
                       {itemFlags.length ? (
-                        <p className="mt-2 flex flex-wrap gap-1">
+                        <span className="mt-2 flex flex-wrap gap-1">
                           {itemFlags.map((f) => (
                             <Badge key={f.label} tone={f.tone} className="h-5 px-2 text-[10.5px]">
                               {f.label}
                             </Badge>
                           ))}
-                        </p>
+                        </span>
                       ) : null}
                     </button>
                   </li>
@@ -239,42 +325,35 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
             <div ref={detail} className={cx("min-w-0", !mobileDetail && "hidden lg:block")}>
               <button
                 type="button"
-                onClick={() => setMobileDetail(false)}
-                className="mb-4 inline-flex items-center gap-2 text-[13px] text-fg-muted lg:hidden"
+                onClick={() => {
+                  setMobileDetail(false);
+                  setSelectedId(undefined);
+                }}
+                className="mb-3 inline-flex items-center gap-2 text-[13px] text-fg-muted lg:hidden"
               >
                 <ArrowLeftIcon size={15} />
                 Back to the queue
               </button>
 
-              <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
-                <div data-detail className="bg-black">
-                  {current.playbackUrl ? (
-                    <video
-                      key={current.id}
-                      src={current.playbackUrl}
-                      poster={current.thumbnailUrl}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="aspect-video w-full"
-                    />
-                  ) : (
-                    <div className="flex aspect-video items-center justify-center text-[13px] text-white/60">
-                      No video attached
-                    </div>
-                  )}
-                </div>
+              <Panel as="section" aria-labelledby="review-detail-title" rows={false}>
+                <VideoStage timelapse={current} />
 
                 <div className="p-5 sm:p-6">
                   <div
                     data-detail
-                    className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-muted"
+                    className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-fg-muted"
                   >
-                    <Avatar name={current.creator.displayName} size={22} />
+                    <Avatar name={current.creator.displayName} src={current.creator.avatarUrl} size={22} />
                     <span className="font-medium text-fg">{current.creator.displayName}</span>
                     <span>@{current.creator.handle}</span>
                     <span aria-hidden>·</span>
                     <span>waiting {formatWait(waitingMinutes(current))}</span>
+                    <span aria-hidden>·</span>
+                    <span>
+                      {current.submittedAt
+                        ? `submitted ${timeAgo(current.submittedAt)}`
+                        : `created ${timeAgo(current.createdAt)}`}
+                    </span>
                     {current.sessionMinutes ? (
                       <>
                         <span aria-hidden>·</span>
@@ -282,12 +361,15 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                       </>
                     ) : null}
                   </div>
+
                   <h2
+                    id="review-detail-title"
                     data-detail
                     className="mt-3 text-[clamp(1.25rem,1.1rem+0.6vw,1.6rem)] font-semibold leading-snug tracking-tight"
                   >
                     {current.title}
                   </h2>
+
                   {flags.length ? (
                     <p data-detail className="mt-3 flex flex-wrap gap-1.5">
                       {flags.map((f) => (
@@ -297,12 +379,16 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                       ))}
                     </p>
                   ) : null}
-                  <div
-                    data-detail
-                    className="mt-5 max-h-72 overflow-y-auto whitespace-pre-wrap text-[15px] leading-[1.7]"
-                  >
-                    {current.summary}
-                  </div>
+
+                  <CreatorStanding timelapse={current} member={member} />
+
+                  <section data-detail className="mt-5">
+                    <h3 className="text-[12px] font-medium text-fg-muted">The write-up</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-[15px] leading-[1.7]">
+                      {current.summary}
+                    </p>
+                  </section>
+
                   <div data-detail className="mt-5 flex flex-wrap gap-2">
                     {current.githubUrl ? (
                       <SourceLink href={current.githubUrl} icon={<GitHubIcon size={14} />} />
@@ -343,7 +429,7 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                   </fieldset>
                 </div>
 
-                <div className="sticky bottom-0 border-t border-border bg-surface/95 p-4 backdrop-blur sm:p-5">
+                <div className="border-t border-border p-4 sm:p-5">
                   {rejecting ? (
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-1.5">
@@ -351,8 +437,11 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                           <button
                             key={t}
                             type="button"
-                            onClick={() => setNote(t)}
-                            className="press max-w-full truncate rounded-full border border-border px-3 py-1 text-[12px] text-fg-muted hover:border-border-strong hover:text-fg"
+                            onClick={() => {
+                              setNote(t);
+                              noteRef.current?.focus();
+                            }}
+                            className="press rounded-full border border-border px-3 py-1 text-[12px] text-fg-muted hover:border-border-strong hover:text-fg"
                           >
                             {t.split(".")[0]}
                           </button>
@@ -363,15 +452,19 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                         rows={3}
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
-                        maxLength={500}
+                        maxLength={NOTE_MAX}
                         placeholder="Tell the creator exactly what to fix. They read this on their dashboard."
                         aria-label="Reason for sending back"
+                        aria-describedby="review-note-help"
                       />
+                      <p id="review-note-help" className="text-[12px] text-fg-subtle">
+                        Required, between {NOTE_MIN} and {NOTE_MAX} characters.
+                      </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           variant="danger"
                           loading={busy}
-                          disabled={note.trim().length < 10}
+                          disabled={noteLength < NOTE_MIN}
                           onClick={() => void decide("reject")}
                         >
                           Send back with note
@@ -380,7 +473,10 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                           Cancel
                         </Button>
                         <span className="ml-auto font-mono text-[11.5px] text-fg-subtle">
-                          {note.length}/500
+                          {note.length}/{NOTE_MAX}
+                          {noteLength > 0 && noteLength < NOTE_MIN
+                            ? ` · ${NOTE_MIN - noteLength} more`
+                            : ""}
                         </span>
                       </div>
                     </div>
@@ -396,10 +492,7 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                       </Button>
                       <Button
                         variant="secondary"
-                        onClick={() => {
-                          setRejecting(true);
-                          requestAnimationFrame(() => noteRef.current?.focus());
-                        }}
+                        onClick={openRejection}
                         disabled={busy}
                         className="w-full sm:w-auto"
                       >
@@ -411,12 +504,127 @@ export function ReviewDesk({ initial, initialId }: { initial: Timelapse[]; initi
                     </div>
                   )}
                 </div>
-              </div>
+              </Panel>
             </div>
-          ) : null}
+          ) : (
+            <Panel className={cx("p-8", !mobileDetail && "hidden lg:block")}>
+              <p className="text-[14px] text-fg-muted">
+                Nothing is open. Pick a submission from the list, or press{" "}
+                <span className="kbd">J</span> to start at the oldest.
+              </p>
+            </Panel>
+          )}
         </div>
       )}
+    </AdminPage>
+  );
+}
+
+/**
+ * The recording, inline.
+ *
+ * A submission whose playback URL is missing or refuses to load says so in words
+ * and still offers the raw link, because "the video will not play here" and "there
+ * is no video" are different problems and the reviewer has to be able to tell them
+ * apart before deciding.
+ */
+function VideoStage({ timelapse }: { timelapse: Timelapse }) {
+  const [failed, setFailed] = useState(false);
+  const missing = !timelapse.playbackUrl;
+  const broken = !missing && failed;
+
+  return (
+    <div data-detail className="bg-black">
+      {missing || broken ? (
+        <div className="flex aspect-video flex-col items-center justify-center gap-2 px-6 text-center">
+          <p className="text-[13.5px] text-white/80">
+            {missing
+              ? "No recording is attached to this submission."
+              : "This recording did not load in the page."}
+          </p>
+          <p className="max-w-md text-[12.5px] leading-relaxed text-white/60">
+            {missing
+              ? "You can still decide on the write-up, but the creator was asked for a recording."
+              : "Open it in a new tab to watch it before deciding."}
+          </p>
+          {timelapse.playbackUrl ? (
+            <a
+              href={timelapse.playbackUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="press mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/25 px-3.5 py-1.5 text-[12.5px] text-white/90 hover:border-white/60"
+            >
+              Open the recording
+              <ExternalIcon size={12} />
+            </a>
+          ) : null}
+        </div>
+      ) : (
+        <video
+          key={timelapse.id}
+          src={timelapse.playbackUrl}
+          poster={timelapse.thumbnailUrl || undefined}
+          controls
+          playsInline
+          preload="metadata"
+          onError={() => setFailed(true)}
+          className="aspect-video w-full"
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Who the decision is about: their handle and what has become of their work so
+ * far, read from the members the console already holds rather than a second call.
+ */
+function CreatorStanding({ timelapse, member }: { timelapse: Timelapse; member?: AdminMember }) {
+  const stats = member
+    ? [
+        { label: "Published", value: member.timelapseCount },
+        { label: "Rejected", value: member.rejected },
+        { label: "In review", value: member.inReview },
+      ]
+    : [];
+
+  return (
+    <section
+      data-detail
+      className="mt-5 rounded-[var(--radius-control)] border border-border bg-surface-raised/50 p-4"
+    >
+      <div className="flex items-center gap-3">
+        <Avatar name={timelapse.creator.displayName} src={timelapse.creator.avatarUrl} size={30} />
+        <div className="min-w-0">
+          <p className="truncate text-[13.5px] font-medium">{timelapse.creator.displayName}</p>
+          <p className="truncate font-mono text-[12px] text-fg-subtle">
+            @{timelapse.creator.handle}
+          </p>
+        </div>
+      </div>
+      {stats.length ? (
+        <dl className="mt-3 grid grid-cols-3 gap-3">
+          {stats.map((s) => (
+            <div key={s.label}>
+              <dt className="text-[11.5px] text-fg-subtle">{s.label}</dt>
+              <dd className="mt-0.5 font-mono text-[14px] tabular-nums">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-3 text-[12.5px] text-fg-subtle">
+          Their record could not be loaded; decide on what is above.
+        </p>
+      )}
+      <p className="mt-3 text-[12.5px] text-fg-subtle">
+        <a
+          href={`/creator/${encodeURIComponent(timelapse.creator.handle)}`}
+          className="link-underline text-fg-muted hover:text-fg"
+        >
+          Open their public profile
+        </a>
+      </p>
+    </section>
   );
 }
 

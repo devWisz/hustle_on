@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getDashboard } from "@/lib/data";
+import { getDashboard, getViewer } from "@/lib/data";
+import { GuestNotice } from "@/components/account/guest-notice";
 import { formatSol, timeAgo } from "@/lib/format";
 import { SavedList } from "@/components/account/saved-list";
 import { Submissions } from "@/components/account/submissions";
@@ -14,6 +15,21 @@ export const metadata: Metadata = { title: "Dashboard", robots: { index: false, 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const viewer = await getViewer();
+  if (!viewer.user && viewer.guest) {
+    return (
+      <Container width="narrow" className="py-14 sm:py-20">
+        <p className="text-eyebrow">Dashboard</p>
+        <h1 className="text-headline mt-4">Your sessions</h1>
+        <GuestNotice
+          what="The dashboard"
+          next="/dashboard"
+          reason="It shows your own drafts, what a reviewer decided and what you have earned, which only means anything once there is an account behind it."
+        />
+      </Container>
+    );
+  }
+
   const data = await getDashboard();
   if (data === "signin") redirect("/login?next=/dashboard");
   if (!data.me.onboarded) redirect("/welcome?next=/dashboard");

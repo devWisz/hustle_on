@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "@/lib/format";
+import { SITE_NAME } from "@/lib/brand";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
 import { Avatar } from "../ui/avatar";
 import { buttonClass } from "../ui/button";

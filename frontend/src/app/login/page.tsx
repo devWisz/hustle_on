@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getViewer } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
 import { LoginForm } from "@/components/account/login-form";
+import { ContinueAsGuest } from "@/components/account/guest-actions";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
 import { Container } from "@/components/ui";
@@ -58,6 +59,15 @@ export default async function LoginPage({
               </p>
             </div>
           )}
+
+          <div className="mt-8 border-t border-border pt-6">
+            <p className="text-[13.5px] font-medium text-fg">Not ready to sign in?</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
+              Look around first. Every published session is open to anyone; an account is only
+              needed to upload, comment or save something.
+            </p>
+            <ContinueAsGuest next={destination} className="mt-4" />
+          </div>
 
           <div className="mt-8 flex gap-3 border-t border-border pt-6">
             <ShieldIcon size={18} className="mt-0.5 shrink-0 text-fg-subtle" />

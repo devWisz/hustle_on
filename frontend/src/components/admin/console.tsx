@@ -65,7 +65,8 @@ export function AdminPage({
  * The border and radius are fixed here so lists cannot each pick their own. With
  * `rows` the children are separated by hairlines, which is what every list in the
  * console wants; a table keeps its own internal divisions and uses the plain
- * panel.
+ * panel. `label` names the landmark when it is a section, so the region is
+ * announced by its heading rather than as an untitled block.
  */
 export function Panel({
   children,
@@ -73,15 +74,19 @@ export function Panel({
   padded = false,
   rows = false,
   as: Tag = "div",
+  label,
 }: {
   children: React.ReactNode;
   className?: string;
   padded?: boolean;
   rows?: boolean;
   as?: "div" | "section" | "ul" | "ol" | "form";
+  label?: string;
 }) {
+  const named = Tag === "section" && label ? { "aria-labelledby": label } : {};
   return (
     <Tag
+      {...named}
       className={cx(
         "overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface",
         padded && "p-5 sm:p-6",
@@ -128,17 +133,7 @@ export function StatCard({
       {href ? (
         <span className="mt-3 inline-flex items-center gap-1 text-[12.5px] text-fg-muted transition-colors group-hover:text-fg">
           {cta}
-          <span aria-hidden className="nudge-icon inline-flex">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M5 12h14M13 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+          <ArrowRightIcon size={13} className="nudge-icon" />
         </span>
       ) : null}
     </>
@@ -269,12 +264,4 @@ export function decisionTotals(activity: { approved: number; rejected: number }[
   const approved = activity.reduce((n, day) => n + day.approved, 0);
   const rejected = activity.reduce((n, day) => n + day.rejected, 0);
   return { approved, rejected, decisions: approved + rejected };
-}
-
-/** The decision on the front of the queue, for a list that names what is oldest. */
-export function oldestFirst(queue: Timelapse[]): Timelapse[] {
-  return [...queue].sort(
-    (a, b) =>
-      Date.parse(a.submittedAt ?? a.createdAt) - Date.parse(b.submittedAt ?? b.createdAt),
-  );
 }
