@@ -101,7 +101,7 @@ func (s *recordingWalletStore) SetPayoutAddress(context.Context, string, string,
 // slightly different text more often than anyone would like — a stray newline, a
 // truncated paste — and being sent back to request a fresh nonce for it is pure
 // friction, since the nonce is single-use either way.
-func TestARejectedSignatureDoesNotSpendTheChallenge(t *testing.T) {
+func TestARejectedPayoutSignatureDoesNotSpendTheChallenge(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatalf("generate key: %v", err)

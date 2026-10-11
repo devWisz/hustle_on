@@ -253,27 +253,36 @@ func TestASuspendedAccountCannotSignIn(t *testing.T) {
 
 // A sign-in nonce and a payout nonce are not interchangeable. Signing in does
 // not silently re-point where money is sent, and a payout proof cannot mint a
-// session.
+// session. This is enforced where it matters — in the statement that spends the
+// nonce — rather than by trusting the caller to ask the right question.
 func TestChallengePurposesAreNotInterchangeable(t *testing.T) {
+	f := newSignInFixture(t)
+	ctx := context.Background()
+
+	signin, err := f.svc.StartSignIn(ctx, f.addr)
+	if err != nil {
+		t.Fatalf("start sign-in: %v", err)
+	}
+	if err := f.store.ConsumeWalletChallenge(ctx, "u1", f.addr, signin.Nonce, f.now); err == nil {
+		t.Fatal("the payout path spent a sign-in challenge")
+	}
+	if err := f.store.ConsumeSignInChallenge(ctx, f.addr, signin.Nonce, f.now); err != nil {
+		t.Fatalf("the sign-in path refused its own challenge: %v", err)
+	}
+}
+
+// The end-to-end version of the same rule: a wallet that signs the payout text
+// must not get a session out of it.
+func TestAPayoutProofCannotMintASession(t *testing.T) {
 	f := newSignInFixture(t)
 	user := f.signIn(t)
 
-	payout, err := f.svc.StartWalletLink(context.Background(), user.ID, f.addr)
+	message, nonce, err := f.svc.StartWalletLink(context.Background(), user.ID, f.addr)
 	if err != nil {
 		t.Fatalf("start wallet link: %v", err)
 	}
-	if _, _, err := f.svc.StartSignIn(context.Background(), f.addr); err != nil {
-		t.Fatalf("start sign-in: %v", err)
-	}
-
-	// The payout message is signed with the right key, but presented to the
-	// sign-in path with the sign-in nonce it does not belong to.
-	challenge, err := f.svc.StartSignIn(context.Background(), f.addr)
-	if err != nil {
-		t.Fatalf("start second sign-in: %v", err)
-	}
 	if _, err := f.svc.CompleteSignIn(context.Background(), f.addr,
-		challenge.Nonce, f.sign(t, payout), challenge.IssuedAt); err == nil {
+		nonce, f.sign(t, message), f.now); err == nil {
 		t.Fatal("a payout signature was accepted as a sign-in")
 	}
 }
