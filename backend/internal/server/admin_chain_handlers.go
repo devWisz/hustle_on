@@ -83,7 +83,14 @@ func (s *Server) handleAdminRecheckDonation(w http.ResponseWriter, r *http.Reque
 		return apierr.Conflict("No transaction signature has been submitted for this donation yet.")
 	}
 
-	verified, err := s.chain.VerifyTransfer(r.Context(), solana.TransferCheck{
+	// VerifySponsorship, not VerifyTransfer: this has to apply the same rule the
+	// donor's own confirmation applied. Checking for a bare transfer here would
+	// reject every sponsorship that went through the program — the creator
+	// legitimately receives the amount less the platform fee, so the balance delta
+	// is less than the stated amount on purpose — and then mark the donation
+	// failed, writing off money that really did move. One rule, applied in one
+	// place, is the only way that stays true.
+	verified, err := s.chain.VerifySponsorship(r.Context(), solana.TransferCheck{
 		Signature:   d.Signature,
 		From:        d.DonorAddress,
 		To:          d.PayoutAddress,

@@ -23,15 +23,21 @@ DO_CHECK=0
 # wallet the fee is paid to. Both default inside that script.
 FEE_BPS="${FEE_BPS:-}"
 TREASURY="${TREASURY:-}"
+# The wallet that pays for the deploy and becomes the program's upgrade
+# authority. Any funded keypair works — this does not have to be the default CLI
+# one, because the usual problem is not having SOL in the default one.
+KEYPAIR="${ANCHOR_WALLET:-$HOME/.config/solana/id.json}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cluster) CLUSTER="$2"; shift 2 ;;
     --check)   DO_CHECK=1; shift ;;
+    --keypair) KEYPAIR="$2"; shift 2 ;;
     --fee-bps) FEE_BPS="$2"; shift 2 ;;
     --treasury) TREASURY="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+export ANCHOR_WALLET="$KEYPAIR"
 
 case "$CLUSTER" in
   devnet) RPC="${SOLANA_RPC_URL:-https://api.devnet.solana.com}" ;;
@@ -39,12 +45,16 @@ case "$CLUSTER" in
   *) RPC="$CLUSTER" ;;
 esac
 
-KEYPAIR="$HOME/.config/solana/id.json"
 SO="contracts/target/deploy/${PROGRAM}.so"
 PROGRAM_KEYPAIR="contracts/target/deploy/${PROGRAM}-keypair.json"
 
 command -v anchor >/dev/null || { echo "error: anchor is not installed" >&2; exit 1; }
-[[ -f "$KEYPAIR" ]] || { echo "error: no keypair at $KEYPAIR (run: solana-keygen new)" >&2; exit 1; }
+[[ -f "$KEYPAIR" ]] || {
+  echo "error: no keypair at $KEYPAIR" >&2
+  echo "       Create one (solana-keygen new) or point at a funded one:" >&2
+  echo "         scripts/deploy-program.sh --keypair /path/to/funded.json" >&2
+  exit 1
+}
 
 WALLET="$(solana address -k "$KEYPAIR")"
 echo "cluster:  $CLUSTER"
@@ -128,6 +138,18 @@ if ! NODE_PATH="$PWD/frontend/node_modules" SOLANA_RPC_URL="$RPC" \
   echo "warning: the program deployed but its Config account was not created." >&2
   echo "         Sponsorships will fail until it is. Re-run:" >&2
   echo "         NODE_PATH=frontend/node_modules node contracts/scripts/initialize-config.cjs" >&2
+fi
+
+# --- read it back -------------------------------------------------------------
+# A deploy that printed "success" and a sponsorship that fails are both possible
+# at once: the program can be on chain and still unusable because Config was
+# never created. So the last thing this does is read the account back off the
+# cluster and say what is actually there.
+echo
+echo "verifying…"
+if ! NODE_PATH="$PWD/frontend/node_modules" SOLANA_RPC_URL="$RPC" \
+      node contracts/scripts/check-program.cjs; then
+  echo "warning: verification did not pass. Sponsorships will not work until it does." >&2
 fi
 
 # --- point the API at it -----------------------------------------------------

@@ -41,7 +41,7 @@ func TestVerifyTransferAcceptsAMatchingTransfer(t *testing.T) {
 		[]int64{995_000_000, 1_000_000_000},
 		nil))
 
-	got, err := c.VerifyTransfer(context.Background(), TransferCheck{
+	got, err := c.verifyTransfer(context.Background(), TransferCheck{
 		Signature: "sig", From: "payer", To: "creator", MinLamports: 1_000_000_000,
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ func TestVerifyTransferRejectsBadTransactions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := stubRPC(t, tc.result)
-			_, err := c.VerifyTransfer(context.Background(), TransferCheck{
+			_, err := c.verifyTransfer(context.Background(), TransferCheck{
 				Signature: "sig", From: "payer", To: "creator", MinLamports: 1_000_000_000,
 			})
 			if !errors.Is(err, tc.want) {

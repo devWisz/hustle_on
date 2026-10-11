@@ -61,14 +61,21 @@ func (c *Client) ProgramID() string { return c.programID }
 // VerifySponsorship verifies a sponsorship by whichever rule this deployment
 // uses: the on-chain program when one is configured, a plain transfer otherwise.
 //
+// It is deliberately the only exported way to verify a sponsorship. The two rules
+// are not interchangeable — under the program the creator receives the amount
+// less a platform fee, so a balance check expecting the full amount rejects a
+// perfectly good payment — and when both were exported, one of the three call
+// sites was left on the wrong one. Keeping them unexported means a caller now has
+// to be wrong about the name of the only function that exists.
+//
 // The choice lives here rather than at each call site because both the confirm
 // handler and the settle loop have to make it, and two copies of a rule like this
 // drift the moment one of them is changed.
 func (c *Client) VerifySponsorship(ctx context.Context, check TransferCheck) (*VerifiedTransfer, error) {
 	if c.programID == "" {
-		return c.VerifyTransfer(ctx, check)
+		return c.verifyTransfer(ctx, check)
 	}
-	return c.VerifyProgramTransfer(ctx, ProgramTransferCheck{
+	return c.verifyProgramTransfer(ctx, ProgramTransferCheck{
 		TransferCheck:   check,
 		ProgramID:       c.programID,
 		InstructionName: SponsorInstruction,
@@ -271,13 +278,14 @@ type VerifiedTransfer struct {
 	Finalized bool
 }
 
-// VerifyTransfer confirms that a signature really moved at least the expected
-// lamports from one account to another.
+// verifyTransfer confirms that a signature really moved at least the expected
+// lamports from one account to another. It is the fallback rule, used only when
+// no program is configured; callers go through VerifySponsorship.
 //
 // The balance delta is read from the transaction meta rather than trusting any
 // instruction decoding, because the delta is what actually happened: it cannot
 // be faked by a transaction that emits convincing logs but transfers nothing.
-func (c *Client) VerifyTransfer(ctx context.Context, check TransferCheck) (*VerifiedTransfer, error) {
+func (c *Client) verifyTransfer(ctx context.Context, check TransferCheck) (*VerifiedTransfer, error) {
 	tx, err := c.GetTransaction(ctx, check.Signature)
 	if err != nil {
 		return nil, err
@@ -335,8 +343,9 @@ func checkTransfer(tx *Transaction, check TransferCheck) (*VerifiedTransfer, err
 	}, nil
 }
 
-// VerifyProgramTransfer confirms a sponsorship went through our deployed
-// program, to this creator, from this sponsor, for at least this amount.
+// verifyProgramTransfer confirms a sponsorship went through our deployed
+// program, to this creator, from this sponsor, for at least this amount. It is
+// the program rule; callers go through VerifySponsorship.
 //
 // It checks three independent things, and each of them is load-bearing:
 //
@@ -351,7 +360,7 @@ func checkTransfer(tx *Transaction, check TransferCheck) (*VerifiedTransfer, err
 // The amount is decoded from the instruction data rather than inferred from the
 // balance delta because the program takes a platform fee, which makes the delta
 // less than the amount on purpose.
-func (c *Client) VerifyProgramTransfer(ctx context.Context, check ProgramTransferCheck) (*VerifiedTransfer, error) {
+func (c *Client) verifyProgramTransfer(ctx context.Context, check ProgramTransferCheck) (*VerifiedTransfer, error) {
 	tx, err := c.GetTransaction(ctx, check.Signature)
 	if err != nil {
 		return nil, err
