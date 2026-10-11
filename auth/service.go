@@ -8,8 +8,12 @@ import (
 // Config holds the tunables for a Service. Zero values are replaced by the
 // defaults in NewService.
 type Config struct {
-	// AppURL is the public origin of the web app, used to build login links.
+	// AppURL is the public origin of the web app. It is quoted inside the
+	// message a wallet signs, so a signature collected by a different site
+	// cannot be replayed here.
 	AppURL string
+	// ProductName is the name shown in the message the wallet displays.
+	ProductName string
 	// CookieName is the session cookie name.
 	CookieName string
 	// CookieDomain scopes the cookie; empty means host-only, which is the
@@ -19,50 +23,50 @@ type Config struct {
 	Secure bool
 	// SessionTTL is how long a session lasts before re-authentication.
 	SessionTTL time.Duration
-	// MagicLinkTTL is the login link validity window. Short by design.
-	MagicLinkTTL time.Duration
-	// MaxLinksPerHour caps link requests per email address.
-	MaxLinksPerHour int
+	// ChallengeTTL is how long a sign-in nonce stays signable. Short by design:
+	// it only has to outlive the moment between the click and the signature.
+	ChallengeTTL time.Duration
+	// MaxChallengeAttempts caps how many unspent nonces one address may hold at
+	// once, so a client cannot fill the table by asking in a loop.
+	MaxChallengeAttempts int
 	// CSRFKey signs double-submit CSRF tokens. Must be at least 32 bytes.
 	CSRFKey []byte
-	// ProductName appears in email subjects and bodies.
-	ProductName string
 }
 
 func (c *Config) withDefaults() {
+	if c.ProductName == "" {
+		c.ProductName = "Hustle On"
+	}
 	if c.CookieName == "" {
 		c.CookieName = "hustleon_session"
 	}
 	if c.SessionTTL == 0 {
 		c.SessionTTL = 30 * 24 * time.Hour
 	}
-	if c.MagicLinkTTL == 0 {
-		c.MagicLinkTTL = 15 * time.Minute
+	if c.ChallengeTTL == 0 {
+		c.ChallengeTTL = 5 * time.Minute
 	}
-	if c.MaxLinksPerHour == 0 {
-		c.MaxLinksPerHour = 5
-	}
-	if c.ProductName == "" {
-		c.ProductName = "Hustle On"
+	if c.MaxChallengeAttempts == 0 {
+		c.MaxChallengeAttempts = 5
 	}
 }
 
 // Service is the entry point for every authentication operation.
+//
+// It is deliberately smaller than it used to be. Signing in used to involve a
+// store, a mailer and a URL builder; now it involves a store and a signature,
+// and there is no third party left that a sign-in can depend on.
 type Service struct {
-	cfg    Config
-	store  Store
-	mailer Mailer
-	now    func() time.Time
+	cfg   Config
+	store Store
+	now   func() time.Time
 }
 
 // NewService validates the configuration and returns a ready Service.
-func NewService(cfg Config, store Store, mailer Mailer) (*Service, error) {
+func NewService(cfg Config, store Store) (*Service, error) {
 	cfg.withDefaults()
 	if store == nil {
 		return nil, errors.New("auth: store is required")
-	}
-	if mailer == nil {
-		return nil, errors.New("auth: mailer is required")
 	}
 	if cfg.AppURL == "" {
 		return nil, errors.New("auth: AppURL is required")
@@ -70,7 +74,7 @@ func NewService(cfg Config, store Store, mailer Mailer) (*Service, error) {
 	if len(cfg.CSRFKey) < 32 {
 		return nil, errors.New("auth: CSRFKey must be at least 32 bytes")
 	}
-	return &Service{cfg: cfg, store: store, mailer: mailer, now: time.Now}, nil
+	return &Service{cfg: cfg, store: store, now: time.Now}, nil
 }
 
 // SetClock replaces the time source. Tests use it; production does not.

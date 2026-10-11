@@ -11,7 +11,7 @@ func testService(t *testing.T) *Service {
 	svc, err := NewService(Config{
 		AppURL:  "https://hustleon.com",
 		CSRFKey: []byte("0123456789abcdef0123456789abcdef"),
-	}, stubStore{}, LogMailer{Out: discard{}})
+	}, newStubStore())
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
@@ -30,14 +30,14 @@ func TestCheckCSRFAllowsSafeMethods(t *testing.T) {
 
 func TestCheckCSRFRejectsForeignOrigins(t *testing.T) {
 	svc := testService(t)
-	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/wallet/challenge", nil)
 	req.Header.Set("Origin", "https://evil.example.com")
 	if err := svc.CheckCSRF(req, origins); err == nil {
 		t.Fatal("a cross-origin POST was accepted")
 	}
 
 	// A missing Origin is treated the same way: it is not one of ours.
-	req = httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
+	req = httptest.NewRequest(http.MethodPost, "/v1/auth/wallet/challenge", nil)
 	if err := svc.CheckCSRF(req, origins); err == nil {
 		t.Fatal("a POST with no Origin was accepted")
 	}
@@ -46,7 +46,7 @@ func TestCheckCSRFRejectsForeignOrigins(t *testing.T) {
 func TestCheckCSRFOnAnonymousRequests(t *testing.T) {
 	svc := testService(t)
 	// Signing in has no session yet, so the origin check stands alone.
-	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/wallet/challenge", nil)
 	req.Header.Set("Origin", "https://hustleon.com")
 	if err := svc.CheckCSRF(req, origins); err != nil {
 		t.Fatalf("an anonymous same-origin POST was rejected: %v", err)

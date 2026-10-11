@@ -39,6 +39,7 @@ func (s *Service) StartWalletLink(ctx context.Context, userID, address string) (
 		UserID:    userID,
 		Address:   address,
 		Nonce:     nonce,
+		Purpose:   PurposePayout,
 		ExpiresAt: now.Add(10 * time.Minute),
 	}
 	if err := s.store.CreateWalletChallenge(ctx, challenge); err != nil {
