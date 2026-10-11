@@ -37,6 +37,7 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -191,7 +192,16 @@ func main() {
 	// A well-formed signature for a transaction that does not exist must not be
 	// credited. It is left claimable rather than failed, because it may simply
 	// not have finalized — a distinction that matters to somebody who did pay.
-	unknown := base58.Encode(make([]byte, 64))
+	//
+	// The bytes are random rather than zero: a transaction signature may only ever
+	// be claimed once, so a fixed one works exactly once and every run after that
+	// is refused as a duplicate. That refusal is correct, and it is not what this
+	// step is checking.
+	unknownBytes := make([]byte, ed25519.SignatureSize)
+	if _, err := rand.Read(unknownBytes); err != nil {
+		must(err)
+	}
+	unknown := base58.Encode(unknownBytes)
 	code = call(donor, "POST", "/v1/donations/"+intent.ID+"/confirm",
 		map[string]any{"signature": unknown}, nil)
 	check("an unknown transaction is not credited", code == 202, http_(code))
@@ -202,7 +212,7 @@ func main() {
 	fmt.Printf("  timelapse %s  (status: removed)\n", tl.Slug)
 	fmt.Printf("  donor account %s\n", donorAddr)
 	fmt.Printf("\nremove them with the owner connection:\n")
-	fmt.Printf("  psql \"$DATABASE_URL_DIRECT\" -c \"DELETE FROM donations; DELETE FROM timelapses; DELETE FROM users WHERE handle LIKE 'hustler\\\\_%%';\"\n")
+	fmt.Printf("  psql \"$DATABASE_URL_DIRECT\" -c \"DELETE FROM donations; DELETE FROM timelapses; DELETE FROM users WHERE handle LIKE 'hustler\\_%%';\"\n")
 
 	fmt.Println()
 	if failed == 0 {
