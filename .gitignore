@@ -38,5 +38,14 @@ coverage/
 vendor/
 *.test
 .neon
+
+# Local development object storage. When no bucket is configured the API writes
+# real uploads here, so committing it would put somebody's recording — and every
+# poster an operator picks — into the repository.
+backend/data/
+
+# TypeScript's incremental build cache. It changes on every build, so tracking it
+# means a diff on every build that says nothing about the code.
+frontend/tsconfig.tsbuildinfo
 # Local build cache, used when the machine's default cache is not writable.
 .gocache/

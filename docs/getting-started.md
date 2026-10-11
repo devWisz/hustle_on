@@ -16,7 +16,7 @@ the platform locally. Each has a development path, described below.
 cp .env.example .env      # fill in DATABASE_URL and SESSION_SECRET
 make setup                # go mod download, npm install
 make db-migrate           # apply migrations
-make db-seed              # optional: an admin, two creators, a full queue
+make db-seed              # optional: empties the tables and creates one admin
 make dev                  # api :8085, web :3000
 ```
 
@@ -74,9 +74,17 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 Then `/admin` shows the review queue. Until an admin approves something, the
 feed stays empty — that is the product working, not a bug.
 
-The seed data includes an admin (`admin@sardhana.test`), two creators, and one
-submission already waiting in the queue, so every screen has something real to
-render on a fresh database.
+The seed creates one account: an admin, `reviewer@sardhana.test`. It deliberately
+creates no content, because the only sessions this site shows are ones a person
+recorded and a reviewer approved, and a seeded imitation of that is precisely what
+the review step exists to prevent.
+
+So the honest first run is: sign in as that admin (the link prints to the API log),
+upload something real from `/upload`, and approve it from `/admin/queue`. Every
+screen has a considered empty state until you do — including the console, which
+says what will appear rather than showing a placeholder. To use your own address,
+sign in with it once and then run the one-line `UPDATE` in
+[database/README.md](../database/README.md).
 
 ## Everyday commands
 
