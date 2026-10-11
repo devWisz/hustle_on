@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { API_URL } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/client";
 import { canRemember } from "@/lib/consent";
 import { cx, formatSession } from "@/lib/format";
 import type { Page, Timelapse } from "@/lib/types";
@@ -114,7 +114,7 @@ export function CommandSearch({ isAdmin = false }: { isAdmin?: boolean }) {
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_URL}/v1/timelapses?q=${encodeURIComponent(term)}&limit=6`, {
+        const res = await fetch(`${apiUrl()}/v1/timelapses?q=${encodeURIComponent(term)}&limit=6`, {
           credentials: "include",
           signal: AbortSignal.timeout(3000),
         });

@@ -1,6 +1,42 @@
 import type { ApiErrorBody } from "../types";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
+const CONFIGURED_API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085").replace(
+  /\/+$/,
+  "",
+);
+
+function isLoopbackHost(host: string): boolean {
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+}
+
+/**
+ * The API's base URL, as seen from wherever this code is running.
+ *
+ * On loopback it follows the page's own hostname. `localhost` and `127.0.0.1` are
+ * the same server, but to a browser they are different *sites* — and a request from
+ * one to the other is cross-site, so a `SameSite=Lax` session cookie is not sent at
+ * all. The symptom is nasty: pages render signed in, because the server does its own
+ * fetching, while everything the browser tries comes back unauthenticated. Matching
+ * the hostname is what makes the session work in the browser as well as on the
+ * server.
+ *
+ * The server side keeps the configured value: it has no page to follow.
+ */
+export function apiUrl(): string {
+  if (typeof window === "undefined") return CONFIGURED_API_URL;
+  try {
+    const configured = new URL(CONFIGURED_API_URL);
+    const here = window.location.hostname;
+    if (isLoopbackHost(configured.hostname) && isLoopbackHost(here) && configured.hostname !== here) {
+      configured.hostname = here;
+      return configured.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    // A malformed configured URL is used as-is, so the failure is a visible one at
+    // the request rather than a silent redirection to somewhere unintended.
+  }
+  return CONFIGURED_API_URL;
+}
 export const SESSION_COOKIE = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustleon_session";
 export const FETCH_TIMEOUT_MS = 8000;
 
@@ -59,7 +95,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     if (token) requestHeaders.set("X-Hustleon-CSRF", token);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${apiUrl()}${path}`, {
     ...rest,
     method,
     headers: requestHeaders,

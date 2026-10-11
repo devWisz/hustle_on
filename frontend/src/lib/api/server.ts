@@ -1,10 +1,12 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
-import { API_URL } from "./client";
+import { apiUrl } from "./client";
 import type { Page } from "../types";
 
 const SERVER_TIMEOUT_MS = 6000;
-const SERVER_API_URL = process.env.API_ORIGIN?.replace(/\/+$/, "") || API_URL;
+// On the server there is no page to follow, so this is the configured origin —
+// `apiUrl()` returns exactly that when `window` does not exist.
+const SERVER_API_URL = process.env.API_ORIGIN?.replace(/\/+$/, "") || apiUrl();
 const PROXY_SECRET = process.env.INTERNAL_PROXY_SECRET ?? "";
 
 export interface ApiResult<T> {

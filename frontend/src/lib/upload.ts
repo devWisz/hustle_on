@@ -1,4 +1,4 @@
-import { API_URL, csrfHeader } from "./api/client";
+import { apiUrl, csrfHeader } from "./api/client";
 
 /**
  * Sending a file to a URL the API issued.
@@ -50,7 +50,7 @@ export function uploadToStorage(
 export function isOwnApiUrl(url: string): boolean {
   try {
     const base = typeof window === "undefined" ? "http://localhost" : window.location.href;
-    return new URL(url, base).origin === new URL(API_URL, base).origin;
+    return new URL(url, base).origin === new URL(apiUrl(), base).origin;
   } catch {
     return false;
   }

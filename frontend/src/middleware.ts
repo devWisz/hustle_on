@@ -48,7 +48,11 @@ function contentSecurityPolicy(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     `media-src 'self' blob: https:${isDev ? " http://localhost:*" : ""}`,
-    `connect-src 'self' ${apiOrigin} ${rpcOrigin} ${rpcSocket} ${uploadOrigin}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+    // Both loopback spellings are allowed in development. Listing only
+    // `localhost` meant that opening the site at 127.0.0.1 — the same server —
+    // had every client-side API call blocked by the policy, on top of the origin
+    // check refusing the writes.
+    `connect-src 'self' ${apiOrigin} ${rpcOrigin} ${rpcSocket} ${uploadOrigin}${isDev ? " ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     "font-src 'self' data:",
     "frame-src 'none'",
     "frame-ancestors 'none'",

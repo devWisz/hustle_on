@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { API_URL } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/client";
 import { useToast } from "./toast";
 
 const POLL_MS = 15000;
@@ -16,7 +16,7 @@ export function ApiWatcher() {
     async function probe() {
       if (stopped || document.hidden) return;
       try {
-        const res = await fetch(`${API_URL}/health`, {
+        const res = await fetch(`${apiUrl()}/health`, {
           cache: "no-store",
           signal: AbortSignal.timeout(4000),
         });
