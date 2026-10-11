@@ -46,10 +46,10 @@ export function SavedList() {
           ? "Saved to your account, so the list follows you to another device."
           : "Saved in this browser. Sign in to keep the list across devices."}
       </p>
-      <ul className="stagger-children space-y-3">
+      <ul className="space-y-3">
         {bookmarks.map((b) => (
           <li key={b.slug}>
-            <Card className="card-hover p-4">
+            <Card interactive className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="text-[15px] font-medium">

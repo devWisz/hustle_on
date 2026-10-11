@@ -9,10 +9,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { CheckIcon, CloseIcon } from "../ui/icons";
+import { CheckIcon, CloseIcon, SpinnerIcon } from "../ui/icons";
 import { cx } from "@/lib/format";
 
-type ToastTone = "success" | "error";
+// "info" is for a request that succeeded without changing anything — a re-check
+// the chain has not finalized yet, a job already done. Reporting those as an error
+// teaches people to ignore the red ones.
+type ToastTone = "success" | "info" | "error";
 
 interface Toast {
   id: number;
@@ -24,6 +27,7 @@ interface ToastContextValue {
   toast: (message: string, tone?: ToastTone) => void;
 
   success: (message: string) => void;
+  info: (message: string) => void;
   error: (message: string) => void;
 }
 
@@ -69,6 +73,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     () => ({
       toast,
       success: (message: string) => toast(message, "success"),
+      info: (message: string) => toast(message, "info"),
       error: (message: string) => toast(message, "error"),
     }),
     [toast],
@@ -88,9 +93,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className="toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-inverse px-4 py-3 text-inverse-fg shadow-[var(--shadow-lifted)]"
           >
             <span
-              className={cx("shrink-0", item.tone === "error" ? "text-danger" : "text-success")}
+              className={cx(
+                "shrink-0",
+                item.tone === "error" ? "text-danger" : item.tone === "info" ? "" : "text-success",
+              )}
             >
-              {item.tone === "error" ? <CloseIcon size={16} /> : <CheckIcon size={16} />}
+              {item.tone === "error" ? (
+                <CloseIcon size={16} />
+              ) : item.tone === "info" ? (
+                <SpinnerIcon size={16} />
+              ) : (
+                <CheckIcon size={16} />
+              )}
             </span>
             <p className="flex-1 text-[13px] leading-snug">{item.message}</p>
             <button

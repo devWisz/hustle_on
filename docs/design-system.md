@@ -134,13 +134,19 @@ has a single sense of weight.
 
 | Utility | Where it belongs |
 |---|---|
-| `animate-fade-in-up` + `delay-1…6` | A hero or header sequence, above the fold |
-| `stagger-children` | A grid or list whose items arrive together |
 | `Reveal` (`[data-reveal]`) | Anything below the fold; one shared observer for the page |
+| `SplitHeading` (`[data-split]`) | Headings only, and only where the words are the point |
 | `CountUp` | A figure that is worth noticing — never a figure that is still loading |
-| `card-hover` | Cards that link somewhere |
+| `animate-scale-in` | A panel that replaces what was on screen: the editor, a "sent" card |
+| `lift` | Cards that link somewhere, via `Card interactive` |
 | `press` | Every button; already in `buttonClass` |
 | `nudge-icon` | An arrow inside a `group` that leads onward |
+
+Every one of these exists in `globals.css` or in `components/motion/`. A class the
+markup asks for and the stylesheet does not define fails silently — the element
+simply does not move — so a new utility is added here and to the stylesheet in the
+same change, and `animate-scale-in` and `lift` were each defined only after being
+written into markup that expected them.
 
 Hover effects are wrapped in `@media (hover: hover)`. A phone has no hover, and
 a lift that fires on touch fights the scroll.

@@ -56,6 +56,14 @@ export interface Timelapse {
   createdAt: string;
 }
 
+/** What the API reports about the cluster it verifies donations against. */
+export interface ChainStatus {
+  cluster: string;
+  reachable: boolean;
+  detail: string;
+  checkedAt: string;
+}
+
 export interface Donation {
   id: string;
   amountLamports: number;
