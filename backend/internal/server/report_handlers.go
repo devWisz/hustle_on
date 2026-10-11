@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -134,10 +135,18 @@ func (s *Server) handleFeature(featured bool) handler {
 			return apierr.NotFound("Timelapse")
 		}
 		title, err := s.store.SetFeatured(r.Context(), id, featured, time.Now().UTC())
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
-				return apierr.Conflict("Only published sessions can be featured.")
-			}
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			return apierr.NotFound("Timelapse")
+		case errors.Is(err, store.ErrNotPublished):
+			return apierr.Conflict("Only published sessions can be featured.")
+		case errors.Is(err, store.ErrShelfFull):
+			// Naming the limit turns a refusal into something the operator can act
+			// on: they can see there is nothing wrong with this session, only that
+			// the shelf is full.
+			return apierr.Conflict("The front page already holds " +
+				strconv.Itoa(store.MaxFeatured) + " sessions. Take one off before adding another.")
+		case err != nil:
 			return storeErr(err, "Timelapse")
 		}
 		action := "timelapse.unfeature"

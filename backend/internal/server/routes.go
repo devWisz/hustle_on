@@ -72,6 +72,18 @@ func (s *Server) routes() {
 	s.route("POST /v1/donations", budgetDonate, s.handleCreateDonation)
 	s.route("POST /v1/donations/{id}/confirm", budgetDonate, s.handleConfirmDonation)
 
+	// --- the operator's editing desk (admin only) -------------------------
+	// These change what the public sees without changing a status, so they are
+	// budgeted with the console and audited like every other decision.
+	s.route("GET /v1/admin/featured", budgetAdmin, s.handleAdminFeatured)
+	s.route("PUT /v1/admin/featured", budgetAdmin, s.handleAdminReorderFeatured)
+	s.route("PATCH /v1/admin/timelapses/{id}", budgetAdmin, s.handleAdminEditTimelapse)
+	s.route("PUT /v1/admin/timelapses/{id}/thumbnail", budgetAdmin, s.handleAdminSetThumbnail)
+	s.route("DELETE /v1/admin/timelapses/{id}/thumbnail", budgetAdmin, s.handleAdminClearThumbnail)
+	// A poster goes to storage like a video does, so it is charged to the upload
+	// budget rather than the console one.
+	s.route("POST /v1/admin/uploads/thumbnail", budgetUpload, s.handleAdminPosterUpload)
+
 	// --- review (admin only) ---------------------------------------------
 	s.route("GET /v1/admin/queue", budgetAdmin, s.handleReviewQueue)
 	s.route("GET /v1/admin/audit", budgetAdmin, s.handleAuditLog)

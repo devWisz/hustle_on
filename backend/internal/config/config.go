@@ -49,7 +49,10 @@ type Config struct {
 	StorageSecret    string
 	StoragePublicURL string
 	UploadMaxBytes   int64
-	UploadURLTTL     time.Duration
+	// UploadPosterMaxBytes caps a poster image. It is far smaller than the video
+	// ceiling because a poster is fetched by every visitor to the feed.
+	UploadPosterMaxBytes int64
+	UploadURLTTL         time.Duration
 
 	RateLimitAnon int
 	RateLimitAuth int
@@ -147,8 +150,9 @@ func Load() (Config, error) {
 		StorageKeyID:     os.Getenv("STORAGE_ACCESS_KEY_ID"),
 		StorageSecret:    os.Getenv("STORAGE_SECRET_ACCESS_KEY"),
 		StoragePublicURL: os.Getenv("STORAGE_PUBLIC_BASE_URL"),
-		UploadMaxBytes:   int64(envInt("UPLOAD_MAX_BYTES", 2<<30)),
-		UploadURLTTL:     time.Duration(envInt("UPLOAD_URL_TTL_MINUTES", 15)) * time.Minute,
+		UploadMaxBytes:       int64(envInt("UPLOAD_MAX_BYTES", 2<<30)),
+		UploadPosterMaxBytes: int64(envInt("UPLOAD_POSTER_MAX_BYTES", 8<<20)),
+		UploadURLTTL:         time.Duration(envInt("UPLOAD_URL_TTL_MINUTES", 15)) * time.Minute,
 
 		RateLimitAnon: envInt("RATE_LIMIT_ANON", 300),
 		// Sign-in attempts get their own, far tighter budget than page traffic.

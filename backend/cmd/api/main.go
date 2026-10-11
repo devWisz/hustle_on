@@ -90,7 +90,10 @@ func run() error {
 		SecretKey: cfg.StorageSecret,
 		PublicURL: storagePublicURL,
 		MaxBytes:  cfg.UploadMaxBytes,
-		URLTTL:    cfg.UploadURLTTL,
+		// Posters are a separate, much smaller ceiling: every visitor to the feed
+		// downloads one.
+		PosterMaxBytes: cfg.UploadPosterMaxBytes,
+		URLTTL:         cfg.UploadURLTTL,
 	})
 	store.SetMediaResolver(storage.Resolve)
 

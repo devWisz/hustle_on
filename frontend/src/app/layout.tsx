@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { getViewer } from "@/lib/data";
-import { DemoBanner } from "@/components/demo/demo";
 import { ApiWatcher } from "@/components/layout/api-watcher";
 import { CommandSearch } from "@/components/layout/command-search";
 import { CookieBanner } from "@/components/layout/cookie-banner";
@@ -78,9 +77,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         <ToastProvider>
-          <Suspense fallback={null}>
-            <DemoBanner />
-          </Suspense>
           <Suspense fallback={<HeaderFallback />}>
             <Header />
           </Suspense>

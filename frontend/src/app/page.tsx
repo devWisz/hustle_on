@@ -1,8 +1,5 @@
 import { FEED_PAGE_SIZE, getFeatured, getFeed, getStats, getViewer } from "@/lib/data";
-import { SAMPLE_TIMELAPSES } from "@/lib/demo/content";
 import type { Stats } from "@/lib/types";
-import { EnterDemoButton } from "@/components/demo/demo";
-import { DemoTag } from "@/components/demo/tag";
 import { CountUp } from "@/components/motion/count-up";
 import { Magnetic } from "@/components/motion/magnetic";
 import { Marquee } from "@/components/motion/marquee";
@@ -34,23 +31,23 @@ export default async function HomePage({
 
   return (
     <>
-      <Hero signedIn={signedIn} demo={viewer.demo} />
+      <Hero />
 
       <Container width="wide" className="-mt-2 sm:mt-0">
         <ScrollScale>
-          <Showcase items={feed.demo ? [] : reel} fallback={SAMPLE_TIMELAPSES} demo={feed.demo} />
+          <Showcase items={reel} />
         </ScrollScale>
       </Container>
 
       <Claims />
 
-      {stats ? <Figures stats={stats.data} demo={stats.demo} /> : null}
+      {stats ? <Figures stats={stats.data} /> : null}
 
       <section id="feed" className="scroll-mt-20 pt-20 sm:pt-28" aria-labelledby="feed-heading">
         <Container width="wide">
           <Reveal>
             <SectionHeader
-              eyebrow={feed.demo ? "The feed · demo library" : "The feed"}
+              eyebrow="The feed"
               title={
                 <span id="feed-heading">Real sessions, read by a person before they went up</span>
               }
@@ -61,7 +58,6 @@ export default async function HomePage({
             <Feed
               items={feed.data}
               sort={sort}
-              demo={feed.demo}
               nextCursor={feed.nextCursor}
               pageSize={FEED_PAGE_SIZE}
               emptyAction={<ButtonLink href="/upload">Upload the first one</ButtonLink>}
@@ -72,12 +68,12 @@ export default async function HomePage({
 
       <HowItWorks />
       <Principles />
-      <Closing signedIn={signedIn} demo={viewer.demo} />
+      <Closing signedIn={signedIn} />
     </>
   );
 }
 
-function Hero({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
+function Hero() {
   return (
     <section className="grid-backdrop">
       <Container width="wide" className="pb-12 pt-14 sm:pb-16 sm:pt-20 lg:pb-20 lg:pt-28">
@@ -105,18 +101,14 @@ function Hero({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
                   <ArrowRightIcon size={16} className="nudge-icon" />
                 </ButtonLink>
               </Magnetic>
-              {signedIn || demo ? (
-                <ButtonLink
-                  href="/#feed"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                >
-                  Browse sessions
-                </ButtonLink>
-              ) : (
-                <EnterDemoButton next="/" label="Explore the demo" className="w-full sm:w-auto" />
-              )}
+              <ButtonLink
+                href="/#feed"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                Browse sessions
+              </ButtonLink>
             </div>
           </Reveal>
         </div>
@@ -153,7 +145,7 @@ function Claims() {
   );
 }
 
-function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
+function Figures({ stats }: { stats: Stats }) {
   const figures = [
     {
       label: "Hours of work recorded",
@@ -175,7 +167,6 @@ function Figures({ stats, demo }: { stats: Stats; demo: boolean }) {
       <Container width="wide">
         <div className="flex items-center gap-3">
           <p className="text-eyebrow">By the numbers</p>
-          {demo ? <DemoTag /> : null}
         </div>
         <Reveal
           as="dl"
@@ -319,7 +310,7 @@ function Principles() {
   );
 }
 
-function Closing({ signedIn, demo }: { signedIn: boolean; demo: boolean }) {
+function Closing({ signedIn }: { signedIn: boolean }) {
   return (
     <section className="pt-24 sm:pt-36">
       <Container width="wide">
