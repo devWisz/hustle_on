@@ -129,7 +129,6 @@ export function DiscussionPanel({
           <span className="text-[13px] font-normal tabular-nums text-fg-subtle">
             ({notes.length})
           </span>
-          {demo ? <DemoTag /> : null}
         </h2>
       </div>
 
@@ -139,12 +138,7 @@ export function DiscussionPanel({
         it.
       </p>
 
-      {demo ? (
-        <DemoNote className="mt-5">
-          An invented thread, shown so the page is not empty. Nothing here can be posted, voted on
-          or deleted.
-        </DemoNote>
-      ) : signedIn ? (
+      {signedIn ? (
         <form
           onSubmit={handleSubmit}
           className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4"
@@ -264,13 +258,7 @@ export function DiscussionPanel({
                   </button>
 
                   {!note.viewerCanDelete ? (
-                    <ReportButton
-                      slug={slug}
-                      noteId={note.id}
-                      signedIn={signedIn}
-                      demo={demo}
-                      compact
-                    />
+                    <ReportButton slug={slug} noteId={note.id} signedIn={signedIn} compact />
                   ) : null}
                   {note.viewerCanDelete ? (
                     <button

@@ -24,13 +24,11 @@ export function ReportButton({
   slug,
   noteId,
   signedIn,
-  demo = false,
   compact = false,
 }: {
   slug: string;
   noteId?: string;
   signedIn: boolean;
-  demo?: boolean;
   compact?: boolean;
 }) {
   const toast = useToast();
@@ -82,9 +80,7 @@ export function ReportButton({
     <>
       <button
         type="button"
-        onClick={() =>
-          demo ? toast.success("Reports are switched off in the demo.") : setOpen(true)
-        }
+        onClick={() => setOpen(true)}
         className={cx(
           "press inline-flex items-center gap-1.5 text-fg-subtle transition-colors hover:text-danger",
           compact

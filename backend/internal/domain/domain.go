@@ -69,11 +69,15 @@ type Timelapse struct {
 
 	// ReviewNote is only ever populated for the creator's own view of their
 	// submission and for an admin. It is empty on every public payload.
-	Featured    bool       `json:"featured,omitempty"`
-	ReviewNote  string     `json:"reviewNote,omitempty"`
-	SubmittedAt *time.Time `json:"submittedAt,omitempty"`
-	PublishedAt *time.Time `json:"publishedAt,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	Featured bool `json:"featured,omitempty"`
+	// FeaturedRank is where the session sits on the curated front page, 1-based;
+	// zero means it is not on it. An operator detail rather than a public one,
+	// so redactForPublic clears it from every anonymous payload.
+	FeaturedRank int        `json:"featuredRank,omitempty"`
+	ReviewNote   string     `json:"reviewNote,omitempty"`
+	SubmittedAt  *time.Time `json:"submittedAt,omitempty"`
+	PublishedAt  *time.Time `json:"publishedAt,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt"`
 }
 
 // Donation is a supporter's contribution as the public sees it.

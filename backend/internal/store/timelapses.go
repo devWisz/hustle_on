@@ -19,7 +19,7 @@ const timelapseColumns = `t.id::text, t.slug, t.title, t.summary,
 	t.view_count, t.donation_count, t.donation_total_lamports,
 	COALESCE(t.review_note, ''), t.submitted_at, t.published_at, t.created_at,
 	u.id::text, u.handle::text, u.display_name, COALESCE(u.avatar_url, ''),
-	t.featured_at IS NOT NULL`
+	t.featured_at IS NOT NULL, COALESCE(t.featured_rank, 0)`
 
 const timelapseFrom = ` FROM timelapses t JOIN users u ON u.id = t.user_id`
 
@@ -28,7 +28,7 @@ const timelapseFrom = ` FROM timelapses t JOIN users u ON u.id = t.user_id`
 //
 // It exists so a query that selects the shared projection *plus* a column of its
 // own — the saved-list needs the bookmark's timestamp — can append one more
-// target instead of restating all twenty-two and slowly drifting from them.
+// target instead of restating all twenty-three and slowly drifting from them.
 func timelapseScanTargets(t *domain.Timelapse) []any {
 	return []any{&t.ID, &t.Slug, &t.Title, &t.Summary,
 		&t.GitHubURL, &t.XURL, &t.Status,
@@ -36,7 +36,7 @@ func timelapseScanTargets(t *domain.Timelapse) []any {
 		&t.ViewCount, &t.DonationCount, &t.DonationTotal,
 		&t.ReviewNote, &t.SubmittedAt, &t.PublishedAt, &t.CreatedAt,
 		&t.Creator.ID, &t.Creator.Handle, &t.Creator.DisplayName, &t.Creator.AvatarURL,
-		&t.Featured}
+		&t.Featured, &t.FeaturedRank}
 }
 
 // resolveMedia turns stored media references into loadable URLs. It is set at

@@ -70,6 +70,10 @@ func (s *Server) handleTimelapse(w http.ResponseWriter, r *http.Request) error {
 func redactForPublic(t *domain.Timelapse) {
 	t.ReviewNote = ""
 	t.SubmittedAt = nil
+	// Where a session sits on the curated front page is an operator's business.
+	// Leaving it in would let anyone read the shelf's arrangement off any single
+	// session, including ones the operator has not put on it.
+	t.FeaturedRank = 0
 }
 
 // handleTimelapseDonations lists the supporters under a published timelapse,
