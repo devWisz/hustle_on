@@ -15,7 +15,7 @@
     "@solana/web3.js": "^1.95.3",
     "buffer": "^6.0.3",
     "gsap": "^3.15.0",
-    "next": "15.5.26",
+    "next": "15.5.27",
     "react": "19.0.3",
     "react-dom": "19.0.3",
     "server-only": "^0.0.1"
@@ -26,7 +26,7 @@
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "eslint": "^9.18.0",
-    "eslint-config-next": "15.5.26",
+    "eslint-config-next": "15.5.27",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3"

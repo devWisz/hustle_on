@@ -73,6 +73,13 @@ fi
 PROGRAM_ID="$(solana address -k "$PROGRAM_KEYPAIR")"
 echo "program:  $PROGRAM_ID"
 
+# The id has to agree before anything is built. A program compiled with the wrong
+# declare_id! deploys perfectly and then fails every instruction, because a PDA is
+# derived from the declared id — so this is checked while it is still free.
+echo
+echo "checking the program id agrees everywhere…"
+NODE_PATH="$PWD/frontend/node_modules" node contracts/scripts/check-ids.cjs
+
 echo
 echo "building…"
 (cd contracts && anchor build)

@@ -209,3 +209,34 @@ func TestSetPasswordRequiresTheCurrentOne(t *testing.T) {
 		t.Fatalf("the old password still works after a change: %v", err)
 	}
 }
+
+// The denylist is small on purpose, so it has to be right about what it covers:
+// the exact strings, the same string in another case, and the same word with the
+// digits and punctuation people put on the end to satisfy a length rule.
+func TestCommonPasswordsAreRefused(t *testing.T) {
+	for _, pw := range []string{
+		"password123",
+		"Password123",
+		"PASSWORD",
+		"password123!",
+		"qwertyuiop",
+		"letmein123",
+		"hustleon123",
+		"solana123",
+		"correcthorsebatterystaple",
+	} {
+		if err := ValidatePassword(pw, "ada@example.com"); err == nil {
+			t.Errorf("%q was accepted", pw)
+		}
+	}
+	// And it must not refuse things that merely look like a word on the list.
+	for _, pw := range []string{
+		"my own long passphrase about a horse",
+		"Tr0ub4dor&3-correct-battery",
+		"passwords are not the same as password",
+	} {
+		if err := ValidatePassword(pw, "ada@example.com"); err != nil {
+			t.Errorf("%q was refused: %v", pw, err)
+		}
+	}
+}

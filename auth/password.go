@@ -96,7 +96,51 @@ func ValidatePassword(password, email string) error {
 	if len(distinct) < 4 {
 		return fieldProblem("password", "Use a password with more variety than that.")
 	}
+	if isCommonPassword(password) {
+		return fieldProblem("password", "That password is one of the most commonly used ones. Choose another.")
+	}
 	return nil
+}
+
+// commonPasswords are the passwords that appear at the top of every breach corpus.
+//
+// A short list like this is worth more than it looks. Length rules push people
+// towards `passwordpassword`, which is long and worthless, and an attacker's first
+// few thousand guesses are always the same words — so refusing them costs nothing
+// and removes the attempts that actually succeed against a site like this one. It
+// is deliberately small and lowercased: a large list belongs in a file that can be
+// updated, and this is a floor rather than a policy.
+var commonPasswords = map[string]bool{
+	"password": true, "password1": true, "password123": true, "password1234": true,
+	"passwordpassword": true, "passw0rd": true, "p@ssw0rd": true, "passwords": true,
+	"123456": true, "1234567": true, "12345678": true, "123456789": true,
+	"1234567890": true, "12345678910": true, "0123456789": true, "0987654321": true,
+	"qwerty": true, "qwerty123": true, "qwertyuiop": true, "qwertyuiop123": true,
+	"asdfghjkl": true, "zxcvbnm": true, "1q2w3e4r": true, "1qaz2wsx": true,
+	"letmein": true, "letmein123": true, "welcome": true, "welcome1": true,
+	"welcome123": true, "admin": true, "admin123": true, "administrator": true,
+	"root": true, "toor": true, "guest": true, "test": true, "test123": true,
+	"iloveyou": true, "monkey": true, "dragon": true, "sunshine": true,
+	"princess": true, "football": true, "baseball": true, "superman": true,
+	"trustno1": true, "abc123": true, "abcd1234": true, "a1b2c3d4": true,
+	"changeme": true, "secret": true, "secret123": true, "michael": true,
+	"hustleon": true, "hustleon123": true, "solana": true, "solana123": true,
+	"bitcoin": true, "ethereum": true, "crypto123": true, "blockchain": true,
+	"wallet123": true, "metamask": true, "phantom123": true, "satoshinakamoto": true,
+	"correcthorsebatterystaple": true, "thisisapassword": true, "mypassword": true,
+	"whatever123": true, "nothing123": true, "hello12345": true, "summer2024": true,
+	"winter2024": true, "spring2025": true, "summer2025": true, "autumn2025": true,
+}
+
+// isCommonPassword compares case-insensitively, and also with digits and symbols
+// removed from the ends, because `Password123!` is the same guess as `password`.
+func isCommonPassword(password string) bool {
+	lower := strings.ToLower(strings.TrimSpace(password))
+	if commonPasswords[lower] {
+		return true
+	}
+	trimmed := strings.Trim(lower, "0123456789!@#$%^&*._-")
+	return trimmed != "" && commonPasswords[trimmed]
 }
 
 // NormalizeEmail trims and lowercases an address so that two spellings of it are

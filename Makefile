@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 .PHONY: help setup dev dev-api dev-web build test lint fmt \
         db-migrate db-rollback db-status db-seed preflight \
-        program-build program-check program-deploy e2e e2e-clean clean
+        program-ids program-build program-check program-deploy e2e e2e-clean clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -57,7 +57,11 @@ db-seed: ## Load development seed data
 preflight: ## Check the environment for production readiness
 	@bash scripts/preflight.sh
 
-program-build: ## Build the sponsorship Anchor program
+program-ids: ## Check the program id agrees across lib.rs, Anchor.toml, the keypair and the IDL
+	@NODE_PATH="$$PWD/frontend/node_modules" node contracts/scripts/check-ids.cjs
+
+program-build: ## Build the sponsorship Anchor program (checks the id first)
+	@NODE_PATH="$$PWD/frontend/node_modules" node contracts/scripts/check-ids.cjs
 	cd contracts && anchor build
 
 program-check: ## Check the deployed program is usable (exit 0 only if sponsorships would work)
@@ -74,10 +78,10 @@ e2e-clean: ## Remove what the end-to-end check left behind
 	  psql "$$DATABASE_URL_DIRECT" -q -v ON_ERROR_STOP=1 \
 	    -c "BEGIN;" \
 	    -c "ALTER TABLE audit_log DISABLE TRIGGER audit_log_append_only;" \
-	    -c "DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%');" \
+	    -c "DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE (handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%' OR email::text LIKE '%@example.com'));" \
 	    -c "DELETE FROM donations;" \
 	    -c "DELETE FROM timelapses;" \
-	    -c "DELETE FROM users WHERE handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%';" \
+	    -c "DELETE FROM users WHERE (handle LIKE 'hustler\\_%' OR handle LIKE 'e2e\\_%' OR email::text LIKE '%@example.com');" \
 	    -c "ALTER TABLE audit_log ENABLE TRIGGER audit_log_append_only;" \
 	    -c "COMMIT;" \
 	    -c "SELECT * FROM recount_totals();" && \

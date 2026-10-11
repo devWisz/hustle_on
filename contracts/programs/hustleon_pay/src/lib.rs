@@ -2,7 +2,12 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
-declare_id!("5aRAEcR35qrMCkkkhJHJ1UdwXWoTua3jggyeXqpb56nS");
+// The address the keypair at target/deploy/hustleon_pay-keypair.json (and its
+// backup in .keys/) fixes, and the one Anchor.toml, the IDL and every document
+// here name. If this drifts from that keypair the program still deploys, but every
+// PDA it derives is computed from the wrong program id and each instruction fails
+// its seeds constraint — a failure that looks like a client bug and is not one.
+declare_id!("6vK2BUb6UoAqTxWVU2zXTLDje8NDuVA8CaEuTwJZDkFk");
 
 /// Hard ceiling on the platform fee: 1000 bps == 10%.
 pub const MAX_FEE_BPS: u16 = 1_000;
