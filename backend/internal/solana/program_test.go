@@ -211,19 +211,26 @@ func TestASponsorshipInsideACrossProgramInvocationIsFound(t *testing.T) {
 // then refers to the concatenated list. A verifier that only reads the static
 // keys would reject a perfectly good sponsorship.
 func TestLookupTableKeysAreResolved(t *testing.T) {
-	tx := sponsorTransaction(t, 1_000_000, func(tx *Transaction) {
-		// creator and treasury live in the lookup table instead.
+	const amount = 1_000_000
+	fee := amount * MaxPlatformFeeBps / 10_000
+	tx := sponsorTransaction(t, amount, func(tx *Transaction) {
+		// creator and treasury live in the lookup table instead, so the account
+		// list becomes [sponsor, programID, creator, treasury] and every balance
+		// is indexed against that concatenated list.
 		tx.Transaction.Message.AccountKeys = []string{sponsor, programID}
 		tx.Meta.LoadedAddresses.Writable = []string{creator, treasury}
 		tx.Transaction.Message.Instructions[0].ProgramIDIndex = 1
 		tx.Transaction.Message.Instructions[0].Accounts = []int{0, 2}
+
+		tx.Meta.PreBalances = []int64{10_000_000_000, 0, 0, 0}
+		tx.Meta.PostBalances = []int64{10_000_000_000 - amount - 5000, 0, amount - fee, 0}
 	})
-	got, err := checkProgramTransfer(tx, check(1_000_000))
+	got, err := checkProgramTransfer(tx, check(amount))
 	if err != nil {
 		t.Fatalf("a versioned transaction was refused: %v", err)
 	}
-	if got.Lamports != 900_000 {
-		t.Errorf("lamports = %d, want 900000", got.Lamports)
+	if got.Lamports != amount-fee {
+		t.Errorf("lamports = %d, want %d", got.Lamports, amount-fee)
 	}
 }
 
