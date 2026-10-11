@@ -281,7 +281,11 @@ export function UploadForm() {
     <form onSubmit={submit} className="space-y-5" noValidate>
       {busy ? (
         <div aria-live="polite" className="sticky top-4 z-10">
-          <ProgressBar value={progress} label={STAGE_LABELS[stage]} />
+          <ProgressBar
+            value={progress}
+            label={STAGE_LABELS[stage]}
+            transferring={stage === "bytes"}
+          />
         </div>
       ) : null}
 
@@ -353,8 +357,8 @@ export function UploadForm() {
 
         {duration > 0 ? (
           <p className="mt-3 text-[13px] tabular-nums text-fg-muted">
-            The clip is {formatDuration(duration)} long. Step 2 asks how long the work took, which is
-            usually longer.
+            The clip is {formatDuration(duration)} long. Step 2 asks how long the work took, which
+            is usually longer.
           </p>
         ) : file ? (
           <p className="mt-3 text-[13px] text-fg-subtle">
@@ -610,22 +614,22 @@ function Step({
 function SuccessCard({ onStartOver }: { onStartOver: () => void }) {
   return (
     <Card className="border-success/30 bg-success-soft p-5 sm:p-6">
-        <div role="status" className="space-y-2">
-          <h2 className="flex items-center gap-3 text-[16px] font-semibold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
-              <CheckIcon size={15} />
-            </span>
-            It is in review
-          </h2>
-          <p className="text-[14px] leading-relaxed text-fg/80">
-            A person will read your write-up and watch the recording. Nothing is public until they
-            have.
-          </p>
-          <p className="text-[14px] leading-relaxed text-fg/80">
-            If it is not accepted, the note tells you what to change and you can edit and resubmit
-            from your dashboard.
-          </p>
-        </div>
+      <div role="status" className="space-y-2">
+        <h2 className="flex items-center gap-3 text-[16px] font-semibold">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
+            <CheckIcon size={15} />
+          </span>
+          It is in review
+        </h2>
+        <p className="text-[14px] leading-relaxed text-fg/80">
+          A person will read your write-up and watch the recording. Nothing is public until they
+          have.
+        </p>
+        <p className="text-[14px] leading-relaxed text-fg/80">
+          If it is not accepted, the note tells you what to change and you can edit and resubmit
+          from your dashboard.
+        </p>
+      </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <ButtonLink href="/dashboard">
           Go to your dashboard
@@ -639,27 +643,34 @@ function SuccessCard({ onStartOver }: { onStartOver: () => void }) {
   );
 }
 
-function ProgressBar({ value, label }: { value: number; label: string }) {
+function ProgressBar({
+  value,
+  label,
+  transferring,
+}: {
+  value: number;
+  label: string;
+  transferring: boolean;
+}) {
   // Only the byte upload reports real progress; the API calls after it are
   // quick and indeterminate, and a frozen 100% would read as a stall.
-  const uploading = label.includes("Uploading the file");
   return (
     <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-[13px] font-medium text-fg">{label}</p>
-        {uploading ? (
+        {transferring ? (
           <p className="font-mono text-[12px] tabular-nums text-fg-subtle">{Math.round(value)}%</p>
         ) : null}
       </div>
       <div
         className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-raised"
         role="progressbar"
-        aria-valuenow={uploading ? Math.round(value) : undefined}
+        aria-valuenow={transferring ? Math.round(value) : undefined}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`${label} progress`}
       >
-        {uploading ? (
+        {transferring ? (
           <div
             className="h-full bg-accent transition-[width] duration-200"
             // A hair of width at 0% shows the bar is there and moving, rather
