@@ -113,6 +113,10 @@ type DonationIntent struct {
 	Recipient string `json:"recipient"`
 	Amount    int64  `json:"amountLamports"`
 	Cluster   string `json:"cluster"`
+	// ProgramID is the sponsorship program to call, or empty to send a plain
+	// transfer. The server verifies against whichever of those it hands out
+	// here, so the client cannot choose the easier one.
+	ProgramID string `json:"programId,omitempty"`
 }
 
 // Note is a peer observation left against a published timelapse.

@@ -60,7 +60,7 @@ func settleOnce(ctx context.Context, log *slog.Logger, st *store.Store, chain *s
 			continue
 		}
 
-		verified, err := chain.VerifyTransfer(ctx, solana.TransferCheck{
+		verified, err := chain.VerifySponsorship(ctx, solana.TransferCheck{
 			Signature:   d.Signature,
 			From:        d.DonorAddress,
 			To:          d.PayoutAddress,

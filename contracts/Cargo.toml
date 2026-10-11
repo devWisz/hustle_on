@@ -4,11 +4,12 @@ resolver = "2"
 
 # anchor-syn 0.30.1 calls `proc_macro2::Span::source_file`, which proc-macro2
 # removed in 1.0.95 (renamed to `local_file`). anchor 0.30.1's IDL step forces
-# `--cfg procmacro2_semver_exempt`, so that call site is compiled and the build
-# fails on current toolchains. `vendor/anchor-syn` is the pristine 0.30.1 crate
-# with exactly that one call site updated (requires proc-macro2 >= 1.0.95).
+# `--cfg procmacro2_semver_exempt`, so that call site is compiled and
+# `anchor build` fails on current toolchains. `patches/anchor-syn` is the
+# pristine 0.30.1 crate with exactly that one call site updated (requires
+# proc-macro2 >= 1.0.95, pinned in Cargo.lock).
 [patch.crates-io]
-anchor-syn = { path = "vendor/anchor-syn" }
+anchor-syn = { path = "patches/anchor-syn" }
 
 [profile.release]
 overflow-checks = true

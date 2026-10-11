@@ -93,6 +93,10 @@ func (s *Server) handleCreateDonation(w http.ResponseWriter, r *http.Request) er
 		Recipient: payout,
 		Amount:    body.Amount,
 		Cluster:   s.chain.Cluster(),
+		// Empty when no program is deployed, which tells the client to send a
+		// plain transfer instead. The two must agree, because the server verifies
+		// against whichever one it advertised here.
+		ProgramID: s.chain.ProgramID(),
 	})
 }
 
@@ -134,7 +138,7 @@ func (s *Server) handleConfirmDonation(w http.ResponseWriter, r *http.Request) e
 		return storeErr(err, "Donation")
 	}
 
-	verified, err := s.chain.VerifyTransfer(r.Context(), solana.TransferCheck{
+	verified, err := s.chain.VerifySponsorship(r.Context(), solana.TransferCheck{
 		Signature:   body.Signature,
 		From:        pending.DonorAddress,
 		To:          pending.PayoutAddress,

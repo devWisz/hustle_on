@@ -9,12 +9,16 @@ package solana
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/sardhana/auth/base58"
 )
 
 // Errors returned by verification. They are distinguished because the caller
@@ -31,7 +35,45 @@ var (
 type Client struct {
 	rpcURL  string
 	cluster string
-	http    *http.Client
+	// programID is the deployed sponsorship program. Empty means none is
+	// configured, and sponsorships are then verified as plain transfers.
+	programID string
+	http      *http.Client
+}
+
+// SponsorInstruction is the program instruction a sponsorship is expected to
+// arrive as. It is named in one place because verification decodes both its
+// discriminator and its single argument.
+const SponsorInstruction = "sponsor"
+
+// MaxPlatformFeeBps bounds the fee the deployed program may take, in basis
+// points. It is the same ceiling the program itself enforces, and it is what
+// lets verification work out the least a creator can have received from the
+// amount alone, without a second RPC call.
+const MaxPlatformFeeBps = 1000
+
+// SetProgramID records the deployed sponsorship program.
+func (c *Client) SetProgramID(id string) { c.programID = id }
+
+// ProgramID returns the configured program, or the empty string.
+func (c *Client) ProgramID() string { return c.programID }
+
+// VerifySponsorship verifies a sponsorship by whichever rule this deployment
+// uses: the on-chain program when one is configured, a plain transfer otherwise.
+//
+// The choice lives here rather than at each call site because both the confirm
+// handler and the settle loop have to make it, and two copies of a rule like this
+// drift the moment one of them is changed.
+func (c *Client) VerifySponsorship(ctx context.Context, check TransferCheck) (*VerifiedTransfer, error) {
+	if c.programID == "" {
+		return c.VerifyTransfer(ctx, check)
+	}
+	return c.VerifyProgramTransfer(ctx, ProgramTransferCheck{
+		TransferCheck:   check,
+		ProgramID:       c.programID,
+		InstructionName: SponsorInstruction,
+		MaxFeeBps:       MaxPlatformFeeBps,
+	})
 }
 
 func New(rpcURL, cluster string) *Client {
@@ -117,6 +159,15 @@ func (c *Client) call(ctx context.Context, method string, params []any, out any)
 	return json.Unmarshal(envelope.Result, out)
 }
 
+// Instruction is one instruction as the RPC returns it under `json` encoding:
+// the program is named by its index into the transaction's account list, and the
+// data is base58.
+type Instruction struct {
+	ProgramIDIndex int    `json:"programIdIndex"`
+	Accounts       []int  `json:"accounts"`
+	Data           string `json:"data"`
+}
+
 // Transaction is the subset of a confirmed transaction verification needs.
 type Transaction struct {
 	Slot      int64  `json:"slot"`
@@ -127,12 +178,46 @@ type Transaction struct {
 		PreBalances  []int64         `json:"preBalances"`
 		PostBalances []int64         `json:"postBalances"`
 		LogMessages  []string        `json:"logMessages"`
+		// Addresses a versioned transaction pulled in from a lookup table. They
+		// are appended to the static keys to form the list every index in this
+		// transaction refers to, including the balance arrays.
+		LoadedAddresses struct {
+			Writable []string `json:"writable"`
+			ReadOnly []string `json:"readonly"`
+		} `json:"loadedAddresses"`
+		InnerInstructions []struct {
+			Instructions []Instruction `json:"instructions"`
+		} `json:"innerInstructions"`
 	} `json:"meta"`
 	Transaction struct {
 		Message struct {
-			AccountKeys []string `json:"accountKeys"`
+			AccountKeys  []string      `json:"accountKeys"`
+			Instructions []Instruction `json:"instructions"`
 		} `json:"message"`
 	} `json:"transaction"`
+}
+
+// accountKeys is the full account list, in the order every index refers to:
+// the static keys first, then the writable lookups, then the read-only ones.
+func (t *Transaction) accountKeys() []string {
+	keys := t.Transaction.Message.AccountKeys
+	keys = append(keys, t.Meta.LoadedAddresses.Writable...)
+	keys = append(keys, t.Meta.LoadedAddresses.ReadOnly...)
+	return keys
+}
+
+// instructions returns every instruction in the transaction, top level and
+// inner alike.
+//
+// A sponsorship built by our own client is a top-level instruction, but a
+// sponsorship routed through another program would arrive as a CPI, and
+// refusing to look there would report a real payment as missing.
+func (t *Transaction) instructions() []Instruction {
+	out := t.Transaction.Message.Instructions
+	for _, inner := range t.Meta.InnerInstructions {
+		out = append(out, inner.Instructions...)
+	}
+	return out
 }
 
 // GetTransaction fetches a finalized transaction by signature.
@@ -163,6 +248,20 @@ type TransferCheck struct {
 	MinLamports int64
 }
 
+// ProgramTransferCheck describes a sponsorship that must have gone through the
+// deployed program rather than a bare transfer.
+type ProgramTransferCheck struct {
+	TransferCheck
+	// ProgramID is the deployed sponsorship program.
+	ProgramID string
+	// InstructionName is the anchor instruction, e.g. "sponsor". Its
+	// discriminator and its single u64 amount argument are what get decoded.
+	InstructionName string
+	// MaxFeeBps bounds the platform fee the program may have taken, so the least
+	// the creator can have received can be worked out without a second RPC call.
+	MaxFeeBps int64
+}
+
 // VerifiedTransfer is the outcome of a successful check.
 type VerifiedTransfer struct {
 	Slot      int64
@@ -183,11 +282,18 @@ func (c *Client) VerifyTransfer(ctx context.Context, check TransferCheck) (*Veri
 	if err != nil {
 		return nil, err
 	}
+	return checkTransfer(tx, check)
+}
+
+// checkTransfer is the rule itself, separated from the fetch so it can be tested
+// against transactions a real node would never hand back — which is exactly where
+// a verifier is most likely to be wrong.
+func checkTransfer(tx *Transaction, check TransferCheck) (*VerifiedTransfer, error) {
 	if len(tx.Meta.Err) > 0 && string(tx.Meta.Err) != "null" {
 		return nil, ErrFailed
 	}
 
-	keys := tx.Transaction.Message.AccountKeys
+	keys := tx.accountKeys()
 	if len(keys) != len(tx.Meta.PreBalances) || len(keys) != len(tx.Meta.PostBalances) {
 		return nil, ErrMismatch
 	}
@@ -229,5 +335,132 @@ func (c *Client) VerifyTransfer(ctx context.Context, check TransferCheck) (*Veri
 	}, nil
 }
 
-// LamportsPerSOL is the conversion factor used across the platform.
-const LamportsPerSOL = 1_000_000_000
+// VerifyProgramTransfer confirms a sponsorship went through our deployed
+// program, to this creator, from this sponsor, for at least this amount.
+//
+// It checks three independent things, and each of them is load-bearing:
+//
+//   - the instruction exists and belongs to our program, so a bare transfer that
+//     skipped the program is not counted as one that recorded it;
+//   - its account list names this exact sponsor and this exact creator, so a
+//     sponsorship of a different creator cannot be presented as this one;
+//   - the creator's balance actually rose, so the instruction cannot be a
+//     well-formed call that the program refused, or one whose funds went
+//     somewhere else entirely.
+//
+// The amount is decoded from the instruction data rather than inferred from the
+// balance delta because the program takes a platform fee, which makes the delta
+// less than the amount on purpose.
+func (c *Client) VerifyProgramTransfer(ctx context.Context, check ProgramTransferCheck) (*VerifiedTransfer, error) {
+	tx, err := c.GetTransaction(ctx, check.Signature)
+	if err != nil {
+		return nil, err
+	}
+	return checkProgramTransfer(tx, check)
+}
+
+// checkProgramTransfer is the rule itself, split from the fetch for the same
+// reason as checkTransfer.
+func checkProgramTransfer(tx *Transaction, check ProgramTransferCheck) (*VerifiedTransfer, error) {
+	if check.ProgramID == "" {
+		return nil, ErrMismatch
+	}
+	if len(tx.Meta.Err) > 0 && string(tx.Meta.Err) != "null" {
+		return nil, ErrFailed
+	}
+
+	want := discriminator(check.InstructionName)
+	keys := tx.accountKeys()
+	amount := int64(-1)
+
+	for _, ix := range tx.instructions() {
+		if ix.ProgramIDIndex < 0 || ix.ProgramIDIndex >= len(keys) {
+			continue
+		}
+		if keys[ix.ProgramIDIndex] != check.ProgramID {
+			continue
+		}
+		data, err := base58.Decode(ix.Data)
+		// The instruction takes exactly one u64, so anything that is not the
+		// discriminator followed by eight bytes is not the call being looked for.
+		if err != nil || len(data) != len(want)+8 {
+			continue
+		}
+		if !bytes.Equal(data[:len(want)], want) {
+			continue
+		}
+		// The account list is [sponsor, creator, treasury, config, creator_stats,
+		// system_program]; the first two are the ones that decide who paid whom.
+		if len(ix.Accounts) < 2 {
+			continue
+		}
+		from, to := ix.Accounts[0], ix.Accounts[1]
+		if from < 0 || from >= len(keys) || to < 0 || to >= len(keys) {
+			continue
+		}
+		if keys[from] != check.From || keys[to] != check.To {
+			continue
+		}
+		amount = int64(binary.LittleEndian.Uint64(data[len(want):]))
+		break
+	}
+	if amount < 0 {
+		return nil, ErrMismatch
+	}
+	if amount < check.MinLamports {
+		return nil, ErrMismatch
+	}
+
+	keys = tx.accountKeys()
+	if len(keys) != len(tx.Meta.PreBalances) || len(keys) != len(tx.Meta.PostBalances) {
+		return nil, ErrMismatch
+	}
+	toIdx := -1
+	for i, k := range keys {
+		if k == check.To {
+			toIdx = i
+			break
+		}
+	}
+	if toIdx < 0 {
+		return nil, ErrMismatch
+	}
+	received := tx.Meta.PostBalances[toIdx] - tx.Meta.PreBalances[toIdx]
+	// At most MaxFeeBps of the amount may have gone to the treasury, so this is
+	// the least the creator can have received. A smaller rise means the money did
+	// not arrive, whatever the instruction said.
+	floor := amount - (amount * check.MaxFeeBps / 10_000)
+	if received < floor {
+		return nil, ErrMismatch
+	}
+
+	raw, _ := json.Marshal(map[string]any{
+		"slot":        tx.Slot,
+		"fee":         tx.Meta.Fee,
+		"lamports":    received,
+		"amount":      amount,
+		"program":     check.ProgramID,
+		"instruction": check.InstructionName,
+	})
+	return &VerifiedTransfer{
+		Slot:      tx.Slot,
+		Fee:       tx.Meta.Fee,
+		Lamports:  received,
+		Raw:       raw,
+		Finalized: true,
+	}, nil
+}
+
+// discriminator is the first eight bytes of an anchor instruction's data:
+// the first eight bytes of the SHA-256 of "global:<name>".
+//
+// It is derived here rather than pasted in as a constant so that renaming the
+// instruction in the program and forgetting to update the API is a compile-time
+// impossibility rather than a silent verification failure at runtime.
+func discriminator(name string) []byte {
+	sum := sha256.Sum256([]byte("global:" + name))
+	return sum[:8]
+}
+
+// InstructionDiscriminator exposes the derivation for tests.
+func InstructionDiscriminator(name string) []byte { return discriminator(name) }

@@ -72,6 +72,10 @@ func run() error {
 	}
 
 	chain := solana.New(cfg.SolanaRPCURL, cfg.SolanaCluster)
+	chain.SetProgramID(cfg.PayProgramID)
+	if cfg.PayProgramID == "" {
+		log.Warn("sponsorships: no HUSTLEON_PAY_PROGRAM_ID set; verifying plain SOL transfers, so no sponsorship is recorded on chain")
+	}
 
 	storageEndpoint := cfg.StorageEndpoint
 	storagePublicURL := cfg.StoragePublicURL
