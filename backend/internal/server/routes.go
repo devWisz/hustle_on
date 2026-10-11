@@ -80,7 +80,9 @@ func (s *Server) routes() {
 
 	// --- donations -------------------------------------------------------
 	s.route("POST /v1/donations", budgetDonate, s.handleCreateDonation)
-	s.route("POST /v1/donations/{id}/confirm", budgetDonate, s.handleConfirmDonation)
+	// Confirming is budgeted apart from creating: it is polled, so it needs an
+	// allowance a poll can live inside, while creating the intent stays tight.
+	s.route("POST /v1/donations/{id}/confirm", budgetDonateCheck, s.handleConfirmDonation)
 
 	// --- the operator's editing desk (admin only) -------------------------
 	// These change what the public sees without changing a status, so they are

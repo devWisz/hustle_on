@@ -9,16 +9,26 @@ import (
 	"github.com/sardhana/backend/internal/domain"
 )
 
+// effectivePayoutAddress is where money for an account goes: the address they
+// nominated, or failing that the wallet they sign in with.
+//
+// The wallet is the fallback rather than a thing you have to configure, because
+// signing in already proved control of it. Without the fallback a brand new
+// account — which has never opened settings and so has no payout address — cannot
+// receive a sponsorship at all, and the failure looks like the creator having
+// done something wrong.
+//
+// It is defined once and interpolated everywhere, because it was defined twice
+// and the third reader did not get it: the donation path kept querying the column
+// alone, and refused every sponsorship to every creator who had not explicitly
+// set one.
+const effectivePayoutAddress = `COALESCE(u.payout_address, u.wallet_address::text, '')`
+
 // profileColumns is the projection behind every profile read. It is a single
 // constant so the public and self shapes can never drift apart in what they
 // select — only in what they are allowed to expose.
-//
-// PayoutAddress resolves to the login wallet when no separate payout address has
-// been set, so there is exactly one answer to "where does money for this creator
-// go" and every caller gets it from the same place. A donor reading this field
-// does not need to know which of the two columns supplied it.
 const profileColumns = `u.id::text, u.handle::text, u.display_name,
-	COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''), COALESCE(u.payout_address, u.wallet_address::text, ''),
+	COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''), ` + effectivePayoutAddress + `,
 	u.timelapse_count, u.donation_count, u.donation_total_lamports, u.created_at`
 
 func scanProfile(row interface{ Scan(...any) error }) (domain.PublicUser, error) {
@@ -130,13 +140,16 @@ func (s *Store) UpdateProfile(ctx context.Context, userID string, up ProfileUpda
 	return s.SelfProfile(ctx, userID)
 }
 
-// PayoutAddress returns the address a creator's donations should be sent to.
-// An empty string means the creator has not verified one, which is what the
-// donation endpoint checks before it will record an intent.
+// PayoutAddress returns the address a creator's donations should be sent to, by
+// the same rule every other read uses: the address they nominated, or failing
+// that the wallet they sign in with.
+//
+// An empty string means the account has neither, which is what the donation
+// endpoint checks before it will record an intent.
 func (s *Store) PayoutAddress(ctx context.Context, userID string) (string, error) {
 	var address string
 	err := s.pool.QueryRow(ctx,
-		`SELECT COALESCE(payout_address, '') FROM users WHERE id = $1 AND status = 'active'`,
+		`SELECT `+effectivePayoutAddress+` FROM users u WHERE u.id = $1 AND u.status = 'active'`,
 		userID).Scan(&address)
 	return address, normalize(err)
 }

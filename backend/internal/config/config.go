@@ -76,7 +76,13 @@ type Config struct {
 	// only, and the thing an operator needs several of in a row.
 	RateLimitPoster int
 	RateLimitDonate int
-	RateLimitAdmin  int
+	// RateLimitDonateCheck bounds confirming a sponsorship. It is much higher
+	// than creating one, because confirming is a poll: the browser retries until
+	// the transaction finalizes, up to eight times. Sizing it like the create
+	// budget meant the retry loop that exists to survive slow finalization was
+	// itself rate limited, and the donor saw a throttle instead of their payment.
+	RateLimitDonateCheck int
+	RateLimitAdmin       int
 	// RateLimitIPCeiling is a deliberately generous per-address ceiling applied
 	// before the session is resolved. It exists only to bound the work an
 	// address can cause ahead of authentication; the meaningful budget is the
@@ -198,7 +204,10 @@ func Load() (Config, error) {
 		RateLimitUpload: envInt("RATE_LIMIT_UPLOAD", 10),
 		RateLimitPoster: envInt("RATE_LIMIT_POSTER", 60),
 		RateLimitDonate: envInt("RATE_LIMIT_DONATE", 10),
-		RateLimitAdmin:  envInt("RATE_LIMIT_ADMIN", 240),
+		// Sized for the browser's poll loop (8 attempts over ~24s) with room to
+		// spare, because a retry that gets throttled is worse than no retry.
+		RateLimitDonateCheck: envInt("RATE_LIMIT_DONATE_CHECK", 60),
+		RateLimitAdmin:       envInt("RATE_LIMIT_ADMIN", 240),
 		// Ten times the per-caller budget: an office or a shared connection
 		// should not be throttled as if it were one person, but a single
 		// address still cannot make unbounded work.
@@ -264,6 +273,7 @@ func (c Config) validate() error {
 		{"RATE_LIMIT_UPLOAD", c.RateLimitUpload},
 		{"RATE_LIMIT_POSTER", c.RateLimitPoster},
 		{"RATE_LIMIT_DONATE", c.RateLimitDonate},
+		{"RATE_LIMIT_DONATE_CHECK", c.RateLimitDonateCheck},
 		{"RATE_LIMIT_ADMIN", c.RateLimitAdmin},
 		{"RATE_LIMIT_IP_CEILING", c.RateLimitIPCeiling},
 	} {

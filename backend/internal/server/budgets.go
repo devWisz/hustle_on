@@ -38,8 +38,13 @@ const (
 	// few megabytes and only an admin can ask for one — and because a console
 	// that refuses the third thumbnail in a row is a console nobody uses.
 	budgetPoster = "poster"
-	// budgetDonate covers recording and confirming sponsorship intents.
+	// budgetDonate covers recording a sponsorship intent, which fixes a recipient
+	// and an amount server-side and is therefore the expensive, abusable half.
 	budgetDonate = "donate"
+	// budgetDonateCheck covers confirming one. Separate, because confirming is a
+	// poll rather than an action: the browser retries until the chain finalizes,
+	// and one confirmation costs a single RPC read.
+	budgetDonateCheck = "donate_check"
 	// budgetAuth covers asking for a sign-in challenge. It used to be extremely
 	// tight because each request sent an email, and the point of the limit was to
 	// stop somebody using us to fill a stranger's inbox. With sign-in a wallet
@@ -96,6 +101,8 @@ func buildBudgets(cfg config.Config) map[string]*budget {
 			"Too many poster uploads started from this account. Wait a moment and try again."),
 		mk(budgetDonate, cfg.RateLimitDonate, false,
 			"Too many sponsorship attempts. Wait a moment and try again."),
+		mk(budgetDonateCheck, cfg.RateLimitDonateCheck, false,
+			"Too many confirmation attempts. Wait a moment and try again."),
 		mk(budgetAuth, cfg.RateLimitAuth, true,
 			"Too many sign-in attempts from here. Wait a moment and try again."),
 		mk(budgetVerify, cfg.RateLimitAuth/2, true,

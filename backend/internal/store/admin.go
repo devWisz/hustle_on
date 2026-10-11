@@ -37,7 +37,7 @@ func (s *Store) Members(ctx context.Context, query string, q PageQuery) (domain.
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id::text, u.handle::text, u.display_name, COALESCE(u.bio, ''), COALESCE(u.avatar_url, ''),
-		       COALESCE(u.payout_address, u.wallet_address::text, ''), u.timelapse_count, u.donation_count,
+		       `+effectivePayoutAddress+`, u.timelapse_count, u.donation_count,
 		       u.donation_total_lamports, u.created_at, COALESCE(u.wallet_address::text, ''),
 		       COALESCE(u.email::text, ''), u.role::text, u.status::text,
 		       (u.payout_verified_at IS NOT NULL OR u.wallet_address IS NOT NULL),
