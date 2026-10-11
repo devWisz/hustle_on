@@ -2,7 +2,7 @@
 
 # Sardhana
 
-**Your hustle should be paid off.**
+**Rewards your hustle.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black?logo=nextdotjs)](https://nextjs.org)
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white)](https://go.dev)

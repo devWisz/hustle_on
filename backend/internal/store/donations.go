@@ -123,6 +123,32 @@ type UnsettledDonation struct {
 	CreatedAt     time.Time
 }
 
+// DonationForRecheck is one donation as an operator's re-check needs to see it,
+// whatever state it is in.
+type DonationForRecheck struct {
+	ID            string
+	Signature     string
+	DonorAddress  string
+	PayoutAddress string
+	Amount        int64
+	Status        string
+}
+
+// DonationByID reads a single donation in any state.
+//
+// Unlike UnsettledDonations this does not filter on status: an operator asks about
+// a donation precisely because they do not know what state it is in, and the
+// answer "it was already credited" is as useful as "it needs another look".
+func (s *Store) DonationByID(ctx context.Context, id string) (DonationForRecheck, error) {
+	var d DonationForRecheck
+	err := s.pool.QueryRow(ctx, `
+		SELECT id::text, COALESCE(signature, ''), donor_address, payout_address,
+		       amount_lamports, status::text
+		FROM donations WHERE id = $1`, id).Scan(
+		&d.ID, &d.Signature, &d.DonorAddress, &d.PayoutAddress, &d.Amount, &d.Status)
+	return d, normalize(err)
+}
+
 // UnsettledDonations lists intents that are neither confirmed nor failed,
 // oldest first.
 func (s *Store) UnsettledDonations(ctx context.Context, limit int) ([]UnsettledDonation, error) {

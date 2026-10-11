@@ -86,7 +86,7 @@ function Hero() {
 
         <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
           <SplitHeading as="h1" onScroll={false} className="text-display lg:col-span-8">
-            Your hustle should be paid off.
+            Rewards your hustle.
           </SplitHeading>
 
           <Reveal immediate delay={0.35} className="lg:col-span-4 lg:pb-3">

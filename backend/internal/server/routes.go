@@ -47,6 +47,12 @@ func (s *Server) routes() {
 	s.route("GET /v1/me/donations", budgetRead, s.handleMyDonations)
 	s.route("POST /v1/me/wallet/challenge", budgetEngage, s.handleWalletChallenge)
 	s.route("POST /v1/me/wallet/verify", budgetEngage, s.handleWalletVerify)
+	// The profile step a new account is asked to complete once, and the picture
+	// it can change afterwards.
+	s.route("POST /v1/me/onboarding", budgetWrite, s.handleCompleteOnboarding)
+	s.route("POST /v1/uploads/avatar", budgetPoster, s.handleAvatarUpload)
+	s.route("PUT /v1/me/avatar", budgetWrite, s.handleSetAvatar)
+	s.route("DELETE /v1/me/avatar", budgetWrite, s.handleClearAvatar)
 	s.route("GET /v1/me/bookmarks", budgetRead, s.handleMyBookmarks)
 	s.route("PUT /v1/me/bookmarks/{slug}", budgetEngage, s.handleAddBookmark)
 	s.route("DELETE /v1/me/bookmarks/{slug}", budgetEngage, s.handleRemoveBookmark)
@@ -95,6 +101,10 @@ func (s *Server) routes() {
 	s.route("POST /v1/admin/members/{id}/suspend", budgetAdmin, s.handleMemberStatus("suspended"))
 	s.route("POST /v1/admin/members/{id}/reinstate", budgetAdmin, s.handleMemberStatus("active"))
 	s.route("GET /v1/admin/ledger", budgetAdmin, s.handleLedger)
+	// The money side: which cluster we read, whether the node is answering, and a
+	// way to re-check one sponsorship while the donor is still waiting.
+	s.route("GET /v1/admin/chain", budgetAdmin, s.handleAdminChainStatus)
+	s.route("POST /v1/admin/donations/{id}/recheck", budgetAdmin, s.handleAdminRecheckDonation)
 	s.route("GET /v1/admin/activity", budgetAdmin, s.handleActivity)
 	s.route("GET /v1/admin/notes", budgetAdmin, s.handleAdminNotes)
 	s.route("GET /v1/admin/reports", budgetAdmin, s.handleAdminReports)

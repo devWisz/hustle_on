@@ -62,19 +62,22 @@ var allowedContentTypes = map[string]string{
 	"video/x-matroska": "mkv",
 }
 
-// allowedPosterTypes is the same allowlist for poster images. The omissions are
-// the point: no SVG, because an SVG is a document that can carry script and this
-// one would be served from the storage origin; and no GIF, because a "thumbnail"
-// is a single frame.
-var allowedPosterTypes = map[string]string{
+// allowedImageTypes is the allowlist for the images this API stores: posters and
+// avatars. The omissions are the point — no SVG, because an SVG is a document
+// that can carry script and these are served from the storage origin, and no GIF,
+// because neither a thumbnail nor a profile picture is an animation.
+var allowedImageTypes = map[string]string{
 	"image/jpeg": "jpg",
 	"image/png":  "png",
 	"image/webp": "webp",
 }
 
-// posterPrefix namespaces poster objects, so a key answers "what is this" from
-// the string alone and an object cannot be reassigned between the two kinds.
-const posterPrefix = "posters/"
+// Image namespaces, so a key answers "what is this" from the string alone and an
+// object cannot be reassigned between the two kinds.
+const (
+	posterPrefix = "posters/"
+	avatarPrefix = "avatars/"
+)
 
 // ErrUnsupportedType is returned for a content type outside the allowlist.
 var ErrUnsupportedType = errors.New("media: unsupported content type")
@@ -136,14 +139,30 @@ func (s *Storage) NewUpload(userID, contentType string, declaredSize int64) (Upl
 	}, nil
 }
 
-// NewPosterUpload is NewUpload for a poster image.
-//
-// It is a separate method rather than a flag because the two differ in every
-// parameter that matters: the type allowlist, the size ceiling, the key prefix
-// and therefore who may claim the object. A boolean would let a caller pick the
-// video rules for an image.
+// NewPosterUpload is NewUpload for a poster image: the picture on a session's
+// card.
 func (s *Storage) NewPosterUpload(userID, contentType string, declaredSize int64) (Upload, error) {
-	ext, ok := allowedPosterTypes[contentType]
+	return s.newImageUpload(posterPrefix, userID, contentType, declaredSize)
+}
+
+// NewAvatarUpload is NewUpload for a profile picture.
+//
+// It is a separate method from NewPosterUpload even though the rules are
+// identical today, because the two are attached to different things by different
+// people: a poster belongs to a session an operator curates, an avatar belongs to
+// an account its holder owns. Sharing one entry point would make it easy to
+// loosen one and silently loosen the other.
+func (s *Storage) NewAvatarUpload(userID, contentType string, declaredSize int64) (Upload, error) {
+	return s.newImageUpload(avatarPrefix, userID, contentType, declaredSize)
+}
+
+// newImageUpload issues a presigned PUT for an image under one namespace.
+//
+// The type allowlist and the size ceiling are the image ones, never the video
+// ones, which is why this is not a flag on NewUpload: a boolean would let a
+// caller pick the video rules for an image.
+func (s *Storage) newImageUpload(prefix, userID, contentType string, declaredSize int64) (Upload, error) {
+	ext, ok := allowedImageTypes[contentType]
 	if !ok {
 		return Upload{}, ErrUnsupportedType
 	}
@@ -157,7 +176,7 @@ func (s *Storage) NewPosterUpload(userID, contentType string, declaredSize int64
 	}
 	now := time.Now().UTC()
 	key := fmt.Sprintf("%s%s/%s/%s.%s",
-		posterPrefix, userID, now.Format("2006/01"), hex.EncodeToString(suffix), ext)
+		prefix, userID, now.Format("2006/01"), hex.EncodeToString(suffix), ext)
 
 	if s.IsLocal() {
 		return Upload{
@@ -180,17 +199,23 @@ func (s *Storage) NewPosterUpload(userID, contentType string, declaredSize int64
 	}, nil
 }
 
-// IsPosterKey reports whether a key is a poster object this API would have
+// IsPosterKey reports whether a key is a poster object this API would have issued.
+func (s *Storage) IsPosterKey(key string) bool { return isImageKey(key, posterPrefix) }
+
+// IsAvatarKey reports whether a key is a profile picture this API would have
 // issued.
+func (s *Storage) IsAvatarKey(key string) bool { return isImageKey(key, avatarPrefix) }
+
+// isImageKey is the check both of the above share.
 //
-// Three conditions, and the third is not decoration. A key that merely starts
-// with the poster prefix can still contain a traversal segment —
+// The traversal condition is not decoration. A key that merely starts with the
+// prefix can still contain a traversal segment —
 // "posters/<id>/../uploads/<id>/clip.mp4" passes a prefix test — and while the
 // storage layers on both sides clean the path before touching a file, accepting
 // such a key would mean recording a reference that means one thing to us and
 // another to whatever serves it next. A key we did not issue is refused here.
-func (s *Storage) IsPosterKey(key string) bool {
-	return strings.HasPrefix(key, posterPrefix) &&
+func isImageKey(key, prefix string) bool {
+	return strings.HasPrefix(key, prefix) &&
 		!strings.Contains(key, "..") &&
 		!strings.HasPrefix(key, "/")
 }
@@ -328,5 +353,6 @@ func sha256sum(b []byte) []byte {
 // somebody else's prefix.
 func (s *Storage) OwnsKey(userID, key string) bool {
 	return strings.HasPrefix(key, "uploads/"+userID+"/") ||
-		strings.HasPrefix(key, posterPrefix+userID+"/")
+		strings.HasPrefix(key, posterPrefix+userID+"/") ||
+		strings.HasPrefix(key, avatarPrefix+userID+"/")
 }

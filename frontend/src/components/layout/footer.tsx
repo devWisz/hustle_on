@@ -88,7 +88,7 @@ export function Footer() {
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
           <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span>Your hustle should be paid off.</span>
+            <span>Rewards your hustle.</span>
             <CookieSettingsButton variant="link" />
           </p>
           <p className="flex items-center gap-4">

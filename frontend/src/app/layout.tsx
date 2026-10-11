@@ -34,7 +34,7 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: "Sardhana — your hustle should be paid off", template: "%s — Sardhana" },
+  title: { default: "Sardhana — Rewards your hustle", template: "%s — Sardhana" },
   description: DESCRIPTION,
   openGraph: { type: "website", siteName: "Sardhana", description: DESCRIPTION },
   twitter: { card: "summary_large_image" },

@@ -45,6 +45,24 @@ func New(rpcURL, cluster string) *Client {
 
 func (c *Client) Cluster() string { return c.cluster }
 
+// Health asks the node whether it is up and, in its own words, healthy.
+//
+// It exists for the operator rather than for the request path: every sponsorship
+// on the site depends on reaching this endpoint, and "is the RPC answering" is
+// the first question when one does not confirm. A failure here is not an API
+// failure, so it is reported as a value rather than as an error the caller has to
+// interpret.
+func (c *Client) Health(ctx context.Context) error {
+	var status string
+	if err := c.call(ctx, "getHealth", nil, &status); err != nil {
+		return err
+	}
+	if status != "ok" {
+		return fmt.Errorf("%w: node reported %q", ErrRPCRequest, status)
+	}
+	return nil
+}
+
 type rpcRequest struct {
 	JSONRPC string `json:"jsonrpc"`
 	ID      int    `json:"id"`

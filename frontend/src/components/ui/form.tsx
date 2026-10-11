@@ -5,7 +5,7 @@ const control =
   "w-full rounded-[var(--radius-control)] border border-border bg-surface text-base text-fg sm:text-sm " +
   "placeholder:text-fg-subtle transition-[border-color,box-shadow] duration-200 hover:border-border-strong " +
   "focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15 focus-visible:outline-none " +
-  "disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-fg-subtle";
+  "disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-fg-subtle disabled:opacity-60";
 
 export function Input({ className, ...rest }: React.ComponentProps<"input">) {
   return <input className={cx(control, "h-11 px-3.5", className)} {...rest} />;

@@ -38,18 +38,57 @@ func (s *Store) SelfProfile(ctx context.Context, userID string) (domain.SelfUser
 	var self domain.SelfUser
 	var payoutVerified *time.Time
 	var emailVerified *time.Time
+	var onboardedAt *time.Time
 	err := s.pool.QueryRow(ctx, `
-		SELECT `+profileColumns+`, u.email::text, u.email_verified_at, u.role::text, u.payout_verified_at
+		SELECT `+profileColumns+`, u.email::text, u.email_verified_at, u.role::text,
+		       u.payout_verified_at, u.onboarded_at
 		FROM users u WHERE u.id = $1`, userID).Scan(
 		&self.ID, &self.Handle, &self.DisplayName, &self.Bio, &self.AvatarURL,
 		&self.PayoutAddress, &self.TimelapseCount, &self.DonationCount, &self.DonationTotal,
-		&self.JoinedAt, &self.Email, &emailVerified, &self.Role, &payoutVerified)
+		&self.JoinedAt, &self.Email, &emailVerified, &self.Role, &payoutVerified, &onboardedAt)
 	if err != nil {
 		return domain.SelfUser{}, normalize(err)
 	}
 	self.EmailVerified = emailVerified != nil
 	self.PayoutVerified = payoutVerified != nil
+	self.Onboarded = onboardedAt != nil
 	return self, nil
+}
+
+// CompleteOnboarding records the handle and name an account holder has chosen for
+// themselves, and the avatar they picked if they picked one.
+//
+// It is a whole-profile write rather than a partial update because it describes a
+// moment: the account stops being an email address with a derived name and starts
+// being a person the site can credit. Everything is set together, and the stamp
+// is written once — re-running it later must not claim a second onboarding.
+func (s *Store) CompleteOnboarding(ctx context.Context, userID, handle, displayName, bio, avatarRef string) (domain.SelfUser, error) {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE users SET
+			handle       = $2::citext,
+			display_name = $3,
+			bio          = NULLIF($4, ''),
+			avatar_url   = CASE WHEN $5::text IS NULL THEN avatar_url ELSE NULLIF($5, '') END,
+			onboarded_at = COALESCE(onboarded_at, now())
+		WHERE id = $1`,
+		userID, handle, displayName, bio, avatarRef)
+	if err != nil {
+		if isUniqueViolationOn(err, "handle") {
+			return domain.SelfUser{}, ErrConflict
+		}
+		return domain.SelfUser{}, normalize(err)
+	}
+	return s.SelfProfile(ctx, userID)
+}
+
+// SetAvatar changes the picture on an account that has already been onboarded.
+// An empty reference removes it, putting the account back on its initials.
+func (s *Store) SetAvatar(ctx context.Context, userID, ref string) (domain.SelfUser, error) {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE users SET avatar_url = NULLIF($2, '') WHERE id = $1`, userID, ref); err != nil {
+		return domain.SelfUser{}, normalize(err)
+	}
+	return s.SelfProfile(ctx, userID)
 }
 
 // ProfileUpdate carries the fields settings may change. A nil pointer means
