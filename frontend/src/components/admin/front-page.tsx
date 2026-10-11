@@ -15,9 +15,8 @@ type Busy = { op: "move" | "remove" | "add"; id?: string };
 const PLACEHOLDER_CAPACITY = 12;
 
 /**
- * The shelf is a permutation, never an edit: reordering and removing both go
- * through the same explicit handler so every call leaves the set of ids intact
- * and only the order changes.
+ * Returns the list itself when the move is a no-op, so callers can skip a
+ * request that would have sent the API exactly what it already holds.
  */
 function reorder(list: Timelapse[], id: string, to: number): Timelapse[] {
   const from = list.findIndex((t) => t.id === id);
@@ -59,7 +58,7 @@ export function FrontPage({
       // The API only accepts the whole shelf reordered, so the body is always
       // the full set even when one row moved by one place.
       await api("/v1/admin/featured", { method: "PUT", body: { ids: next.map((x) => x.id) } });
-      toast.success(`"${t.title}" moved to ${to + 1}.`);
+      toast.success(`"${t.title}" is now ${to + 1} on the front page.`);
       router.refresh();
     } catch (err) {
       setItems(before);
@@ -91,7 +90,7 @@ export function FrontPage({
     if (working || full) return;
     const before = items;
     setBusy({ op: "add", id: t.id });
-    // An add lands at the end, so the rows do not move around under the cursor.
+    // An add lands at the end, so the shelf keeps the order the operator set.
     setItems([...before, { ...t, featured: true, featuredRank: before.length + 1 }]);
     try {
       await api(`/v1/admin/timelapses/${t.id}/feature`, { method: "POST" });
