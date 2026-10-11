@@ -37,12 +37,11 @@ type Stage = "idle" | "authoring" | "bytes" | "metadata" | "submitting" | "done"
  * The progress indicator names the same steps the form does, so a slow upload
  * does not read as a different process from the one being filled in.
  */
-const STAGE_LABELS: Record<Exclude<Stage, "idle">, string> = {
+const STAGE_LABELS: Record<Exclude<Stage, "idle" | "done">, string> = {
   authoring: "Step 1 of 3 · Uploading the file",
   bytes: "Step 1 of 3 · Uploading the file",
   metadata: "Step 2 of 3 · Saving what you wrote",
   submitting: "Step 3 of 3 · Sending it to review",
-  done: "Step 3 of 3 · Sent to review",
 };
 
 const STILL_HERE = "Your write-up and the file are still here. Try again.";
@@ -611,22 +610,22 @@ function Step({
 function SuccessCard({ onStartOver }: { onStartOver: () => void }) {
   return (
     <Card className="border-success/30 bg-success-soft p-5 sm:p-6">
-      <div role="status">
-        <h2 className="flex items-center gap-3 text-[16px] font-semibold">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
-            <CheckIcon size={15} />
-          </span>
-          It is in review
-        </h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
-          A person will read your write-up and watch the recording. Nothing is public until they
-          have.
-        </p>
-        <p className="mt-3 text-[14px] leading-relaxed text-fg-muted">
-          If it is not accepted, the note tells you what to change and you can edit and resubmit from
-          your dashboard.
-        </p>
-      </div>
+        <div role="status" className="space-y-2">
+          <h2 className="flex items-center gap-3 text-[16px] font-semibold">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">
+              <CheckIcon size={15} />
+            </span>
+            It is in review
+          </h2>
+          <p className="text-[14px] leading-relaxed text-fg/80">
+            A person will read your write-up and watch the recording. Nothing is public until they
+            have.
+          </p>
+          <p className="text-[14px] leading-relaxed text-fg/80">
+            If it is not accepted, the note tells you what to change and you can edit and resubmit
+            from your dashboard.
+          </p>
+        </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <ButtonLink href="/dashboard">
           Go to your dashboard
@@ -641,26 +640,35 @@ function SuccessCard({ onStartOver }: { onStartOver: () => void }) {
 }
 
 function ProgressBar({ value, label }: { value: number; label: string }) {
+  // Only the byte upload reports real progress; the API calls after it are
+  // quick and indeterminate, and a frozen 100% would read as a stall.
+  const uploading = label.includes("Uploading the file");
   return (
     <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-[13px] font-medium text-fg">{label}</p>
-        <p className="font-mono text-[12px] tabular-nums text-fg-subtle">{Math.round(value)}%</p>
+        {uploading ? (
+          <p className="font-mono text-[12px] tabular-nums text-fg-subtle">{Math.round(value)}%</p>
+        ) : null}
       </div>
       <div
         className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-raised"
         role="progressbar"
-        aria-valuenow={Math.round(value)}
+        aria-valuenow={uploading ? Math.round(value) : undefined}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`${label} progress`}
       >
-        <div
-          className="h-full bg-accent transition-[width] duration-200"
-          // A hair of width at 0% shows the bar is there and moving, rather than
-          // an empty track that reads as a stalled upload.
-          style={{ width: `${Math.max(value, 2)}%` }}
-        />
+        {uploading ? (
+          <div
+            className="h-full bg-accent transition-[width] duration-200"
+            // A hair of width at 0% shows the bar is there and moving, rather
+            // than an empty track that reads as a stalled upload.
+            style={{ width: `${Math.max(value, 2)}%` }}
+          />
+        ) : (
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-accent" />
+        )}
       </div>
     </div>
   );
