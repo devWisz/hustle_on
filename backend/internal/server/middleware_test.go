@@ -23,11 +23,6 @@ const authTestKey = "0123456789abcdef0123456789abcdef"
 // quietly pass.
 type stubAuthStore struct{ auth.Store }
 
-// stubMailer satisfies auth.Mailer for the same reason.
-type stubMailer struct{}
-
-func (stubMailer) Send(context.Context, auth.Message) error { return nil }
-
 func testAuth(t *testing.T) *auth.Service {
 	t.Helper()
 	svc, err := auth.NewService(auth.Config{
@@ -35,7 +30,7 @@ func testAuth(t *testing.T) *auth.Service {
 		CookieName: "hustleon_session",
 		Secure:     true,
 		CSRFKey:    []byte(authTestKey),
-	}, stubAuthStore{}, stubMailer{})
+	}, stubAuthStore{})
 	if err != nil {
 		t.Fatalf("build auth service: %v", err)
 	}
@@ -276,14 +271,14 @@ func TestCSRFGuardAllowsSafeMethods(t *testing.T) {
 	}
 }
 
-// Requesting a sign-in link is a write from a caller who has no session, so the
+// Asking for a sign-in challenge is a write from a caller who has no session, so the
 // origin check alone has to carry it.
 func TestCSRFGuardAllowsAnonymousWriteFromOurOrigin(t *testing.T) {
 	s := testServerWithAuth(t)
 	handler := s.csrfGuard(http.HandlerFunc(ok))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/signin/challenge", nil)
 	req.Header.Set("Origin", "https://hustleon.com")
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

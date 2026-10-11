@@ -284,8 +284,12 @@ func (c Config) validate() error {
 			problems = append(problems, "HUSTLEON_PAY_PROGRAM_ID is not a Solana address")
 		}
 	}
-	if c.ChallengeTTL < time.Minute {
-		problems = append(problems, "SIGNIN_CHALLENGE_TTL_MINUTES must be at least 1: a window shorter than that cannot be signed in reliably, and the nonce would expire while the wallet prompt is open")
+	// Zero means "unset", and the auth service substitutes its own default.
+	// Only a value that is set and useless is a problem: a window shorter than a
+	// minute expires while the wallet prompt is still open, which reads to the
+	// person as the site being broken rather than as a setting being wrong.
+	if c.ChallengeTTL > 0 && c.ChallengeTTL < time.Minute {
+		problems = append(problems, "SIGNIN_CHALLENGE_TTL_MINUTES must be at least 1")
 	}
 
 	if c.IsProduction() {

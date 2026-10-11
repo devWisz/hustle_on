@@ -39,8 +39,10 @@ func TestAReferenceConfigurationValidates(t *testing.T) {
 func productionConfig() Config {
 	c := validConfig()
 	c.Env = "production"
-	c.ResendAPIKey = "re_test"
-	c.EmailFrom = "Hustle On <hello@hustleon.com>"
+	// The system program address: 32 bytes of zero, which base58 encodes as
+	// thirty-two '1' characters. It is a structurally valid address and is not
+	// anybody's key, which is exactly what a placeholder wants to be.
+	c.AdminWallets = []string{"11111111111111111111111111111111"}
 	c.StorageBucket = "hustleon-media"
 	c.StorageKeyID = "key"
 	c.StorageSecret = "secret"

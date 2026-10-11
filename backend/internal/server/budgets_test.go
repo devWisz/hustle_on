@@ -71,22 +71,22 @@ func TestGuardPublishesTheBudget(t *testing.T) {
 }
 
 // The sign-in budget is charged to the address even for a signed-in caller.
-// Keying it on the account would let an attacker with one session send as many
-// sign-in emails as they liked, which is exactly what this budget prevents.
+// Keying it on the account would let an attacker with one session mint as many
+// sign-in nonces as they liked, which is exactly what this budget prevents.
 func TestSignInBudgetsIgnoreTheAccount(t *testing.T) {
 	s := testServer()
 	s.budgets[budgetAuth].limiter = ratelimit.New(4) // burst of 1
 	handler := s.guard(s.budgets[budgetAuth], okHandler)
 
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil), "user-a"))
+	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodPost, "/v1/auth/signin/challenge", nil), "user-a"))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("first request got %d", rec.Code)
 	}
 
 	// A different account, same address: still the same budget.
 	rec = httptest.NewRecorder()
-	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil), "user-b"))
+	handler.ServeHTTP(rec, asUser(httptest.NewRequest(http.MethodPost, "/v1/auth/signin/challenge", nil), "user-b"))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("second account from the same address got %d, want 429", rec.Code)
 	}
