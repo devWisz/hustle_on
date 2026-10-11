@@ -10,23 +10,12 @@ import { TimelapsePlayer } from "@/components/timelapse/player";
 import { PlayerSeekProvider } from "@/components/timelapse/player-seek";
 import { ShareButton } from "@/components/timelapse/share-button";
 import { DiscussionPanel } from "@/components/watch/discussion-panel";
-import {
-  DonatePanel,
-  DonationsUnavailable,
-  SponsorSignIn,
-  SupporterList,
-} from "@/components/watch/donate-panel";
+import { DonatePanel, DonationsUnavailable, SupporterList } from "@/components/watch/donate-panel";
 import { ShareCard } from "@/components/watch/share-card";
 import { ReportButton } from "@/components/watch/report-button";
 import { UpNext } from "@/components/watch/up-next";
 import { Avatar, Card, Container, buttonClass } from "@/components/ui";
-import {
-  ArrowLeftIcon,
-  ExternalIcon,
-  GitHubIcon,
-  SolanaIcon,
-  XIcon,
-} from "@/components/ui/icons";
+import { ArrowLeftIcon, ExternalIcon, GitHubIcon, SolanaIcon, XIcon } from "@/components/ui/icons";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
@@ -138,18 +127,23 @@ export default async function WatchPage({ params }: Props) {
             <Reveal immediate delay={0.15} id="sponsor" className="scroll-mt-24">
               {!data.payoutAddress ? (
                 <DonationsUnavailable name={t.creator.displayName} />
-              ) : !data.signedIn ? (
-                <SponsorSignIn slug={t.slug} name={t.creator.displayName} />
               ) : data.isOwner ? (
                 <Card className="p-5 sm:p-6">
                   <h2 className="text-[16px] font-semibold">This is your session</h2>
                   <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-                    Viewers see the sponsor form here. Sponsorships you receive are listed on your
-                    dashboard.
+                    Sponsorships you receive are listed on your dashboard.
                   </p>
                 </Card>
               ) : (
-                <DonatePanel timelapse={t} payoutAddress={data.payoutAddress} />
+                <DonatePanel
+                  timelapse={t}
+                  payoutAddress={data.payoutAddress}
+                  signInHref={
+                    data.signedIn
+                      ? undefined
+                      : `/login?next=${encodeURIComponent(`/watch/${t.slug}#sponsor`)}`
+                  }
+                />
               )}
             </Reveal>
 
@@ -177,12 +171,7 @@ export default async function WatchPage({ params }: Props) {
           </aside>
 
           <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-            <DiscussionPanel
-              slug={t.slug}
-              title={t.title}
-              initialNotes={data.notes}
-              signedIn={data.signedIn}
-            />
+            <DiscussionPanel slug={t.slug} initialNotes={data.notes} signedIn={data.signedIn} />
           </div>
         </div>
       </Container>

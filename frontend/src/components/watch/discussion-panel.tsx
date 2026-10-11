@@ -4,28 +4,28 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError, api } from "@/lib/api/client";
 import type { Note } from "@/lib/types";
-import { formatDuration, timeAgo } from "@/lib/format";
-import { Avatar, Button, Textarea } from "../ui";
+import { cx, formatDuration, timeAgo } from "@/lib/format";
+import { Avatar, Button, Textarea, buttonClass } from "../ui";
 import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 import { usePlayerSeek } from "../timelapse/player-seek";
 import { ReportButton } from "./report-button";
 
+const voteBase =
+  "press flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors duration-200";
+
 export function DiscussionPanel({
   slug,
-  title,
   initialNotes,
   signedIn,
 }: {
   slug: string;
-  title: string;
-
   initialNotes: Note[];
-
   signedIn: boolean;
 }) {
   const { success, error } = useToast();
   const seek = usePlayerSeek();
+  const signInHref = `/login?next=${encodeURIComponent(`/watch/${slug}`)}`;
 
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [body, setBody] = useState("");
@@ -56,6 +56,7 @@ export function DiscussionPanel({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!signedIn) return;
     const text = body.trim();
     if (!text || timestampInvalid) return;
 
@@ -71,7 +72,7 @@ export function DiscussionPanel({
       setNotes((current) => [created, ...current]);
       setBody("");
       setTimestampInput("");
-      success("Your note is on the thread.");
+      success("Note posted.");
     } catch (err) {
       error(err instanceof ApiError ? err.message : "That note could not be posted.");
     } finally {
@@ -80,6 +81,7 @@ export function DiscussionPanel({
   }
 
   async function handleVote(note: Note) {
+    if (!signedIn) return;
     setBusyNote(note.id);
 
     const next = !note.viewerHasVoted;
@@ -133,51 +135,46 @@ export function DiscussionPanel({
       </div>
 
       <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-fg-muted">
-        What stood out: the technique, a decision, or a specific moment in{" "}
-        <span className="font-medium text-fg">{title}</span>. Click a timestamp to jump the video to
-        it.
+        What stood out: a technique, a decision, a moment. Click a timestamp to jump to it.
       </p>
 
-      {signedIn ? (
-        <form
-          onSubmit={handleSubmit}
-          className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4"
-        >
-          <Textarea
-            rows={3}
-            placeholder="Share what stood out: a technique, a decision, a moment worth rewatching"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            maxLength={2000}
-            aria-label="Your note"
-          />
+      <form
+        onSubmit={handleSubmit}
+        className="mt-5 rounded-[var(--radius-card)] border border-border bg-surface p-4"
+      >
+        <Textarea
+          rows={3}
+          placeholder="What stood out?"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          maxLength={2000}
+          aria-label="Note"
+        />
 
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="sm:w-44">
-              <label
-                htmlFor="note-timestamp"
-                className="block text-[12px] font-medium text-fg-muted"
-              >
-                Timestamp <span className="font-normal text-fg-subtle">(optional)</span>
-              </label>
-              <input
-                id="note-timestamp"
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 0:42"
-                value={timestampInput}
-                onChange={(e) => setTimestampInput(e.target.value)}
-                aria-invalid={timestampInvalid || undefined}
-                aria-describedby={timestampInvalid ? "note-timestamp-error" : undefined}
-                className="mt-1 h-10 w-full rounded-[var(--radius-control)] border border-border bg-surface-raised px-3 font-mono text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle hover:border-border-strong focus:border-accent"
-              />
-              {timestampInvalid ? (
-                <p id="note-timestamp-error" role="alert" className="mt-1 text-[12px] text-danger">
-                  Use seconds, or mm:ss.
-                </p>
-              ) : null}
-            </div>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="sm:w-44">
+            <label htmlFor="note-timestamp" className="block text-[12px] font-medium text-fg-muted">
+              Timestamp <span className="font-normal text-fg-subtle">(optional)</span>
+            </label>
+            <input
+              id="note-timestamp"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 0:42"
+              value={timestampInput}
+              onChange={(e) => setTimestampInput(e.target.value)}
+              aria-invalid={timestampInvalid || undefined}
+              aria-describedby={timestampInvalid ? "note-timestamp-error" : undefined}
+              className="mt-1 h-10 w-full rounded-[var(--radius-control)] border border-border bg-surface-raised px-3 font-mono text-sm text-fg outline-none transition-colors placeholder:text-fg-subtle hover:border-border-strong focus:border-accent"
+            />
+            {timestampInvalid ? (
+              <p id="note-timestamp-error" role="alert" className="mt-1 text-[12px] text-danger">
+                Use seconds, or mm:ss.
+              </p>
+            ) : null}
+          </div>
 
+          {signedIn ? (
             <Button
               type="submit"
               size="sm"
@@ -186,27 +183,18 @@ export function DiscussionPanel({
             >
               Post note
             </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="mt-5 rounded-[var(--radius-card)] border border-dashed border-border-strong bg-surface p-4">
-          <p className="text-sm text-fg-muted">
-            Notes are written by people with an account, so every observation has an author who can
-            answer for it.
-          </p>
-          <Link
-            href={`/login?next=${encodeURIComponent(`/watch/${slug}`)}`}
-            className="mt-3 inline-block text-[13px] font-medium text-accent hover:underline"
-          >
-            Get a sign-in link to join the thread
-          </Link>
+          ) : (
+            <Link href={signInHref} className={buttonClass("primary", "sm")}>
+              Sign in to post
+            </Link>
+          )}
         </div>
-      )}
+      </form>
 
       <ul className="mt-6 space-y-3">
         {notes.length === 0 ? (
           <li className="rounded-[var(--radius-card)] border border-dashed border-border-strong py-10 text-center text-sm text-fg-muted">
-            No notes yet. Be the first to point something out.
+            No notes yet. Be the first.
           </li>
         ) : (
           notes.map((note) => (
@@ -238,24 +226,39 @@ export function DiscussionPanel({
                 ) : null}
 
                 <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleVote(note)}
-                    disabled={!signedIn || busyNote === note.id}
-                    aria-pressed={note.viewerHasVoted}
-                    aria-label={
-                      note.viewerHasVoted ? "Remove your helpful mark" : "Mark this note helpful"
-                    }
-                    title={signedIn ? undefined : "Sign in to mark a note helpful"}
-                    className={`press flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
-                      note.viewerHasVoted
-                        ? "border-accent/40 bg-accent-soft text-accent"
-                        : "border-border bg-surface-raised text-fg-muted hover:text-fg"
-                    }`}
-                  >
-                    <ThumbsUpIcon size={12} />
-                    <span className="tabular-nums">{note.helpfulCount}</span>
-                  </button>
+                  {signedIn ? (
+                    <button
+                      type="button"
+                      onClick={() => handleVote(note)}
+                      disabled={busyNote === note.id}
+                      aria-pressed={note.viewerHasVoted}
+                      aria-label={
+                        note.viewerHasVoted ? "Remove your helpful mark" : "Mark this note helpful"
+                      }
+                      className={cx(
+                        voteBase,
+                        "disabled:cursor-not-allowed disabled:opacity-60",
+                        note.viewerHasVoted
+                          ? "border-accent/40 bg-accent-soft text-accent"
+                          : "border-border bg-surface-raised text-fg-muted hover:text-fg",
+                      )}
+                    >
+                      <ThumbsUpIcon size={12} />
+                      <span className="tabular-nums">{note.helpfulCount}</span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={signInHref}
+                      aria-label="Sign in to mark this note helpful"
+                      className={cx(
+                        voteBase,
+                        "border-border bg-surface-raised text-fg-muted hover:text-fg",
+                      )}
+                    >
+                      <ThumbsUpIcon size={12} />
+                      <span className="tabular-nums">{note.helpfulCount}</span>
+                    </Link>
+                  )}
 
                   {!note.viewerCanDelete ? (
                     <ReportButton slug={slug} noteId={note.id} signedIn={signedIn} compact />

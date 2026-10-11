@@ -8,7 +8,7 @@ import { cx } from "@/lib/format";
 import type { ReportReason } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
-import { Button, Textarea } from "../ui";
+import { Button, Textarea, buttonClass } from "../ui";
 import { AlertIcon, CloseIcon } from "../ui/icons";
 
 const REASONS: { value: ReportReason; label: string; hint: string }[] = [
@@ -38,6 +38,7 @@ export function ReportButton({
   const [busy, setBusy] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const subject = noteId ? "note" : "session";
+  const signInHref = `/login?next=${encodeURIComponent(`/watch/${slug}`)}`;
 
   useEffect(() => {
     if (!open) return;
@@ -123,74 +124,66 @@ export function ReportButton({
                   </button>
                 </div>
 
-                {!signedIn ? (
-                  <div className="mt-3">
-                    <p className="text-[14px] leading-relaxed text-fg-muted">
-                      Reports come from signed-in people, so an admin can follow up if they need to.
-                    </p>
-                    <Link
-                      href={`/login?next=${encodeURIComponent(`/watch/${slug}`)}`}
-                      className="mt-5 inline-flex h-10 items-center rounded-full bg-inverse px-5 text-sm font-medium text-inverse-fg"
+                <p className="mt-1.5 text-[13.5px] text-fg-muted">
+                  {signedIn
+                    ? "Only admins see reports. The creator is not told who sent it."
+                    : "Only admins see reports. An account lets an admin follow up."}
+                </p>
+                <fieldset className="mt-5 space-y-2">
+                  <legend className="sr-only">Reason</legend>
+                  {REASONS.map((r) => (
+                    <label
+                      key={r.value}
+                      className={cx(
+                        "flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border p-3 transition-colors",
+                        reason === r.value
+                          ? "border-fg bg-surface-raised"
+                          : "border-border hover:border-border-strong",
+                      )}
                     >
+                      <input
+                        type="radio"
+                        name="reason"
+                        value={r.value}
+                        checked={reason === r.value}
+                        onChange={() => setReason(r.value)}
+                        className="mt-1 accent-[var(--accent)]"
+                      />
+                      <span>
+                        <span className="block text-[14px] font-medium">{r.label}</span>
+                        <span className="block text-[12.5px] text-fg-subtle">{r.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+                <Textarea
+                  className="mt-4"
+                  rows={3}
+                  maxLength={1000}
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="Anything that helps an admin understand (optional)"
+                  aria-label="Details"
+                />
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+                    Cancel
+                  </Button>
+                  {signedIn ? (
+                    <Button
+                      variant="danger"
+                      onClick={() => void submit()}
+                      loading={busy}
+                      disabled={!reason}
+                    >
+                      Send report
+                    </Button>
+                  ) : (
+                    <Link href={signInHref} className={buttonClass("danger", "md")}>
                       Sign in to report
                     </Link>
-                  </div>
-                ) : (
-                  <>
-                    <p className="mt-1.5 text-[13.5px] text-fg-muted">
-                      Only admins see reports. The creator is not told who sent it.
-                    </p>
-                    <fieldset className="mt-5 space-y-2">
-                      <legend className="sr-only">Reason</legend>
-                      {REASONS.map((r) => (
-                        <label
-                          key={r.value}
-                          className={cx(
-                            "flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border p-3 transition-colors",
-                            reason === r.value
-                              ? "border-fg bg-surface-raised"
-                              : "border-border hover:border-border-strong",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="reason"
-                            value={r.value}
-                            checked={reason === r.value}
-                            onChange={() => setReason(r.value)}
-                            className="mt-1 accent-[var(--accent)]"
-                          />
-                          <span>
-                            <span className="block text-[14px] font-medium">{r.label}</span>
-                            <span className="block text-[12.5px] text-fg-subtle">{r.hint}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </fieldset>
-                    <Textarea
-                      className="mt-4"
-                      rows={3}
-                      maxLength={1000}
-                      value={details}
-                      onChange={(e) => setDetails(e.target.value)}
-                      placeholder="Anything that helps an admin understand (optional)"
-                      aria-label="Details"
-                    />
-                    <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                      <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => void submit()}
-                        loading={busy}
-                        disabled={!reason}
-                      >
-                        Send report
-                      </Button>
-                    </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>,
             document.body,

@@ -18,9 +18,15 @@ type Mode = "wallet" | "direct";
 export function DonatePanel({
   timelapse,
   payoutAddress,
+  signInHref,
 }: {
   timelapse: Timelapse;
   payoutAddress?: string;
+  /**
+   * A visitor without a session sees the same panel; this swaps the send button
+   * for the sign-in step. It permits nothing: the API still refuses the intent.
+   */
+  signInHref?: string;
 }) {
   const { success } = useToast();
   const [mode, setMode] = useState<Mode>("wallet");
@@ -183,16 +189,25 @@ export function DonatePanel({
               {error}
             </p>
           ) : null}
-          <Button onClick={donate} loading={busy} className="mt-5 w-full" size="lg">
-            {!busy ? <WalletIcon size={16} /> : null}
-            {phase === "signing"
-              ? "Waiting for your wallet"
-              : phase === "confirming"
-                ? "Confirming on chain"
-                : `Send ${formatSol(lamports)}`}
-          </Button>
+          {signInHref ? (
+            <Link href={signInHref} className={buttonClass("primary", "lg", "mt-5 w-full")}>
+              Sign in to sponsor
+              <ArrowRightIcon size={16} className="nudge-icon" />
+            </Link>
+          ) : (
+            <Button onClick={donate} loading={busy} className="mt-5 w-full" size="lg">
+              {!busy ? <WalletIcon size={16} /> : null}
+              {phase === "signing"
+                ? "Waiting for your wallet"
+                : phase === "confirming"
+                  ? "Confirming on chain"
+                  : `Send ${formatSol(lamports)}`}
+            </Button>
+          )}
           <p className="mt-3 text-center text-[12px] text-fg-subtle">
-            Your wallet shows the exact recipient before you approve.
+            {signInHref
+              ? "Sponsorships are credited to your name."
+              : "Your wallet shows the exact recipient before you approve."}
           </p>
         </>
       ) : (
@@ -223,9 +238,8 @@ export function DonatePanel({
             Open in a mobile wallet
           </a>
           <p className="text-[12px] leading-relaxed text-fg-subtle">
-            A transfer sent this way still reaches {timelapse.creator.displayName}, but Hustle On
-            cannot link it to you, so it will not be listed under Sponsors. Use the extension tab
-            to be credited.
+            It reaches {timelapse.creator.displayName}, but cannot be linked to you, so it will not
+            appear under Sponsors.
           </p>
         </div>
       )}
@@ -246,9 +260,7 @@ async function confirmWithRetry(id: string, signature: string): Promise<void> {
     if (result.status === "confirmed") return;
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
-  throw new Error(
-    "Your transaction was sent but has not finalized yet. It will be credited automatically once it does.",
-  );
+  throw new Error("Sent, but not finalized yet. It is credited once it is.");
 }
 
 function readableError(err: unknown): string {
@@ -297,53 +309,12 @@ export function SupporterList({
   );
 }
 
-const SIGN_IN_POINTS = [
-  "Your name appears with your sponsorship",
-  "Every transfer is verified on-chain before it counts",
-  "One email link, no password to remember",
-];
-
-export function SponsorSignIn({ slug, name }: { slug: string; name: string }) {
-  const next = `/watch/${slug}#sponsor`;
-  return (
-    <Card className="p-5 sm:p-6">
-      <h2 className="flex items-center gap-2 text-[16px] font-semibold">
-        <SolanaIcon size={15} />
-        Sponsor this work
-      </h2>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
-        Sign in to send SOL to {name}. It goes wallet to wallet, with no cut taken.
-      </p>
-      <ul className="mt-5 space-y-2.5">
-        {SIGN_IN_POINTS.map((point) => (
-          <li key={point} className="flex items-start gap-2.5 text-[13px] text-fg-muted">
-            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
-              <CheckIcon size={10} />
-            </span>
-            {point}
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={`/login?next=${encodeURIComponent(next)}`}
-        className={buttonClass("primary", "lg", "mt-6 w-full")}
-      >
-        Sign in to sponsor
-        <ArrowRightIcon size={16} className="nudge-icon" />
-      </Link>
-      <p className="mt-3 text-center text-[12px] text-fg-subtle">
-        New here? The same link creates your account.
-      </p>
-    </Card>
-  );
-}
-
 export function DonationsUnavailable({ name }: { name: string }) {
   return (
     <Card className="p-5 sm:p-6">
       <h2 className="text-[16px] font-semibold">Sponsorship not set up</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-        {name} has not verified a payout wallet yet, so there is nowhere to send SOL.
+        {name} has not verified a payout wallet, so there is nowhere to send SOL.
       </p>
     </Card>
   );
