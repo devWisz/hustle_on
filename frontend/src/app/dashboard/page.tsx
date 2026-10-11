@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getDashboard, getViewer } from "@/lib/data";
 import { GuestNotice } from "@/components/account/guest-notice";
-import { formatSol, timeAgo } from "@/lib/format";
+import { formatSol } from "@/lib/format";
 import { SavedList } from "@/components/account/saved-list";
+import { SponsorshipList } from "@/components/account/sponsorship-list";
 import { Submissions } from "@/components/account/submissions";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
-import { Avatar, ButtonLink, Card, Container } from "@/components/ui";
+import { ButtonLink, Card, Container } from "@/components/ui";
 import { ArrowRightIcon, CheckIcon, UploadIcon, WalletIcon } from "@/components/ui/icons";
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false, follow: false } };
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
   const data = await getDashboard();
   if (data === "signin") redirect("/login?next=/dashboard");
   if (!data.me.onboarded) redirect("/welcome?next=/dashboard");
-  const { me, items, donations } = data;
+  const { me, items, itemsCursor, donations, donationsCursor } = data;
 
   const views = items.reduce((n, t) => n + t.viewCount, 0);
   const inReview = items.filter((t) => t.status === "in_review").length;
@@ -94,7 +95,7 @@ export default async function DashboardPage() {
             Submissions
           </h2>
           <div className="mt-4">
-            <Submissions items={items} />
+            <Submissions items={items} nextCursor={itemsCursor} />
           </div>
         </Reveal>
 
@@ -132,37 +133,7 @@ export default async function DashboardPage() {
                   {formatSol(me.donationTotalLamports)}
                 </span>
               </h2>
-              {donations.length === 0 ? (
-                <p className="mt-3 text-[13.5px] text-fg-muted">
-                  None yet. They appear here the moment they confirm.
-                </p>
-              ) : (
-                <ul className="mt-2 divide-y divide-border">
-                  {donations.map((d) => (
-                    <li key={d.id} className="flex items-start gap-3 py-3">
-                      <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13.5px] font-medium">
-                          {d.donor?.displayName ?? "Anonymous"}
-                        </p>
-                        {d.message ? (
-                          <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-muted">
-                            {d.message}
-                          </p>
-                        ) : null}
-                        {d.confirmedAt ? (
-                          <p className="mt-1 text-[11.5px] text-fg-subtle">
-                            {timeAgo(d.confirmedAt)}
-                          </p>
-                        ) : null}
-                      </div>
-                      <span className="shrink-0 font-mono text-[12.5px] tabular-nums">
-                        {formatSol(d.amountLamports)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <SponsorshipList initial={donations} initialCursor={donationsCursor} />
             </Card>
           </Reveal>
 

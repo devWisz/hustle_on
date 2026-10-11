@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
 import { cx, formatSol, solToLamports } from "@/lib/format";
+import { fetchSupporters } from "@/lib/pagination";
 import { sendSol, walletAvailable, WalletError } from "@/lib/wallet";
-import type { DonationIntent, Timelapse } from "@/lib/types";
-import { Avatar, Button, Card, Field, Input, Textarea, buttonClass } from "../ui";
+import type { Donation, DonationIntent, Timelapse } from "@/lib/types";
+import { Avatar, Button, Card, Field, Input, PagedList, Textarea, buttonClass } from "../ui";
 import { ArrowRightIcon, CheckIcon, CopyIcon, SolanaIcon, WalletIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 
@@ -276,36 +277,53 @@ function readableError(err: unknown): string {
   return "Something went wrong. Try again.";
 }
 
+/**
+ * The supporters under a session. The first page is rendered by the watch page
+ * on the server; the rest are fetched here as the reader asks for them.
+ */
 export function SupporterList({
-  donations,
+  slug,
+  initial,
+  initialCursor,
 }: {
-  donations: {
-    id: string;
-    amountLamports: number;
-    message?: string;
-    donor?: { handle: string; displayName: string };
-  }[];
+  slug: string;
+  initial: Donation[];
+  initialCursor?: string;
 }) {
-  if (donations.length === 0) {
-    return <p className="text-sm text-fg-muted">No sponsors yet. Be the first.</p>;
-  }
   return (
-    <ul className="divide-y divide-border">
-      {donations.map((d) => (
-        <li key={d.id} className="flex items-start gap-3 py-3">
-          <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
-          <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
-            {d.message ? (
-              <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{d.message}</p>
-            ) : null}
-          </div>
-          <span className="shrink-0 font-mono text-[12.5px] tabular-nums text-fg">
-            {formatSol(d.amountLamports)}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <PagedList
+      initial={initial}
+      initialCursor={initialCursor}
+      load={(cursor) => fetchSupporters(slug, cursor)}
+      label="Load more sponsors"
+      errorText="More sponsors could not be loaded. Try again."
+      className="mt-3 flex flex-col items-center gap-2"
+      buttonSize="sm"
+      render={(donations) =>
+        donations.length === 0 ? (
+          <p className="text-sm text-fg-muted">No sponsors yet. Be the first.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {donations.map((d) => (
+              <li key={d.id} className="flex items-start gap-3 py-3">
+                <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-medium">
+                    {d.donor?.displayName ?? "Anonymous"}
+                  </p>
+                  {d.message ? (
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{d.message}</p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 font-mono text-[12.5px] tabular-nums text-fg">
+                  {formatSol(d.amountLamports)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    />
   );
 }
 

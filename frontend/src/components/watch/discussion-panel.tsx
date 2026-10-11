@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ApiError, api } from "@/lib/api/client";
+import { fetchTimelapseNotes } from "@/lib/pagination";
 import type { Note } from "@/lib/types";
 import { cx, formatDuration, timeAgo } from "@/lib/format";
-import { Avatar, Button, Textarea, buttonClass } from "../ui";
+import { Avatar, Button, PagedList, Textarea, buttonClass } from "../ui";
 import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 import { usePlayerSeek } from "../timelapse/player-seek";
