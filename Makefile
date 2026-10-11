@@ -71,8 +71,15 @@ e2e: ## Walk the whole creator journey against a running API (needs make dev)
 
 e2e-clean: ## Remove what the end-to-end check left behind
 	@set -a; . ./.env; set +a; \
-	  psql "$$DATABASE_URL_DIRECT" -q \
-	    -c "DELETE FROM donations; DELETE FROM timelapses; DELETE FROM users WHERE handle LIKE 'hustler\\_%';" \
+	  psql "$$DATABASE_URL_DIRECT" -q -v ON_ERROR_STOP=1 \
+	    -c "BEGIN;" \
+	    -c "ALTER TABLE audit_log DISABLE TRIGGER audit_log_append_only;" \
+	    -c "DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE handle LIKE 'hustler\\_%');" \
+	    -c "DELETE FROM donations;" \
+	    -c "DELETE FROM timelapses;" \
+	    -c "DELETE FROM users WHERE handle LIKE 'hustler\\_%';" \
+	    -c "ALTER TABLE audit_log ENABLE TRIGGER audit_log_append_only;" \
+	    -c "COMMIT;" \
 	    -c "SELECT * FROM recount_totals();" && \
 	  rm -rf backend/data && echo "removed the end-to-end check's rows and local uploads"
 

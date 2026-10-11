@@ -23,14 +23,92 @@ declare global {
   interface Window {
     solana?: InjectedWallet;
     phantom?: { solana?: InjectedWallet };
+    solflare?: InjectedWallet;
+    backpack?: InjectedWallet;
+    glow?: InjectedWallet;
+    exodus?: { solana?: InjectedWallet };
+    okxwallet?: { solana?: InjectedWallet };
   }
+}
+
+/**
+ * The wallets this site knows how to ask for a signature.
+ *
+ * There is no wallet-adapter dependency behind this: a browser wallet announces
+ * itself by hanging an object on `window`, and that is the whole protocol. Listing
+ * them means the person chooses, which matters because a browser can have several
+ * installed and the one that happens to be found first is not always the one
+ * holding the key they meant to use.
+ *
+ * The generic `window.solana` is offered last, and only when no named wallet
+ * claimed it, so a known wallet is never shadowed by it.
+ */
+const KNOWN_WALLETS: {
+  id: string;
+  name: string;
+  install: string;
+  get: (w: Window) => InjectedWallet | undefined;
+}[] = [
+  { id: "phantom", name: "Phantom", install: "https://phantom.app/download", get: (w) => w.phantom?.solana },
+  { id: "solflare", name: "Solflare", install: "https://solflare.com/download", get: (w) => w.solflare },
+  { id: "backpack", name: "Backpack", install: "https://backpack.app/download", get: (w) => w.backpack },
+  { id: "glow", name: "Glow", install: "https://glow.app/download", get: (w) => w.glow },
+  { id: "exodus", name: "Exodus", install: "https://exodus.com/download", get: (w) => w.exodus?.solana },
+  { id: "okx", name: "OKX Wallet", install: "https://www.okx.com/web3", get: (w) => w.okxwallet?.solana },
+];
+
+export interface WalletOption {
+  id: string;
+  name: string;
+  install: string;
+  provider: InjectedWallet;
+}
+
+/** Every wallet this browser actually has installed. */
+export function detectWallets(): WalletOption[] {
+  if (typeof window === "undefined") return [];
+  const found: WalletOption[] = [];
+  for (const w of KNOWN_WALLETS) {
+    const provider = w.get(window);
+    if (provider) found.push({ id: w.id, name: w.name, install: w.install, provider });
+  }
+  const generic = window.solana;
+  if (generic && !found.some((f) => f.provider === generic)) {
+    found.push({ id: "solana", name: "Browser wallet", install: "", provider: generic });
+  }
+  return found;
+}
+
+/** The wallets worth offering to install, for a browser that has none. */
+export function installableWallets(): { name: string; install: string }[] {
+  return KNOWN_WALLETS.filter((w) => w.id === "phantom" || w.id === "solflare").map((w) => ({
+    name: w.name,
+    install: w.install,
+  }));
+}
+
+/**
+ * Which wallet the person picked.
+ *
+ * Held in a module variable rather than threaded through every call, because the
+ * signing helpers are used from places that have no business knowing about wallet
+ * choice — `sponsorViaProgram` should not have to take a wallet id in order to
+ * sign a sponsorship. It is set by the chooser, in the browser, immediately before
+ * the flow that needs it.
+ */
+let chosen: InjectedWallet | null = null;
+
+export function selectWallet(id: string): boolean {
+  const match = detectWallets().find((w) => w.id === id);
+  if (!match) return false;
+  chosen = match.provider;
+  return true;
 }
 
 export class WalletError extends Error {}
 
 export function getWallet(): InjectedWallet {
-  const injected =
-    (typeof window !== "undefined" && (window.phantom?.solana ?? window.solana)) || null;
+  const injected = chosen ?? detectWallets()[0]?.provider ?? null;
   if (!injected) {
     throw new WalletError(
       "No Solana wallet found in this browser. Install one, then reload this page.",
@@ -40,8 +118,7 @@ export function getWallet(): InjectedWallet {
 }
 
 export function walletAvailable(): boolean {
-  if (typeof window === "undefined") return false;
-  return Boolean(window.phantom?.solana ?? window.solana);
+  return detectWallets().length > 0;
 }
 
 export async function connectWallet(): Promise<string> {

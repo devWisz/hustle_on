@@ -59,3 +59,8 @@ frontend/tsconfig.tsbuildinfo
 # deliberately excluded: it is a single page listing every credential the
 # deployment has, which is exactly the file that must never be committed.
 ADMIN-ACCESS.md
+
+# The Solana deployment playbook: the deployer address, the exact commands, and
+# what to do when the faucet says no. Gitignored because it names the wallet that
+# holds the program's upgrade authority.
+solana.md

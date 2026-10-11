@@ -170,13 +170,25 @@ func (s *Service) SignUp(ctx context.Context, name, email, password string) (Use
 		return User{}, fmt.Errorf("auth: hash password: %w", err)
 	}
 
-	// Same retry as the wallet path: the handle is generated, not chosen, and a
-	// collision is a coincidence rather than a problem to report.
+	// The handle is derived from the name they gave, because they gave one. A wallet
+	// sign-in has nothing to derive from and gets a generated placeholder with a
+	// profile step to fix it; here the name is real, so the account is complete
+	// enough to be credited and there is nothing to make them do afterwards.
+	//
+	// Suffixes are tried before giving up, because two people called Ada Lovelace is
+	// a coincidence, not an error worth showing either of them.
+	candidates := handleCandidates(cleanName)
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
-		handle, err := NewHandle()
-		if err != nil {
-			return User{}, err
+	for attempt := 0; attempt < 6; attempt++ {
+		var handle string
+		if attempt < len(candidates) {
+			handle = candidates[attempt]
+		} else {
+			generated, err := NewHandle()
+			if err != nil {
+				return User{}, err
+			}
+			handle = generated
 		}
 		user, err := s.store.CreatePasswordUser(ctx, cleanEmail, handle, cleanName, hash)
 		if err == nil {
@@ -191,6 +203,40 @@ func (s *Service) SignUp(ctx context.Context, name, email, password string) (Use
 		}
 	}
 	return User{}, fmt.Errorf("auth: could not allocate a unique handle: %w", lastErr)
+}
+
+// handleCandidates turns a display name into handles to try, in order.
+//
+// A handle is a public URL and a credit line, which is why it is derived from what
+// the person calls themselves rather than left as `hustler_9f3k`. Everything the
+// handle grammar does not allow is dropped rather than transliterated: an accent
+// becomes nothing instead of a guessed ASCII approximation, because a wrong name
+// is worse than a shorter one.
+func handleCandidates(name string) []string {
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range strings.ToLower(name) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastUnderscore = false
+		case r == ' ' || r == '_' || r == '-' || r == '.' || r == '\'':
+			if !lastUnderscore && b.Len() > 0 {
+				b.WriteByte('_')
+				lastUnderscore = true
+			}
+		}
+	}
+	base := strings.Trim(b.String(), "_")
+	// The column requires 3 to 30 characters; anything outside that has to be
+	// fixed here rather than rejected by the database.
+	if len(base) > 30 {
+		base = strings.Trim(base[:30], "_")
+	}
+	if len(base) < 3 {
+		return nil
+	}
+	return []string{base, base + "_1", base + "_2", base + "_3"}
 }
 
 // LogIn verifies an email address and password and returns the account.

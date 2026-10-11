@@ -84,8 +84,8 @@ func (s *Store) CreateUser(ctx context.Context, walletAddress, handle, displayNa
 func (s *Store) CreatePasswordUser(ctx context.Context, email, handle, displayName, passwordHash string) (auth.User, error) {
 	var u auth.User
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, handle, display_name)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (email, password_hash, handle, display_name, onboarded_at)
+		VALUES ($1, $2, $3, $4, now())
 		RETURNING `+authUserColumnsBare,
 		email, passwordHash, handle, displayName).Scan(
 		&u.ID, &u.WalletAddress, &u.Email, &u.Handle, &u.DisplayName, &u.Role, &u.Status)

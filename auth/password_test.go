@@ -93,8 +93,8 @@ func TestSignUpThenLogIn(t *testing.T) {
 	if created.DisplayName != "Ada Lovelace" {
 		t.Errorf("display name = %q", created.DisplayName)
 	}
-	if !strings.HasPrefix(created.Handle, "hustler_") {
-		t.Errorf("handle = %q, want a generated placeholder", created.Handle)
+	if created.Handle != "ada_lovelace" {
+		t.Errorf("handle = %q, want it derived from the name", created.Handle)
 	}
 	if created.WalletAddress != "" {
 		t.Errorf("a password sign-up should not invent a wallet: %q", created.WalletAddress)
