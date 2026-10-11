@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
 import { cx, formatSol, solToLamports } from "@/lib/format";
 import { fetchSupporters } from "@/lib/pagination";
-import { sendSol, walletAvailable, WalletError } from "@/lib/wallet";
+import { sendSol, sponsorViaProgram, walletAvailable, WalletError } from "@/lib/wallet";
 import type { Donation, DonationIntent, Timelapse } from "@/lib/types";
 import { Avatar, Button, Card, Field, Input, PagedList, Textarea, buttonClass } from "../ui";
 import { ArrowRightIcon, CheckIcon, CopyIcon, SolanaIcon, WalletIcon } from "../ui/icons";
@@ -62,7 +62,11 @@ export function DonatePanel({
         },
       });
 
-      const sent = await sendSol(intent.recipient, intent.amountLamports);
+      // The server tells us which of the two it will verify against, so the
+      // client cannot pick the one that leaves no on-chain record.
+      const sent = intent.programId
+        ? await sponsorViaProgram(intent.programId, intent.recipient, intent.amountLamports)
+        : await sendSol(intent.recipient, intent.amountLamports);
       setSignature(sent.signature);
       setPhase("confirming");
 

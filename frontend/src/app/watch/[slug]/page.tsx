@@ -158,7 +158,11 @@ export default async function WatchPage({ params }: Props) {
                   ) : null}
                 </h2>
                 <div className="mt-2">
-                  <SupporterList donations={data.donations} />
+                  <SupporterList
+                    slug={t.slug}
+                    initial={data.donations}
+                    initialCursor={data.donationsCursor}
+                  />
                 </div>
               </Card>
             </Reveal>
@@ -171,7 +175,12 @@ export default async function WatchPage({ params }: Props) {
           </aside>
 
           <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-            <DiscussionPanel slug={t.slug} initialNotes={data.notes} signedIn={data.signedIn} />
+            <DiscussionPanel
+              slug={t.slug}
+              initialNotes={data.notes}
+              nextCursor={data.notesCursor}
+              signedIn={data.signedIn}
+            />
           </div>
         </div>
       </Container>

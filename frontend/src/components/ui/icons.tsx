@@ -481,13 +481,23 @@ export function LogoMark({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
       <rect width="32" height="32" rx="9" fill="currentColor" />
-      {/* An H, for Hustle On. The mark and the favicon in app/icon.svg are the
-          same drawing, so they are changed together. */}
+      {/*
+        An H, for Hustle On — with the crossbar rising from left to right.
+
+        The two stems are straight and parallel so the letter stays unmistakable
+        at 16px, which is the size it is most often seen at. The whole character
+        of the mark is in that one tilt: it reads as an H and as something going
+        up at the same time, without needing an arrowhead, a notch or a second
+        shape that would turn to mush in a favicon.
+
+        The mark and the favicon in app/icon.svg are the same drawing, so they are
+        changed together.
+      */}
       <path
-        d="M10.5 10.5v11M21.5 10.5v11M10.5 16h11"
+        d="M11 21.6V10.4M21 21.6V10.4M11 17.8 21 14.2"
         fill="none"
         stroke="var(--bg)"
-        strokeWidth="2.6"
+        strokeWidth="2.7"
         strokeLinecap="round"
       />
     </svg>

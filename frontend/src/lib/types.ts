@@ -84,6 +84,8 @@ export interface DonationIntent {
   recipient: string;
   amountLamports: number;
   cluster: string;
+  /** The sponsorship program to call. Absent means send a plain transfer. */
+  programId?: string;
 }
 
 export interface Note {

@@ -77,7 +77,10 @@ export function Submissions({
       errorText="More submissions could not be loaded. Try again."
       className="mt-5 flex flex-col items-center gap-3"
       render={(all) => {
-        const list = all.map((t) => (edits[t.id] ? { ...t, ...edits[t.id] } : t));
+        const list = all.map((t) => {
+          const edit = edits[t.id];
+          return edit ? { ...t, ...edit } : t;
+        });
         const visible = filter === "all" ? list : list.filter((t) => t.status === filter);
 
         return (
