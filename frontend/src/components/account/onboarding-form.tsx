@@ -29,7 +29,6 @@ export function OnboardingForm({ initial, next }: { initial: SelfUser; next: str
   const [handle, setHandle] = useState(initial.handle);
   const [displayName, setDisplayName] = useState(initial.displayName);
   const [bio, setBio] = useState(initial.bio ?? "");
-  const [names, setNames] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
