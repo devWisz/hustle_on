@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { cx } from "@/lib/format";
 import type { Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Badge, Button, EmptyState } from "../ui";

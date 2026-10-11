@@ -188,6 +188,47 @@ because the settle worker finishes anything left open.
 | `GET` | `/v1/admin/ledger` | Sponsorships, newest first. `?status=`, `?limit=` (100, 200) |
 | `GET` | `/v1/admin/activity` | One row per day. `?days=` (7–90) and **not** paged |
 
+### The operator's editing desk
+
+These four change what the public sees without changing a status, which is why
+each one writes an audit line naming what it altered.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `PATCH` | `/v1/admin/timelapses/{id}` | `{ title?, summary?, githubUrl?, xUrl?, sessionMinutes? }`. Absent keys are left alone; an **empty string clears a link** |
+| `POST` | `/v1/admin/uploads/thumbnail` | `{ contentType, sizeBytes }` → presigned `PUT` for a JPEG, PNG or WebP |
+| `PUT` | `/v1/admin/timelapses/{id}/thumbnail` | `{ key }`. The key must be a poster this operator uploaded |
+| `DELETE` | `/v1/admin/timelapses/{id}/thumbnail` | Back to the generated card |
+| `GET` | `/v1/admin/featured` | The front page, in order, with its `capacity` |
+| `PUT` | `/v1/admin/featured` | `{ ids }`. A **permutation** of the current shelf, never an add or a remove |
+
+The creator's own `PATCH` refuses once a session is in review or published, so a
+reviewer never reads a moving target. The admin one deliberately does not: a
+typo or a dead link on live work has to be fixable without unpublishing it.
+
+A poster is a different kind of object from a recording — its own type allowlist
+(`image/jpeg`, `image/png`, `image/webp`; no SVG, which is a document that can
+carry script), its own ceiling (`UPLOAD_POSTER_MAX_BYTES`, default 8 MiB) and its
+own key prefix, so a video can never be attached as a thumbnail or the reverse.
+It is stored as a media reference like a playback URL, so a private bucket keeps
+working: the API signs the link on the way out.
+
+### The curated front page
+
+`PUT /v1/admin/featured` takes the whole shelf in the order it should appear, and
+refuses anything that is not a permutation of what is already on it. Membership
+and order are separate operations on purpose — `POST`/`DELETE .../feature` add and
+remove, this only rearranges — which turns the common bug (a console reordering a
+shelf it last saw ten minutes ago) into a `409` instead of a silent change to what
+the public sees.
+
+The shelf holds at most 12 sessions. Featuring a thirteenth is refused with a
+message that says so, rather than accepted and then not displayed: a cap that
+silently drops what it cannot show is worse than no cap. Newly featured work goes
+to the **end** of the shelf, because "this belongs here" is not "this belongs
+first"; `featuredRank` is how the console arranges it afterwards, and the API
+strips that field from every anonymous payload.
+
 The audit trail is append-only and readable only by an admin. It is what makes
 the record worth writing: an operator can see what was decided, by whom and when.
 A deleted account leaves its decisions standing, attributed to nobody.

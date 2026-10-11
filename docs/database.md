@@ -27,6 +27,9 @@ users ──┬──< timelapses ──< timelapse_views
 | `0006_search_indexes` | `pg_trgm` and the trigram indexes the feed search needs |
 | `0007_maintenance` | Indexes for foreign keys that had none, `recount_totals()`, `purge_expired_auth()` |
 | `0008_security_hardening` | The `sardhana_app` role and its grants, role-level timeouts, the append-only audit trigger |
+| `0009_purge_grant` | Lets the API call the purge function 0008 restricted |
+| `0010_reports_and_featured` | `reports`, the report enums, and `timelapses.featured_at` |
+| `0011_featured_rank` | `timelapses.featured_rank` — an explicit, unique position on the curated front page |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -92,6 +95,16 @@ PRIMARY KEY (note_id, user_id)
 ```
 The same shape as the view deduplication: the tally cannot be inflated by asking
 twice, because the second ask is not a row.
+
+**The front page is a shelf, not a flag.** `featured_at` records that an operator
+chose a session; `featured_rank` records where they put it. Splitting the two is
+what makes "first" mean first, and a unique partial index on `featured_rank`
+means two sessions cannot claim the same position — so a reorder is a permutation
+of a set rather than a set of independent edits, and a bug that assigned a
+duplicate is rejected by the database instead of rendering one of them at random.
+A reorder moves every position out of the way first (`+100000`) before assigning
+the new ones, because the unique index would otherwise refuse a swap in which the
+target position is still occupied by the row being moved.
 
 ## Design notes
 
