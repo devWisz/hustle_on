@@ -91,6 +91,30 @@ func decodeTimeIDCursor(cursor string) (at *time.Time, id *string, err error) {
 	return &when, &parts[1], nil
 }
 
+// decodeRankCursor decodes the three-field cursor a ranked list uses: the
+// ranking value, the timestamp, and the row id.
+//
+// The ranking value is part of the key because it is the first thing the order
+// sorts on. A cursor without it could only say "after this timestamp", which is
+// not where the reader stopped: plenty of sessions share a donation total, and
+// resuming on the timestamp would skip every one of them that ranked level with
+// the last row seen.
+func decodeRankCursor(cursor string) (rank *int64, at *time.Time, id *string, err error) {
+	parts, err := decodeKeyset(cursor, 3)
+	if err != nil || parts == nil {
+		return nil, nil, nil, err
+	}
+	value, err := parseKeysetInt(parts[0])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	when, err := parseKeysetTime(parts[1])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return &value, &when, &parts[2], nil
+}
+
 // keysetTime renders a timestamp for a cursor at the precision Postgres stores,
 // so the value read back out of a timestamptz column round trips exactly.
 func keysetTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }

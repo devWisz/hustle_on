@@ -130,13 +130,64 @@ func (q FeedQuery) orderBy() string {
 	}
 }
 
-// pages reports whether this query can hand out a cursor.
+// rankColumn is the column a ranked sort orders by, or the empty string for the
+// default order. The strings are constants chosen by the switch, never assembled
+// from input, so no caller can reach the SQL.
+func (q FeedQuery) rankColumn() string {
+	switch q.Sort {
+	case FeedFunded:
+		return "t.donation_total_lamports"
+	case FeedWatched:
+		return "t.view_count"
+	case FeedLongest:
+		return "t.session_minutes"
+	default:
+		return ""
+	}
+}
+
+// rankOf reads the ranking value back out of a row so it can go into a cursor.
+// It has to agree with rankColumn about which column that is.
+func (q FeedQuery) rankOf(t domain.Timelapse) int64 {
+	switch q.Sort {
+	case FeedFunded:
+		return t.DonationTotal
+	case FeedWatched:
+		return int64(t.ViewCount)
+	case FeedLongest:
+		return int64(t.SessionMinutes)
+	default:
+		return 0
+	}
+}
+
+// keysetPredicate is the "resume after the row the cursor names" clause.
 //
-// Only the default order can. The other three rank on a column that changes
-// underneath the reader — a donation lands, a view is counted — and a keyset
-// cursor over a moving value silently skips and repeats rows. Ranked views
-// return a single page instead of quietly lying about what comes next.
-func (q FeedQuery) pages() bool { return q.Sort == FeedRecent }
+// Every order pages. The ranked orders used to return a single page instead,
+// because their sort column moves underneath the reader — a donation lands, a
+// view is counted — and a cursor over a moving value can show a row twice or
+// miss one between pages. That is a real effect and it is the price of being able
+// to see past the twelfth most-funded session at all; the alternative was a tab
+// that silently stopped and gave no sign it had. The key includes the ranking
+// value, so a row is at least never skipped for merely tying with the last one
+// seen.
+func (q FeedQuery) keysetPredicate() string {
+	if q.Sort == FeedRecent {
+		return "$2::timestamptz IS NULL OR (t.published_at, t.id) < ($2, $3::uuid)"
+	}
+	return "$2::timestamptz IS NULL OR (" + q.rankColumn() + ", t.published_at, t.id) < ($1, $2, $3::uuid)"
+}
+
+// cursorFor mints the cursor to resume from, in the shape this order pages by.
+func (q FeedQuery) cursorFor(t domain.Timelapse) string {
+	if q.Sort == FeedRecent {
+		return encodeCursor(t)
+	}
+	if t.PublishedAt == nil {
+		return ""
+	}
+	return encodeKeyset(keysetInt(q.rankOf(t)), keysetTime(*t.PublishedAt), t.ID)
+}
 
 // Feed returns published timelapses.
 //
@@ -144,29 +195,32 @@ func (q FeedQuery) pages() bool { return q.Sort == FeedRecent }
 // donation landing between two page loads cannot shuffle a row from page two
 // onto page one, and the cost of page fifty is the same as page one.
 func (s *Store) Feed(ctx context.Context, q FeedQuery) (domain.Page[domain.Timelapse], error) {
-	before, beforeID, err := decodeCursor(q.Cursor)
+	var (
+		rank     *int64
+		before   *time.Time
+		beforeID *string
+		err      error
+	)
+	if q.Sort == FeedRecent {
+		before, beforeID, err = decodeTimeIDCursor(q.Cursor)
+	} else {
+		rank, before, beforeID, err = decodeRankCursor(q.Cursor)
+	}
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, err
 	}
-	// A cursor and a ranked order cannot be combined; the cursor is simply
-	// dropped, since there was no honest page two to resume from.
-	if !q.pages() {
-		before, beforeID = nil, nil
-	}
-
-	search := likePattern(q.Search)
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+timelapseColumns+timelapseFrom+`
 		WHERE t.status = 'published'
-		  AND ($1::timestamptz IS NULL OR (t.published_at, t.id) < ($1, $2::uuid))
-		  AND ($4::text IS NULL
-		       OR t.title ILIKE $4 ESCAPE '\'
-		       OR t.summary ILIKE $4 ESCAPE '\'
-		       OR u.display_name ILIKE $4 ESCAPE '\'
-		       OR u.handle::text ILIKE $4 ESCAPE '\')
+		  AND (`+q.keysetPredicate()+`)
+		  AND ($5::text IS NULL
+		       OR t.title ILIKE $5 ESCAPE '\'
+		       OR t.summary ILIKE $5 ESCAPE '\'
+		       OR u.display_name ILIKE $5 ESCAPE '\'
+		       OR u.handle::text ILIKE $5 ESCAPE '\')
 		ORDER BY `+q.orderBy()+`
-		LIMIT $3`, before, beforeID, q.Limit+1, search)
+		LIMIT $4`, rank, before, beforeID, q.Limit+1, likePattern(q.Search))
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, normalize(err)
 	}
@@ -174,13 +228,7 @@ func (s *Store) Feed(ctx context.Context, q FeedQuery) (domain.Page[domain.Timel
 	if err != nil {
 		return domain.Page[domain.Timelapse]{}, err
 	}
-	if !q.pages() {
-		if len(items) > q.Limit {
-			items = items[:q.Limit]
-		}
-		return domain.Page[domain.Timelapse]{Items: items}, nil
-	}
-	return paginate(items, q.Limit), nil
+	return pageOf(items, q.Limit, q.cursorFor), nil
 }
 
 // likePattern turns a search term into a bounded ILIKE pattern, or nil when

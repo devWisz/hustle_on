@@ -3,6 +3,9 @@ package store
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/sardhana/backend/internal/domain"
 )
 
 func TestParseFeedSort(t *testing.T) {
@@ -41,16 +44,64 @@ func TestFeedOrderByIsClosedSet(t *testing.T) {
 	}
 }
 
-// Only the default order may hand out a cursor. The ranked orders sort on a
-// column that moves underneath the reader, and a keyset cursor over a moving
-// value silently skips and repeats rows.
-func TestOnlyRecentPages(t *testing.T) {
-	if !(FeedQuery{Sort: FeedRecent}).pages() {
-		t.Error("the default order must page")
+// Every order pages, and each mints the cursor shape it resumes from.
+//
+// The ranked orders used to refuse to page at all. That was defensible — their
+// sort column moves underneath the reader — but it meant a tab that quietly
+// stopped at the first page with no sign there was more. Now they page, and the
+// cursor carries the ranking value as well as the timestamp, because plenty of
+// sessions tie on a donation total and a timestamp alone could not say which of
+// them had been seen.
+func TestEveryOrderMintsACursorItCanResumeFrom(t *testing.T) {
+	published := time.Date(2026, 2, 3, 4, 5, 6, 0, time.UTC)
+	row := domain.Timelapse{
+		ID:             "11111111-1111-1111-1111-111111111111",
+		PublishedAt:    &published,
+		DonationTotal:  4200,
+		ViewCount:      17,
+		SessionMinutes: 90,
 	}
-	for _, sort := range []FeedSort{FeedFunded, FeedWatched, FeedLongest} {
-		if (FeedQuery{Sort: sort}).pages() {
-			t.Errorf("ranked order %q must not page", sort)
+
+	recent := FeedQuery{Sort: FeedRecent}.cursorFor(row)
+	if recent == "" {
+		t.Fatal("the default order produced no cursor")
+	}
+	if at, id, err := decodeTimeIDCursor(recent); err != nil || at == nil || *id != row.ID {
+		t.Fatalf("the default cursor did not round trip: at=%v id=%v err=%v", at, id, err)
+	}
+	// A two-field cursor is not a ranked cursor. Handing one to a ranked order
+	// must be refused outright rather than quietly read as page one.
+	if _, _, _, err := decodeRankCursor(recent); err == nil {
+		t.Error("a default-order cursor was accepted by a ranked order")
+	}
+
+	for _, tc := range []struct {
+		sort FeedSort
+		want int64
+	}{
+		{FeedFunded, 4200},
+		{FeedWatched, 17},
+		{FeedLongest, 90},
+	} {
+		cursor := FeedQuery{Sort: tc.sort}.cursorFor(row)
+		if cursor == "" {
+			t.Fatalf("%s produced no cursor", tc.sort)
+		}
+		rank, at, id, err := decodeRankCursor(cursor)
+		if err != nil || rank == nil || *rank != tc.want || at == nil || *id != row.ID {
+			t.Errorf("%s cursor round-tripped to rank=%v at=%v id=%v err=%v, want rank %d",
+				tc.sort, rank, at, id, err, tc.want)
+		}
+	}
+}
+
+// A row with no publication timestamp ends paging rather than looping, on every
+// order — there is no position to resume from.
+func TestARowWithNoTimestampEndsPaging(t *testing.T) {
+	row := domain.Timelapse{ID: "11111111-1111-1111-1111-111111111111"}
+	for _, sort := range []FeedSort{FeedRecent, FeedFunded, FeedWatched, FeedLongest} {
+		if got := (FeedQuery{Sort: sort}).cursorFor(row); got != "" {
+			t.Errorf("%s minted a cursor for a row with no published_at: %q", sort, got)
 		}
 	}
 }

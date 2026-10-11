@@ -20,9 +20,10 @@ import (
 
 // handleFeed returns published timelapses.
 //
-// `q` filters, `sort` ranks, `cursor` pages. Only the default order pages —
-// see store.FeedQuery — so a ranked request comes back without a cursor and
-// the client stops asking for more.
+// `q` filters, `sort` ranks, `cursor` pages. Every order pages and every order
+// mints its own cursor shape — a cursor from one order is refused by another
+// rather than read as page one, so a client that changes tab has to start again
+// instead of silently resuming in the wrong place.
 func (s *Server) handleFeed(w http.ResponseWriter, r *http.Request) error {
 	page, err := s.store.Feed(r.Context(), store.FeedQuery{
 		Cursor: queryString(r, "cursor", 200),
