@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Timelapse } from "@/lib/types";
 import { formatDuration, formatSession } from "@/lib/format";
-import { isSampleSlug } from "@/lib/demo/content";
 import { usePlayerSeek } from "./player-seek";
 import {
   MaximizeIcon,
@@ -58,7 +57,7 @@ export function TimelapsePlayer({ timelapse }: { timelapse: Timelapse }) {
   const seek = usePlayerSeek();
 
   useEffect(() => {
-    if (!timelapse.playbackUrl || isSampleSlug(timelapse.slug)) return;
+    if (!timelapse.playbackUrl) return;
     const timer = setTimeout(() => {
       if (counted.current) return;
       counted.current = true;

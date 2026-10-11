@@ -210,7 +210,7 @@ export function Feed({
           />
         )}
 
-        {!demo && cursor ? (
+        {cursor ? (
           <div className="mt-14 flex flex-col items-center gap-3">
             <Button
               variant="secondary"

@@ -8,20 +8,10 @@ import { MOTION, gsap, useGSAP } from "../motion/gsap";
 import { ArrowRightIcon, PlayIcon } from "../ui/icons";
 import { compression } from "./card";
 
-export function Showcase({
-  items,
-  fallback,
-  demo = false,
-}: {
-  items: Timelapse[];
-  fallback: Timelapse[];
-  demo?: boolean;
-}) {
+export function Showcase({ items }: { items: Timelapse[] }) {
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
   const working = items.filter((t) => t.playbackUrl && !failed.has(t.id));
-  const usingFallback = working.length === 0;
-  const reel = (usingFallback ? fallback : working).slice(0, 4);
-  const isDemo = demo || usingFallback;
+  const reel = working.slice(0, 4);
 
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -85,7 +75,6 @@ export function Showcase({
             }}
             onEnded={() => go(index + 1)}
             onError={() => {
-              if (usingFallback) return;
               setProgress(0);
               setFailed((prev) => new Set(prev).add(current.id));
             }}
@@ -103,7 +92,7 @@ export function Showcase({
                 aria-hidden
                 className={cx("h-1.5 w-1.5 rounded-full bg-white", playing && "animate-blink")}
               />
-              {isDemo ? "Demo reel" : "Now playing"}
+              Now playing
             </span>
             {ratio ? (
               <span className="rounded-full bg-black/45 px-3 py-1.5 tabular-nums backdrop-blur-md">

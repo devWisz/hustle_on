@@ -10,14 +10,12 @@ import { MessageSquareIcon, ThumbsUpIcon, TrashIcon } from "../ui/icons";
 import { useToast } from "../layout/toast";
 import { usePlayerSeek } from "../timelapse/player-seek";
 import { ReportButton } from "./report-button";
-import { DemoNote, DemoTag } from "../demo/tag";
 
 export function DiscussionPanel({
   slug,
   title,
   initialNotes,
   signedIn,
-  demo = false,
 }: {
   slug: string;
   title: string;
@@ -25,8 +23,6 @@ export function DiscussionPanel({
   initialNotes: Note[];
 
   signedIn: boolean;
-
-  demo?: boolean;
 }) {
   const { success, error } = useToast();
   const seek = usePlayerSeek();
