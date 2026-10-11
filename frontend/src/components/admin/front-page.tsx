@@ -7,7 +7,7 @@ import { ApiError, api } from "@/lib/api/client";
 import { cx } from "@/lib/format";
 import type { Timelapse } from "@/lib/types";
 import { useToast } from "../layout/toast";
-import { Button, EmptyState } from "../ui";
+import { Badge, Button, EmptyState } from "../ui";
 import { ArrowDownIcon, ArrowUpIcon, FilmIcon, PlayIcon } from "../ui/icons";
 
 /** Which request is in flight: the verb, the session, or both. */
@@ -24,7 +24,7 @@ function reorder(list: Timelapse[], id: string, to: number): Timelapse[] {
   const from = list.findIndex((t) => t.id === id);
   if (from < 0 || to < 0 || to >= list.length || to === from) return list;
   const next = [...list];
-  const [moved] = next.splice(from, 1);
+  const [moved] = next.splice(from, 1) as [Timelapse];
   next.splice(to, 0, moved);
   return next;
 }

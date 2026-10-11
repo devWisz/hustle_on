@@ -18,6 +18,12 @@ const ACTIONS: Record<string, { label: string; tone: Tone }> = {
   "report.dismiss": { label: "Report dismissed", tone: "neutral" },
   "timelapse.feature": { label: "Featured", tone: "accent" },
   "timelapse.unfeature": { label: "Unfeatured", tone: "neutral" },
+  // Editing something already published moves no status, so the trail is the
+  // only place it shows up at all.
+  "timelapse.edit": { label: "Edited", tone: "accent" },
+  "timelapse.thumbnail": { label: "Poster changed", tone: "neutral" },
+  "timelapse.thumbnail.clear": { label: "Poster removed", tone: "neutral" },
+  "featured.reorder": { label: "Front page rearranged", tone: "accent" },
 };
 
 function meta(action: string) {
@@ -29,10 +35,20 @@ function text(entry: AuditEntry, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/** A list-valued metadata field, such as the front page's new order. */
+function list(entry: AuditEntry, key: string): string[] {
+  const value = entry.metadata?.[key];
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
 export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compact?: boolean }) {
   const m = meta(entry.action);
   const title = text(entry, "title");
   const note = text(entry, "note");
+  // A shelf-wide action has no single subject to name, so it reports the order it
+  // set instead — the thing the operator actually changed.
+  const order = list(entry, "order");
+  const summary = title ?? (order.length ? order.join(" › ") : null);
   return (
     <li className={cx("flex items-start gap-3", compact ? "py-3" : "px-4 py-4 sm:px-5")}>
       {entry.actor ? (
@@ -48,12 +64,12 @@ export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compac
           <Badge tone={m.tone} className="h-5 px-2 text-[11px]">
             {m.label}
           </Badge>
-          {title && !compact ? (
-            <span className="min-w-0 truncate text-fg-muted">{title}</span>
+          {summary && !compact ? (
+            <span className="min-w-0 truncate text-fg-muted">{summary}</span>
           ) : null}
         </p>
-        {compact && title ? (
-          <p className="mt-0.5 truncate text-[12.5px] text-fg-muted">{title}</p>
+        {compact && summary ? (
+          <p className="mt-0.5 truncate text-[12.5px] text-fg-muted">{summary}</p>
         ) : null}
         {note ? (
           <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-fg-muted">
@@ -62,7 +78,8 @@ export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compac
         ) : null}
         {!compact ? (
           <p className="mt-1 font-mono text-[11px] text-fg-subtle">
-            {entry.subjectType} · {entry.subjectId?.slice(0, 10) ?? "none"}
+            {entry.subjectType.replace(/_/g, " ")}
+            {entry.subjectId ? ` · ${entry.subjectId.slice(0, 10)}` : ""}
           </p>
         ) : null}
       </div>
@@ -85,7 +102,13 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
   const visible = entries.filter((e) => {
     if (action !== "all" && e.action !== action) return false;
     if (!query.trim()) return true;
-    const hay = [e.actor?.displayName, text(e, "title"), text(e, "note"), e.subjectId]
+    const hay = [
+      e.actor?.displayName,
+      text(e, "title"),
+      text(e, "note"),
+      list(e, "order").join(" "),
+      e.subjectId,
+    ]
       .join(" ")
       .toLowerCase();
     return hay.includes(query.toLowerCase());
