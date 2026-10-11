@@ -52,8 +52,9 @@ export function CookieBanner() {
       <p className="text-[15px] font-semibold">Cookies on Hustle On</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
         We use essential cookies to keep you signed in and to protect your account from forged
-        requests. With your permission we also remember your theme, recent searches and saved
-        sessions on this device. We never use advertising or tracking cookies.{" "}
+        requests. With your permission we also remember your theme and recent searches on this
+        device. Your saved sessions live on your account, not in this browser. We never use
+        advertising or tracking cookies.{" "}
         <Link href="/cookies" className="font-medium text-fg underline underline-offset-2">
           Cookie policy
         </Link>

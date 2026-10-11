@@ -274,8 +274,11 @@ Sign-in used to depend on a third party's mail delivery: no API key, no way in; 
 bounced message, no way in; and every attempt wrote a row whose only purpose was
 to hold a secret in flight. A signature has none of that — the key never leaves
 the wallet, and the only thing the server keeps is a public address that has
-already proved itself. `users.email` survives as optional contact information a
-member may add: it is not unique, not a credential, and never used to sign in.
+already proved itself. `users.email` survives as a nullable, non-unique contact
+address — carried over for the accounts that predate migration 0013 — and it is
+never a credential and never used to sign in. Nothing currently edits it; it is
+kept so that an operator can recognise an account, not so that anybody signs in
+with one.
 See [ADR 0009](adr/0009-wallet-only-authentication.md).
 
 ### When a signature is refused

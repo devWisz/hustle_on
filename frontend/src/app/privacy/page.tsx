@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 const sections = [
   {
     title: "The short version",
-    body: "We collect as little as the service needs to work: the Solana wallet address that signs you in, the recordings and write-ups you choose to submit, and an optional contact email if you add one. We do not sell data, we do not run advertising trackers, and we never ask for keys or passwords.",
+    body: "We collect as little as the service needs to work: the Solana wallet address that signs you in, the recordings and write-ups you choose to submit, and, for accounts that predate wallet sign-in, a contact email address. We do not sell data, we do not run advertising trackers, and we never ask for keys or passwords.",
   },
   {
     title: "What we collect",
-    body: "Your wallet address; your handle, display name and bio; any contact email you add; the recordings, thumbnails, write-ups, links and session lengths you submit; the address you nominate for payouts; notes you post and sessions you save; and technical data needed to run and protect the service, namely the IP address and browser a request came from, used for rate limiting, security and abuse investigation.",
+    body: "Your wallet address; your handle, display name and bio; any contact email held on the account; the recordings, thumbnails, write-ups, links and session lengths you submit; the address you nominate for payouts; notes you post and sessions you save; and technical data needed to run and protect the service, namely the IP address and browser a request came from, used for rate limiting, security and abuse investigation.",
   },
   {
     title: "Your recordings",

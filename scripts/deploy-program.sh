@@ -11,6 +11,7 @@
 #   scripts/deploy-program.sh                 # deploy hustleon_pay to devnet
 #   scripts/deploy-program.sh --cluster mainnet-beta
 #   scripts/deploy-program.sh --check         # report what would happen, change nothing
+#   scripts/deploy-program.sh --fee-bps 500 --treasury <address>
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -18,10 +19,16 @@ cd "$(dirname "$0")/.."
 CLUSTER="devnet"
 PROGRAM="hustleon_pay"
 DO_CHECK=0
+# Passed through to the Config step: the platform fee in basis points, and the
+# wallet the fee is paid to. Both default inside that script.
+FEE_BPS="${FEE_BPS:-}"
+TREASURY="${TREASURY:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cluster) CLUSTER="$2"; shift 2 ;;
     --check)   DO_CHECK=1; shift ;;
+    --fee-bps) FEE_BPS="$2"; shift 2 ;;
+    --treasury) TREASURY="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -105,6 +112,23 @@ echo "deploying…"
 echo
 echo "on chain:"
 solana program show "$PROGRAM_ID" --url "$RPC" || true
+
+# --- create the Config account -----------------------------------------------
+# `sponsor` reads the platform fee from Config and refuses to run without it, so
+# the program cannot take a single sponsorship until this has run once. It is
+# idempotent, so running it on every deploy is harmless and means a fresh cluster
+# always ends up usable rather than half-set-up.
+echo
+echo "initializing config…"
+INIT_ARGS=()
+[[ -n "$FEE_BPS" ]] && INIT_ARGS+=(--fee-bps "$FEE_BPS")
+[[ -n "$TREASURY" ]] && INIT_ARGS+=(--treasury "$TREASURY")
+if ! NODE_PATH="$PWD/frontend/node_modules" SOLANA_RPC_URL="$RPC" \
+      node contracts/scripts/initialize-config.cjs ${INIT_ARGS[@]+"${INIT_ARGS[@]}"}; then
+  echo "warning: the program deployed but its Config account was not created." >&2
+  echo "         Sponsorships will fail until it is. Re-run:" >&2
+  echo "         NODE_PATH=frontend/node_modules node contracts/scripts/initialize-config.cjs" >&2
+fi
 
 # --- point the API at it -----------------------------------------------------
 # Only this one key is rewritten. Rewriting the whole file would clobber

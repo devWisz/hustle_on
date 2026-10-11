@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS wallet_challenges_address_idx
 COMMENT ON COLUMN users.wallet_address IS
     'The Solana address that signs in for this account. Proven by an ed25519 signature at sign-in.';
 COMMENT ON COLUMN users.email IS
-    'Optional contact address. Not a credential, not unique, never used to sign in.';
+    'A contact address held on the account, kept for accounts that predate wallet sign-in. Not a credential, not unique, never used to sign in, and not currently editable.';
 COMMENT ON COLUMN wallet_challenges.purpose IS
     'signin challenges are created before an account exists; payout challenges re-point where money is sent.';
 

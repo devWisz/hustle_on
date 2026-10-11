@@ -11,7 +11,11 @@ source "$ROOT/.env"
 set +a
 
 pids=()
-cleanup() { trap - INT TERM EXIT; kill "${pids[@]}" 2>/dev/null || true; }
+# The guard around the array is not decoration: macOS ships bash 3.2, where an
+# empty array under `set -u` is an unbound variable. Without it, an error between
+# `pids=()` and the first child would make the trap fail with a message about
+# `pids[@]` instead of the error that actually happened.
+cleanup() { trap - INT TERM EXIT; kill ${pids[@]+"${pids[@]}"} 2>/dev/null || true; }
 trap cleanup INT TERM EXIT
 
 prefix() { while IFS= read -r line; do printf '[%s] %s\n' "$1" "$line"; done; }
