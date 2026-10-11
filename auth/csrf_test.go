@@ -9,7 +9,7 @@ import (
 func testService(t *testing.T) *Service {
 	t.Helper()
 	svc, err := NewService(Config{
-		AppURL:  "https://sardhana.com",
+		AppURL:  "https://hustleon.com",
 		CSRFKey: []byte("0123456789abcdef0123456789abcdef"),
 	}, stubStore{}, LogMailer{Out: discard{}})
 	if err != nil {
@@ -18,7 +18,7 @@ func testService(t *testing.T) *Service {
 	return svc
 }
 
-var origins = []string{"https://sardhana.com"}
+var origins = []string{"https://hustleon.com"}
 
 func TestCheckCSRFAllowsSafeMethods(t *testing.T) {
 	svc := testService(t)
@@ -47,7 +47,7 @@ func TestCheckCSRFOnAnonymousRequests(t *testing.T) {
 	svc := testService(t)
 	// Signing in has no session yet, so the origin check stands alone.
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
-	req.Header.Set("Origin", "https://sardhana.com")
+	req.Header.Set("Origin", "https://hustleon.com")
 	if err := svc.CheckCSRF(req, origins); err != nil {
 		t.Fatalf("an anonymous same-origin POST was rejected: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestCheckCSRFRequiresATokenOnceSignedIn(t *testing.T) {
 	const sessionValue = "session-token-value"
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/videos", nil)
-	req.Header.Set("Origin", "https://sardhana.com")
+	req.Header.Set("Origin", "https://hustleon.com")
 	req.AddCookie(&http.Cookie{Name: svc.cfg.CookieName, Value: sessionValue})
 	if err := svc.CheckCSRF(req, origins); err == nil {
 		t.Fatal("a session request with no CSRF header was accepted")

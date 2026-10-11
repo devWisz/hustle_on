@@ -132,7 +132,7 @@ export function WalletForm({ user }: { user: SelfUser }) {
     <Card as="section" className="p-5">
       <h2 className="text-[15px] font-semibold">Payout wallet</h2>
       <p className="mt-1.5 text-sm text-fg-muted">
-        Donations are sent here directly. Sardhana never holds them and never asks for a seed phrase
+        Donations are sent here directly. Hustle On never holds them and never asks for a seed phrase
         — signing this message proves the key is yours and moves nothing.
       </p>
 

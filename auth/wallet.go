@@ -17,7 +17,7 @@ var ErrBadSignature = errors.New("auth: wallet signature does not verify")
 // WalletProofTemplate is the exact text the wallet is asked to sign. It names
 // the site and includes a server nonce, so a signature harvested by another
 // application cannot be replayed here.
-const WalletProofTemplate = `Sardhana wallet verification
+const WalletProofTemplate = `Hustle On wallet verification
 
 Address: %s
 Nonce: %s

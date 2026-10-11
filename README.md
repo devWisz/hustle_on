@@ -1,6 +1,6 @@
 <div align="center">
 
-# Sardhana
+# Hustle On
 
 **Rewards your hustle.**
 
@@ -38,7 +38,7 @@ record yourself ──▶ make a timelapse ──▶ upload with a write-up ─�
 ## Project structure
 
 ```
-sardhana/
+hustleon/
 ├── backend/        # Go HTTP API, the only writer to the database
 ├── auth/           # Go module: sign-in links, sessions, CSRF, wallet proofs
 ├── frontend/       # Next.js app: public site, creator dashboard, admin console
@@ -114,13 +114,13 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 
 ## Cookies
 
-Sardhana sets only essential cookies until you choose otherwise:
+Hustle On sets only essential cookies until you choose otherwise:
 
 | Cookie | Purpose | Lifetime |
 |---|---|---|
-| `sardhana_session` | Keeps you signed in; `HttpOnly`, never readable by scripts | 30 days |
-| `sardhana_session_csrf` | Double-submit token that protects every change you make | 30 days |
-| `sardhana_consent` | Remembers your cookie choice | 6 months |
+| `hustleon_session` | Keeps you signed in; `HttpOnly`, never readable by scripts | 30 days |
+| `hustleon_session_csrf` | Double-submit token that protects every change you make | 30 days |
+| `hustleon_consent` | Remembers your cookie choice | 6 months |
 
 A banner on the first visit asks whether preferences (theme, recent searches,
 saved sessions while signed out) may be remembered on the device. Choosing
@@ -178,7 +178,7 @@ somebody uploads one and a reviewer approves it.
 | Database | Neon | pooled URL for the API, direct URL for migrations |
 
 The web app and the API must share a registrable domain (for example
-`sardhana.com` and `api.sardhana.com`) so the sign-in cookie reaches both.
+`hustleon.com` and `api.hustleon.com`) so the sign-in cookie reaches both.
 `NEXT_PUBLIC_API_URL` is baked in at build time, so redeploy the web app after
 changing it. The full checklist is in [docs/deployment.md](docs/deployment.md).
 
@@ -189,7 +189,7 @@ To switch email on in production:
 
 1. Verify a sending domain in Resend and create an API key (it starts with `re_`).
 2. On Render, set `RESEND_API_KEY` and set `EMAIL_FROM` to an address on the verified
-   domain, for example `Sardhana <login@yourdomain.com>`.
+   domain, for example `Hustle On <login@yourdomain.com>`.
 3. Set `APP_ENV=production` and redeploy. Production refuses to start without a key,
    so a missing one fails loudly instead of silently dropping mail.
 

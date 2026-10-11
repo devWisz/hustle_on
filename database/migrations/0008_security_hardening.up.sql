@@ -27,7 +27,7 @@ END
 $$;
 
 COMMENT ON ROLE sardhana_app IS
-    'Least-privilege privileges for the Sardhana API. Grant a LOGIN role INTO this one.';
+    'Least-privilege privileges for the Hustle On API. Grant a LOGIN role INTO this one.';
 
 -- 2. Read and write current data. The API is the only writer, and every table
 --    in schema public is something it is meant to touch.

@@ -26,14 +26,14 @@ function proxyToApi(request: NextRequest): NextResponse {
     );
   }
   const headers = new Headers(request.headers);
-  headers.delete("x-sardhana-client-ip");
-  headers.delete("x-sardhana-proxy-key");
+  headers.delete("x-hustleon-client-ip");
+  headers.delete("x-hustleon-proxy-key");
   const ip =
     request.headers.get("x-real-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (proxySecret && ip) {
-    headers.set("x-sardhana-client-ip", ip);
-    headers.set("x-sardhana-proxy-key", proxySecret);
+    headers.set("x-hustleon-client-ip", ip);
+    headers.set("x-hustleon-proxy-key", proxySecret);
   }
   return NextResponse.rewrite(new URL(`${rest}${search}`, proxyTarget), { request: { headers } });
 }

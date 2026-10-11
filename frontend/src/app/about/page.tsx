@@ -8,7 +8,7 @@ import { ArrowRightIcon, CloseIcon } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
   title: "How it works",
-  description: "What Sardhana is, and what happens between an upload and a sponsorship.",
+  description: "What Hustle On is, and what happens between an upload and a sponsorship.",
 };
 
 const STEPS = [
@@ -30,7 +30,7 @@ const STEPS = [
   },
   {
     title: "People sponsor your hustle",
-    body: "Once it is live, anyone can watch it. Viewers who think the work was worth it sign in and send SOL straight from their wallet to yours, so you can see who backed you. Sardhana never holds the money and takes no cut, and every transfer is verified on-chain. Some will reach out to hire you instead.",
+    body: "Once it is live, anyone can watch it. Viewers who think the work was worth it sign in and send SOL straight from their wallet to yours, so you can see who backed you. Hustle On never holds the money and takes no cut, and every transfer is verified on-chain. Some will reach out to hire you instead.",
   },
 ];
 
@@ -83,7 +83,7 @@ export default function AboutPage() {
         <Container width="wide">
           <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-6 sm:p-12">
             <p className="text-eyebrow">Hard lines</p>
-            <SplitHeading className="text-title mt-4">What Sardhana will never do</SplitHeading>
+            <SplitHeading className="text-title mt-4">What Hustle On will never do</SplitHeading>
             <Reveal as="ul" stagger={0.08} className="mt-10 grid gap-4 sm:grid-cols-2">
               {NEVER.map((line) => (
                 <li

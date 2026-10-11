@@ -28,7 +28,7 @@ func operatorServer() *Server {
 	s := testServer()
 	s.media = media.New(media.Config{
 		Endpoint: "http://localhost:8085",
-		Bucket:   "sardhana-media",
+		Bucket:   "hustleon-media",
 		MaxBytes: 1 << 20,
 	})
 	return s

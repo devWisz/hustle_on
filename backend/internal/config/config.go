@@ -132,7 +132,7 @@ func Load() (Config, error) {
 		DatabaseMaxConns: int32(envInt("DATABASE_MAX_CONNS", 10)),
 
 		SessionSecret:       []byte(os.Getenv("SESSION_SECRET")),
-		SessionCookieName:   env("SESSION_COOKIE_NAME", "sardhana_session"),
+		SessionCookieName:   env("SESSION_COOKIE_NAME", "hustleon_session"),
 		CookieDomain:        strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN")),
 		InternalProxySecret: os.Getenv("INTERNAL_PROXY_SECRET"),
 		AdminSessionMaxAge:  time.Duration(envInt("ADMIN_SESSION_MAX_AGE_HOURS", 12)) * time.Hour,
@@ -141,7 +141,7 @@ func Load() (Config, error) {
 		MagicLinkTTL:        time.Duration(envInt("MAGIC_LINK_TTL_MINUTES", 15)) * time.Minute,
 
 		ResendAPIKey: os.Getenv("RESEND_API_KEY"),
-		EmailFrom:    env("EMAIL_FROM", "Sardhana <login@localhost>"),
+		EmailFrom:    env("EMAIL_FROM", "Hustle On <login@localhost>"),
 		EmailReplyTo: os.Getenv("EMAIL_REPLY_TO"),
 
 		SolanaCluster: env("SOLANA_CLUSTER", "devnet"),

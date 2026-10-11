@@ -8,7 +8,7 @@ import { ShieldIcon } from "@/components/ui/icons";
 import type { AdminAccess } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s · Admin — Sardhana" },
+  title: { default: "Admin", template: "%s · Admin — Hustle On" },
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";

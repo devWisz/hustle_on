@@ -32,7 +32,7 @@ export function Footer() {
           <div>
             <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold">
               <LogoMark />
-              Sardhana
+              Hustle On
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-fg-muted">
               Timelapses of real work, reviewed by a person and funded directly by the people who
@@ -40,7 +40,7 @@ export function Footer() {
             </p>
             <div className="mt-6 flex items-center gap-2">
               <a
-                href="https://github.com/sardhana"
+                href="https://github.com/hustleon"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GitHub"
@@ -49,7 +49,7 @@ export function Footer() {
                 <GitHubIcon size={15} />
               </a>
               <a
-                href="https://x.com/sardhana"
+                href="https://x.com/hustleon"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="X"
@@ -83,7 +83,7 @@ export function Footer() {
           aria-hidden
           className="mt-16 select-none text-[clamp(3.5rem,17vw,15rem)] font-semibold leading-[0.8] tracking-[-0.06em] text-fg/[0.07]"
         >
-          Sardhana
+          Hustle On
         </p>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">

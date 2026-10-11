@@ -9,7 +9,7 @@ import (
 )
 
 // CSRFHeader is the header the frontend echoes the CSRF cookie back in.
-const CSRFHeader = "X-Sardhana-CSRF"
+const CSRFHeader = "X-Hustleon-CSRF"
 
 // CSRFToken derives a token bound to a session. Because it is an HMAC of the
 // session digest, an attacker who can guess or plant a cookie value still

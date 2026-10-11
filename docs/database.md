@@ -174,13 +174,13 @@ applying a migration:
 
 ```sql
 -- 1. A login role that inherits the group, with its own password.
-CREATE ROLE sardhana_api LOGIN PASSWORD 'generated-with-openssl-rand-base64-48'
+CREATE ROLE hustleon_api LOGIN PASSWORD 'generated-with-openssl-rand-base64-48'
     IN ROLE sardhana_app;
 ```
 
 ```bash
 # 2. Point the API at it. The pooled endpoint, as before.
-DATABASE_URL="postgres://sardhana_api:<password>@<pooler-host>/sardhana?sslmode=require"
+DATABASE_URL="postgres://hustleon_api:<password>@<pooler-host>/sardhana?sslmode=require"
 ```
 
 The new role owns nothing, so it can drop nothing. What it specifically cannot
@@ -278,7 +278,7 @@ Statements are executed in `QueryExecModeExec`. Statement caching interacts badl
 with a pooler in transaction mode: a prepared statement may not exist on the
 backend the pooler hands out next.
 
-Every connection is tagged `application_name=sardhana-api`, so `pg_stat_activity`
+Every connection is tagged `application_name=hustleon-api`, so `pg_stat_activity`
 answers "who is holding this lock" during an incident instead of leaving it to a
 guess.
 

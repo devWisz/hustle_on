@@ -77,7 +77,7 @@ recorded in the write-ahead log. The procedure and its consequences are in
 
 ## Seed data
 
-The seed creates one thing: an administrator, `reviewer@sardhana.test`.
+The seed creates one thing: an administrator, `reviewer@hustleon.test`.
 
 It used to generate eight creators and nine sessions with recordings shipped in
 `frontend/public/demo`. That is gone, deliberately. A seeded imitation of a
@@ -92,5 +92,5 @@ create one:
 
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
-DELETE FROM users WHERE email = 'reviewer@sardhana.test';
+DELETE FROM users WHERE email = 'reviewer@hustleon.test';
 ```

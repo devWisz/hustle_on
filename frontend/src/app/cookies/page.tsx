@@ -6,24 +6,24 @@ import { LegalPage } from "@/components/layout/legal";
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description:
-    "Every cookie and stored preference Sardhana uses, what it is for and how long it lasts.",
+    "Every cookie and stored preference Hustle On uses, what it is for and how long it lasts.",
 };
 
 const sections = [
   {
     title: "What we use",
-    body: "Sardhana uses a handful of essential cookies to keep you signed in and to protect your account, and, only if you allow it, browser storage that remembers a few preferences on this device. There are no advertising, analytics or cross-site tracking cookies, and none are set by third parties.",
+    body: "Hustle On uses a handful of essential cookies to keep you signed in and to protect your account, and, only if you allow it, browser storage that remembers a few preferences on this device. There are no advertising, analytics or cross-site tracking cookies, and none are set by third parties.",
   },
   {
-    title: "sardhana_session (essential)",
+    title: "hustleon_session (essential)",
     body: "Keeps you signed in. It holds a random token whose hash is stored on our server, and it is marked HttpOnly, so no script on the page can read it. It lasts up to thirty days and is deleted when you sign out.",
   },
   {
-    title: "sardhana_session_csrf (essential)",
-    body: "Protects every change you make, such as uploading, posting a note or sponsoring, against cross-site request forgery. The page reads it and sends it back with each request so the server can confirm the request came from Sardhana. It lasts as long as your session.",
+    title: "hustleon_session_csrf (essential)",
+    body: "Protects every change you make, such as uploading, posting a note or sponsoring, against cross-site request forgery. The page reads it and sends it back with each request so the server can confirm the request came from Hustle On. It lasts as long as your session.",
   },
   {
-    title: "sardhana_consent (essential)",
+    title: "hustleon_consent (essential)",
     body: "Remembers the choice you made in the cookie banner, so we do not ask on every visit. It lasts six months.",
   },
   {

@@ -172,7 +172,7 @@ var reservedHandles = map[string]bool{
 	"admin": true, "api": true, "auth": true, "login": true, "logout": true,
 	"signup": true, "settings": true, "support": true, "help": true,
 	"about": true, "terms": true, "privacy": true,
-	"sardhana": true, "upload": true, "watch": true, "timelapse": true,
+	"hustleon": true, "upload": true, "watch": true, "timelapse": true,
 	"creator": true, "dashboard": true, "review": true,
 	"static": true, "assets": true, "media": true, "www": true, "root": true,
 }

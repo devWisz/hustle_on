@@ -1,4 +1,4 @@
-// Package auth implements passwordless authentication for Sardhana: email
+// Package auth implements passwordless authentication for Hustle On: email
 // magic links, opaque server-side sessions, CSRF tokens and Solana wallet
 // ownership proofs. It depends only on the standard library.
 package auth

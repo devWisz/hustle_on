@@ -1,6 +1,6 @@
 # Authentication
 
-Sardhana has two kinds of proof, and they answer different questions.
+Hustle On has two kinds of proof, and they answer different questions.
 
 | Proof | Answers | Lives in |
 | --- | --- | --- |
@@ -30,8 +30,8 @@ there is nothing to leak, reset, reuse across sites, or phish.
   POST /v1/auth/verify                { token }
        │  digest looked up, marked consumed, session created
        ▼
-  Set-Cookie: sardhana_session       (HttpOnly, Secure, SameSite=Lax)
-  Set-Cookie: sardhana_session_csrf  (readable, by design)
+  Set-Cookie: hustleon_session       (HttpOnly, Secure, SameSite=Lax)
+  Set-Cookie: hustleon_session_csrf  (readable, by design)
 ```
 
 ### What each step guarantees
@@ -92,7 +92,7 @@ alone has known bypasses; together they do not.
 
 1. **Origin.** The `Origin` header (falling back to `Referer`) must be on the
    configured allowlist. The browser sets this and a page cannot forge it.
-2. **Double-submit token.** `X-Sardhana-CSRF` must match an HMAC of this exact
+2. **Double-submit token.** `X-Hustleon-CSRF` must match an HMAC of this exact
    session's digest, keyed by `SESSION_SECRET`.
 
 The CSRF cookie is intentionally *not* `HttpOnly` — the frontend has to read it
@@ -144,7 +144,7 @@ An address therefore belongs to exactly one account, and no code path can record
 one without the proof that established it. Claiming an address already held
 elsewhere is a conflict, not a transfer.
 
-**Sardhana never asks for a seed phrase or a private key** — not to sign in, not
+**Hustle On never asks for a seed phrase or a private key** — not to sign in, not
 to receive payouts, not for support. Any page that does is not ours.
 
 ---

@@ -223,7 +223,7 @@ export function DonatePanel({
             Open in a mobile wallet
           </a>
           <p className="text-[12px] leading-relaxed text-fg-subtle">
-            A transfer sent this way still reaches {timelapse.creator.displayName}, but Sardhana
+            A transfer sent this way still reaches {timelapse.creator.displayName}, but Hustle On
             cannot link it to you, so it will not be listed under Sponsors. Use the extension tab
             to be credited.
           </p>

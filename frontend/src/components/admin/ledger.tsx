@@ -150,7 +150,7 @@ export function Ledger({ entries }: { entries: LedgerEntry[] }) {
         `${e.donor?.displayName ?? "anonymous"} ${e.recipient.displayName} ${e.timelapse.title} ${e.signature ?? ""}`
       }
       searchLabel="Search people, sessions or signatures"
-      filename="sardhana-ledger.csv"
+      filename="hustleon-ledger.csv"
       defaultSort={{ key: "when", dir: "desc" }}
       empty={{
         title: "No transfers match",

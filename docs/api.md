@@ -28,8 +28,8 @@ for that request, so a reported failure can be matched to the exact line.
 | `rate_limited` | 429 | See `Retry-After` and `X-RateLimit-*` |
 
 **Every state-changing request needs both** an allowlisted `Origin` and, when a
-session cookie is present, the `X-Sardhana-CSRF` header whose value is the
-`sardhana_session_csrf` cookie. Missing either is a 403. Send cookies with
+session cookie is present, the `X-Hustleon-CSRF` header whose value is the
+`hustleon_session_csrf` cookie. Missing either is a 403. Send cookies with
 `credentials: "include"`.
 
 The check runs in one middleware for the whole API, before any handler, so it

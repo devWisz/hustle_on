@@ -190,7 +190,7 @@ export function Library({ initial }: { initial: Timelapse[] }) {
         columns={columns}
         search={(t) => `${t.title} ${t.creator.displayName}`}
         searchLabel="Search sessions or creators"
-        filename="sardhana-library.csv"
+        filename="hustleon-library.csv"
         defaultSort={{ key: "published", dir: "desc" }}
         empty={
           items.length === 0

@@ -11,7 +11,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[sardhana] route error", error.digest ?? error.message);
+    console.error("[hustleon] route error", error.digest ?? error.message);
   }, [error]);
 
   return (

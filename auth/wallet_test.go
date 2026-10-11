@@ -16,7 +16,7 @@ func TestVerifySolanaSignature(t *testing.T) {
 		t.Fatalf("generate key: %v", err)
 	}
 	address := base58.Encode(pub)
-	message := "Sardhana wallet verification\n\nNonce: abc123"
+	message := "Hustle On wallet verification\n\nNonce: abc123"
 	signature := base58.Encode(ed25519.Sign(priv, []byte(message)))
 
 	if err := VerifySolanaSignature(address, message, signature); err != nil {
@@ -46,7 +46,7 @@ func TestValidateSolanaAddress(t *testing.T) {
 }
 
 func TestBase58RoundTrip(t *testing.T) {
-	for _, in := range [][]byte{{}, {0}, {0, 0, 1}, []byte("sardhana")} {
+	for _, in := range [][]byte{{}, {0}, {0, 0, 1}, []byte("hustleon")} {
 		encoded := base58.Encode(in)
 		out, err := base58.Decode(encoded)
 		if err != nil {
@@ -113,7 +113,7 @@ func TestARejectedSignatureDoesNotSpendTheChallenge(t *testing.T) {
 
 	store := &recordingWalletStore{}
 	svc, err := NewService(Config{
-		AppURL:  "https://sardhana.com",
+		AppURL:  "https://hustleon.com",
 		CSRFKey: []byte("0123456789abcdef0123456789abcdef"),
 	}, store, LogMailer{Out: discard{}})
 	if err != nil {

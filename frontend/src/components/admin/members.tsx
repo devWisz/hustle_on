@@ -143,7 +143,7 @@ export function Members({ initial }: { initial: AdminMember[] }) {
       columns={columns}
       search={(m) => `${m.displayName} ${m.handle} ${m.email}`}
       searchLabel="Search by name, handle or email"
-      filename="sardhana-members.csv"
+      filename="hustleon-members.csv"
       defaultSort={{ key: "active", dir: "desc" }}
       empty={{
         title: "No members match",

@@ -9,7 +9,7 @@ import { AlertIcon, ShieldIcon } from "@/components/ui/icons";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Sardhana with an email link.",
+  description: "Sign in to Hustle On with an email link.",
   robots: { index: false, follow: false },
 };
 
@@ -27,7 +27,7 @@ export default async function LoginPage({
     ? "One step before you sponsor"
     : uploading
       ? "One step before you upload"
-      : "Sardhana";
+      : "Hustle On";
 
   return (
     <Container width="narrow" className="py-14 sm:py-24">

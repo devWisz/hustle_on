@@ -39,7 +39,7 @@ export default async function LedgerPage() {
     <div>
       <AdminHeader
         title="Ledger"
-        description="Every sponsorship, as read back off the chain. Sardhana never holds these funds; this is the verification record."
+        description="Every sponsorship, as read back off the chain. Hustle On never holds these funds; this is the verification record."
       />
 
       {chain ? (

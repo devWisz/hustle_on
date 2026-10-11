@@ -13,7 +13,7 @@
 -- To make the account yours, sign in with your own address once and promote it:
 --
 --   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
---   DELETE FROM users WHERE email = 'reviewer@sardhana.test';
+--   DELETE FROM users WHERE email = 'reviewer@hustleon.test';
 --
 -- Safe to re-run: it empties every table first. scripts/migrate.sh and
 -- cmd/migrate both refuse to run it when APP_ENV=production.
@@ -33,7 +33,7 @@ TRUNCATE reports, note_votes, timelapse_notes, bookmarks, donations, timelapse_v
 INSERT INTO users (id, email, email_verified_at, handle, display_name, role, bio,
                    payout_address, payout_verified_at, created_at, last_seen_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'reviewer@sardhana.test', now(), 'reviewer',
+  ('00000000-0000-0000-0000-000000000001', 'reviewer@hustleon.test', now(), 'reviewer',
    'Reviewer', 'admin',
    'Reads every submission before it reaches the feed.',
    NULL, NULL, now(), now());

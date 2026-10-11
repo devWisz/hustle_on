@@ -42,8 +42,8 @@ Two cookies, with the flags each one needs rather than the same flags for both.
 
 | Cookie | HttpOnly | Why |
 | --- | --- | --- |
-| `sardhana_session` | **yes** | The credential. Unreachable from script, so an XSS bug cannot exfiltrate a session. |
-| `sardhana_session_csrf` | no, on purpose | The frontend must read it to echo it back in a header. It is not a credential: it is an HMAC of the session digest, so planting a value does not produce the matching token. |
+| `hustleon_session` | **yes** | The credential. Unreachable from script, so an XSS bug cannot exfiltrate a session. |
+| `hustleon_session_csrf` | no, on purpose | The frontend must read it to echo it back in a header. It is not a credential: it is an HMAC of the session digest, so planting a value does not produce the matching token. |
 
 Both are `Secure` whenever the web app is served over https, `SameSite=Lax`,
 `Path=/`, and host-only unless `SESSION_COOKIE_DOMAIN` says otherwise —
@@ -64,7 +64,7 @@ Two independent checks, both required on every state-changing request:
 
 1. `Origin` (or `Referer`) on the allowlist — set by the browser, unforgeable
    by a page.
-2. `X-Sardhana-CSRF` matching an HMAC of this session's digest under
+2. `X-Hustleon-CSRF` matching an HMAC of this session's digest under
    `SESSION_SECRET`.
 
 Both live behind **one middleware** that runs before any handler, so protection
@@ -228,6 +228,6 @@ value the operator did not intend.
 
 ## Reporting a vulnerability
 
-Email `security@sardhana.com`. Include what you did and what you observed.
+Email `security@hustleon.com`. Include what you did and what you observed.
 Please do not open a public issue, and please do not test against other people's
 accounts or content.

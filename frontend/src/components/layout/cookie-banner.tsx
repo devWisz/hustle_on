@@ -49,7 +49,7 @@ export function CookieBanner() {
       aria-label="Cookie settings"
       className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-2xl rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[var(--shadow-lifted)] sm:inset-x-6 sm:bottom-6 sm:p-6"
     >
-      <p className="text-[15px] font-semibold">Cookies on Sardhana</p>
+      <p className="text-[15px] font-semibold">Cookies on Hustle On</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
         We use essential cookies to keep you signed in and to protect your account from forged
         requests. With your permission we also remember your theme, recent searches and saved

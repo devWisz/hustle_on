@@ -43,7 +43,7 @@ requires() {
 is_https() { [[ "${1:-}" == https://* ]]; }
 
 echo
-echo "Sardhana production preflight"
+echo "Hustle On production preflight"
 echo "${dim}env file: $ENV_FILE${reset}"
 echo
 
@@ -65,8 +65,8 @@ is_https "${NEXT_PUBLIC_SITE_URL:-}" && pass "NEXT_PUBLIC_SITE_URL is https" \
 # The two halves of the app have to agree about the cookie name. If they do not,
 # the frontend reads a cookie that is not there and every state-changing request
 # fails its CSRF check with no clue as to why.
-api_cookie="${SESSION_COOKIE_NAME:-sardhana_session}"
-web_cookie="${NEXT_PUBLIC_SESSION_COOKIE:-sardhana_session}"
+api_cookie="${SESSION_COOKIE_NAME:-hustleon_session}"
+web_cookie="${NEXT_PUBLIC_SESSION_COOKIE:-hustleon_session}"
 if [[ "$api_cookie" == "$web_cookie" ]]; then
   pass "session cookie name matches on both sides ($api_cookie)"
 else
@@ -207,7 +207,7 @@ if command -v psql >/dev/null 2>&1 && [[ -n "$dsn" ]]; then
     warn "could not read schema_migrations; skipping the migration and account checks"
   fi
 
-  demo="$(query "select count(*) from users where email::text like '%@sardhana.test'")"
+  demo="$(query "select count(*) from users where email::text like '%@hustleon.test'")"
   if [[ "$demo" =~ ^[0-9]+$ ]]; then
     if (( demo == 0 )); then
       pass "no development-seed accounts remain"

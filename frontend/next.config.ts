@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "**.sardhana.com" }],
+    remotePatterns: [{ protocol: "https", hostname: "**.hustleon.com" }],
   },
 };
 

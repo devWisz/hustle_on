@@ -463,8 +463,8 @@ func internalClientIP(r *http.Request) (netip.Addr, bool) {
 }
 
 const (
-	internalKeyHeader = "X-Sardhana-Proxy-Key"
-	internalIPHeader  = "X-Sardhana-Client-IP"
+	internalKeyHeader = "X-Hustleon-Proxy-Key"
+	internalIPHeader  = "X-Hustleon-Client-IP"
 )
 
 var internalProxySecret []byte

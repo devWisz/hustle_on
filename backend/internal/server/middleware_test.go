@@ -31,8 +31,8 @@ func (stubMailer) Send(context.Context, auth.Message) error { return nil }
 func testAuth(t *testing.T) *auth.Service {
 	t.Helper()
 	svc, err := auth.NewService(auth.Config{
-		AppURL:     "https://sardhana.com",
-		CookieName: "sardhana_session",
+		AppURL:     "https://hustleon.com",
+		CookieName: "hustleon_session",
 		Secure:     true,
 		CSRFKey:    []byte(authTestKey),
 	}, stubAuthStore{}, stubMailer{})
@@ -45,7 +45,7 @@ func testAuth(t *testing.T) *auth.Service {
 func testServer() *Server {
 	cfg := config.Config{
 		Env:                "production",
-		AllowedOrigins:     []string{"https://sardhana.com"},
+		AllowedOrigins:     []string{"https://hustleon.com"},
 		RateLimitAnon:      60,
 		RateLimitAuth:      5,
 		RateLimitEngage:    60,
@@ -108,9 +108,9 @@ func TestCORSOnlyAnswersAllowedOrigins(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/feed", nil)
-	req.Header.Set("Origin", "https://sardhana.com")
+	req.Header.Set("Origin", "https://hustleon.com")
 	s.cors(http.HandlerFunc(ok)).ServeHTTP(rec, req)
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://sardhana.com" {
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://hustleon.com" {
 		t.Errorf("allowed origin was not echoed, got %q", got)
 	}
 
@@ -132,7 +132,7 @@ func TestCORSAllowsEveryMethodTheRoutesUse(t *testing.T) {
 	s := testServer()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodOptions, "/v1/me/bookmarks/thing", nil)
-	req.Header.Set("Origin", "https://sardhana.com")
+	req.Header.Set("Origin", "https://hustleon.com")
 	s.cors(http.HandlerFunc(ok)).ServeHTTP(rec, req)
 
 	allowed := rec.Header().Get("Access-Control-Allow-Methods")
@@ -284,7 +284,7 @@ func TestCSRFGuardAllowsAnonymousWriteFromOurOrigin(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/request-link", nil)
-	req.Header.Set("Origin", "https://sardhana.com")
+	req.Header.Set("Origin", "https://hustleon.com")
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("anonymous sign-in request got %d, want 200", rec.Code)
@@ -301,8 +301,8 @@ func TestCSRFGuardRequiresATokenOnceASessionIsPresent(t *testing.T) {
 	post := func(token string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/v1/me/bookmarks/thing", nil)
-		req.Header.Set("Origin", "https://sardhana.com")
-		req.AddCookie(&http.Cookie{Name: "sardhana_session", Value: session})
+		req.Header.Set("Origin", "https://hustleon.com")
+		req.AddCookie(&http.Cookie{Name: "hustleon_session", Value: session})
 		if token != "" {
 			req.Header.Set(auth.CSRFHeader, token)
 		}

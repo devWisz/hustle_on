@@ -5,8 +5,8 @@ import { api } from "./api/client";
 import { canRemember } from "./consent";
 import type { Timelapse } from "./types";
 
-const STORAGE_KEY = "sardhana-bookmarks";
-const EVENT_NAME = "sardhana-bookmarks-changed";
+const STORAGE_KEY = "hustleon-bookmarks";
+const EVENT_NAME = "hustleon-bookmarks-changed";
 
 export interface SavedTimelapse {
   id: string;

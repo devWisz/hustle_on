@@ -150,7 +150,7 @@ insert was genuinely new.
 Frontend: `frontend/src/components/donate-panel.tsx`
 Backend: `backend/internal/server/donation_handlers.go`
 
-SOL moves **wallet to wallet**. Sardhana never holds it and takes no cut. There
+SOL moves **wallet to wallet**. Hustle On never holds it and takes no cut. There
 is no on-chain program to deploy — a donation is a plain system transfer.
 
 ```

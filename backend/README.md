@@ -1,6 +1,6 @@
 # backend
 
-The Sardhana HTTP API, written in Go with no web framework — `net/http` plus
+The Hustle On HTTP API, written in Go with no web framework — `net/http` plus
 the routing patterns added in Go 1.22.
 
 ## Layout

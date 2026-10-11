@@ -20,8 +20,8 @@ async function requestHeaders(): Promise<Record<string, string>> {
     const h = await headers();
     const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (ip) {
-      out["X-Sardhana-Client-IP"] = ip;
-      out["X-Sardhana-Proxy-Key"] = PROXY_SECRET;
+      out["X-Hustleon-Client-IP"] = ip;
+      out["X-Hustleon-Proxy-Key"] = PROXY_SECRET;
     }
   }
   return out;

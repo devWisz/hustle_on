@@ -2,7 +2,7 @@
 
 A donation is a plain SOL transfer from the donor's wallet to the creator's.
 There is no on-chain program, no escrow, no platform fee, and no custody.
-Sardhana's only role is to know which address to send to and to check afterwards
+Hustle On's only role is to know which address to send to and to check afterwards
 that the transfer really happened.
 
 Sponsoring requires an account. Both calls below answer `401` to a signed-out

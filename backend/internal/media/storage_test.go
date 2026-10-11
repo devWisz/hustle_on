@@ -11,11 +11,11 @@ import (
 func testStorage() *Storage {
 	return New(Config{
 		Endpoint:  "https://s3.us-east-1.amazonaws.com",
-		Bucket:    "sardhana-media",
+		Bucket:    "hustleon-media",
 		Region:    "us-east-1",
 		AccessKey: "AKIAEXAMPLE",
 		SecretKey: "secret",
-		PublicURL: "https://media.sardhana.com",
+		PublicURL: "https://media.hustleon.com",
 		MaxBytes:  1 << 30,
 		URLTTL:    15 * time.Minute,
 	})

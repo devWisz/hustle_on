@@ -1,4 +1,4 @@
-// Command api runs the Sardhana HTTP API.
+// Command api runs the Hustle On HTTP API.
 package main
 
 import (
@@ -67,7 +67,7 @@ func run() error {
 		MagicLinkTTL:    cfg.MagicLinkTTL,
 		MaxLinksPerHour: cfg.RateLimitAuth,
 		CSRFKey:         cfg.SessionSecret,
-		ProductName:     "Sardhana",
+		ProductName:     "Hustle On",
 	}, st, mailer)
 	if err != nil {
 		return err

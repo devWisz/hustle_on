@@ -31,7 +31,7 @@ type Config struct {
 
 func (c *Config) withDefaults() {
 	if c.CookieName == "" {
-		c.CookieName = "sardhana_session"
+		c.CookieName = "hustleon_session"
 	}
 	if c.SessionTTL == 0 {
 		c.SessionTTL = 30 * 24 * time.Hour
@@ -43,7 +43,7 @@ func (c *Config) withDefaults() {
 		c.MaxLinksPerHour = 5
 	}
 	if c.ProductName == "" {
-		c.ProductName = "Sardhana"
+		c.ProductName = "Hustle On"
 	}
 }
 

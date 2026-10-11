@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sardhana-api
+    name: hustleon-api
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile

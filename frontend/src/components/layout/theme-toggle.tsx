@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { canRemember } from "@/lib/consent";
 import { MoonIcon, SunIcon } from "../ui/icons";
 
-export const THEME_EVENT = "sardhana:theme";
+export const THEME_EVENT = "hustleon:theme";
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);

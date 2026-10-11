@@ -10,12 +10,12 @@ import (
 func validConfig() Config {
 	return Config{
 		Env:                "development",
-		WebURL:             "https://sardhana.com",
-		AllowedOrigins:     []string{"https://sardhana.com"},
+		WebURL:             "https://hustleon.com",
+		AllowedOrigins:     []string{"https://hustleon.com"},
 		DatabaseURL:        "postgres://user:pw@host/sardhana?sslmode=require",
 		DatabaseMaxConns:   10,
 		SessionSecret:      make([]byte, 32),
-		SessionCookieName:  "sardhana_session",
+		SessionCookieName:  "hustleon_session",
 		RateLimitAnon:      300,
 		RateLimitAuth:      5,
 		RateLimitEngage:    60,
@@ -40,8 +40,8 @@ func productionConfig() Config {
 	c := validConfig()
 	c.Env = "production"
 	c.ResendAPIKey = "re_test"
-	c.EmailFrom = "Sardhana <hello@sardhana.com>"
-	c.StorageBucket = "sardhana-media"
+	c.EmailFrom = "Hustle On <hello@hustleon.com>"
+	c.StorageBucket = "hustleon-media"
 	c.StorageKeyID = "key"
 	c.StorageSecret = "secret"
 	c.SolanaCluster = "mainnet-beta"
@@ -59,7 +59,7 @@ func TestCookieNameMustBeAToken(t *testing.T) {
 			t.Errorf("cookie name %q was accepted", bad)
 		}
 	}
-	for _, good := range []string{"sardhana_session", "__Host-session", "s.id~1"} {
+	for _, good := range []string{"hustleon_session", "__Host-session", "s.id~1"} {
 		c := validConfig()
 		c.SessionCookieName = good
 		if err := c.validate(); err != nil {
@@ -87,7 +87,7 @@ func TestRateLimitBudgetsMustBePositive(t *testing.T) {
 func TestProductionRefusesAWeakerTLSMode(t *testing.T) {
 	for _, mode := range []string{"disable", "allow", "prefer", ""} {
 		c := productionConfig()
-		c.DatabaseURL = "postgres://user:pw@host/sardhana"
+		c.DatabaseURL = "postgres://user:pw@host/hustleon"
 		if mode != "" {
 			c.DatabaseURL += "?sslmode=" + mode
 		}

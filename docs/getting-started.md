@@ -32,7 +32,7 @@ CSRF tokens, and a short one makes them forgeable.
 ### A local database, if you want one
 
 ```bash
-docker run -d --name sardhana-db \
+docker run -d --name hustleon-db \
   -e POSTGRES_PASSWORD=sardhana -e POSTGRES_DB=sardhana \
   -p 5432:5432 postgres:16-alpine
 
@@ -74,7 +74,7 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 Then `/admin` shows the review queue. Until an admin approves something, the
 feed stays empty — that is the product working, not a bug.
 
-The seed creates one account: an admin, `reviewer@sardhana.test`. It deliberately
+The seed creates one account: an admin, `reviewer@hustleon.test`. It deliberately
 creates no content, because the only sessions this site shows are ones a person
 recorded and a reviewer approved, and a seeded imitation of that is precisely what
 the review step exists to prevent.
@@ -109,5 +109,5 @@ a connection pooler.
 `NEXT_PUBLIC_SESSION_COOKIE`, which must match `SESSION_COOKIE_NAME`.
 
 **403 on every write** — the API needs both an allowlisted `Origin` and the
-`X-Sardhana-CSRF` header. Check `CORS_ALLOWED_ORIGINS` includes
+`X-Hustleon-CSRF` header. Check `CORS_ALLOWED_ORIGINS` includes
 `http://localhost:3000`.

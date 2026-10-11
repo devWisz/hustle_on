@@ -1,7 +1,7 @@
 import type { ApiErrorBody } from "../types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085";
-export const SESSION_COOKIE = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "sardhana_session";
+export const SESSION_COOKIE = process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "hustleon_session";
 export const FETCH_TIMEOUT_MS = 8000;
 
 export class ApiError extends Error {
@@ -41,7 +41,7 @@ function csrfToken(): string {
  */
 export function csrfHeader(): Record<string, string> {
   const token = csrfToken();
-  return token ? { "X-Sardhana-CSRF": token } : {};
+  return token ? { "X-Hustleon-CSRF": token } : {};
 }
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -56,7 +56,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
   if (method !== "GET" && method !== "HEAD") {
     const token = csrfToken();
-    if (token) requestHeaders.set("X-Sardhana-CSRF", token);
+    if (token) requestHeaders.set("X-Hustleon-CSRF", token);
   }
 
   const response = await fetch(`${API_URL}${path}`, {

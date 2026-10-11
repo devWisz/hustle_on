@@ -9,7 +9,7 @@ func TestNormalizeEmail(t *testing.T) {
 		wantErr bool
 	}{
 		{"Maya@Example.COM", "Maya@example.com", false},
-		{"  dev@sardhana.com  ", "dev@sardhana.com", false},
+		{"  dev@hustleon.com  ", "dev@hustleon.com", false},
 		{"Maya Rao <maya@example.com>", "maya@example.com", false},
 		{"not-an-email", "", true},
 		{"", "", true},

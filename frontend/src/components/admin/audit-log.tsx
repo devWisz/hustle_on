@@ -115,7 +115,7 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
   });
 
   function exportCsv() {
-    downloadCsv("sardhana-audit.csv", [
+    downloadCsv("hustleon-audit.csv", [
       ["time", "actor", "action", "subject", "title", "note"],
       ...visible.map((e) => [
         e.createdAt,

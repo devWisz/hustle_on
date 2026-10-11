@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[sardhana] fatal error", error.digest ?? error.message);
+    console.error("[hustleon] fatal error", error.digest ?? error.message);
   }, [error]);
 
   return (
@@ -19,7 +19,7 @@ export default function GlobalError({
       <body className="flex min-h-dvh items-center">
         <main className="mx-auto w-full max-w-2xl px-6 py-20">
           <p className="text-eyebrow">Something went wrong</p>
-          <h1 className="text-headline mt-5">Sardhana could not load.</h1>
+          <h1 className="text-headline mt-5">Hustle On could not load.</h1>
           <p className="text-lede mt-5 text-fg-muted">
             This is on our side, not yours. Trying again usually fixes it.
           </p>

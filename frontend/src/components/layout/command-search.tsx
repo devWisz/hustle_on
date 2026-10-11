@@ -18,8 +18,8 @@ import {
   UploadIcon,
 } from "../ui/icons";
 
-const OPEN_EVENT = "sardhana:command";
-const RECENT_KEY = "sardhana-recent-searches";
+const OPEN_EVENT = "hustleon:command";
+const RECENT_KEY = "hustleon-recent-searches";
 
 export function openCommandSearch() {
   window.dispatchEvent(new Event(OPEN_EVENT));

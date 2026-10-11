@@ -24,8 +24,8 @@ Everything in `.env.example` applies. What changes in production:
 ```bash
 APP_ENV=production
 LOG_LEVEL=info
-WEB_PUBLIC_URL=https://sardhana.com          # https is enforced
-CORS_ALLOWED_ORIGINS=https://sardhana.com
+WEB_PUBLIC_URL=https://hustleon.com          # https is enforced
+CORS_ALLOWED_ORIGINS=https://hustleon.com
 TRUST_PROXY_HEADERS=true                     # only behind a proxy that sets XFF
 
 DATABASE_URL=…pooler…?sslmode=require        # the API uses the pooled endpoint,
@@ -38,7 +38,7 @@ SOLANA_CLUSTER=mainnet-beta
 SOLANA_RPC_URL=…                             # a paid endpoint; the public one rate limits
 STORAGE_ACCESS_KEY_ID=…
 STORAGE_SECRET_ACCESS_KEY=…
-STORAGE_PUBLIC_BASE_URL=https://media.sardhana.com
+STORAGE_PUBLIC_BASE_URL=https://media.hustleon.com
 ```
 
 `TRUSTED_PROXY_HOPS` (or `TRUST_PROXY_HEADERS=true`, which means one) must stay
@@ -111,12 +111,12 @@ Put the web app and the API on the same registrable domain:
 
 | Piece | Host | Example |
 | --- | --- | --- |
-| Web app | Vercel (or any Node host) | `https://sardhana.com` |
-| API | Render, from `render.yaml` | `https://api.sardhana.com` |
+| Web app | Vercel (or any Node host) | `https://hustleon.com` |
+| API | Render, from `render.yaml` | `https://api.hustleon.com` |
 | Database | Neon | pooled URL for the API, direct URL for migrations |
 
 The session cookie is set by the API and read by the web app's server, so both
-must see it. Set `SESSION_COOKIE_DOMAIN=.sardhana.com` on the API. With the API
+must see it. Set `SESSION_COOKIE_DOMAIN=.hustleon.com` on the API. With the API
 on a different site altogether (for example `onrender.com` next to
 `vercel.app`), browsers will not share the cookie and signing in will not stick,
 so give the API a custom domain before launch.
@@ -130,9 +130,9 @@ so give the API a custom domain before launch.
 | --- | --- |
 | `APP_ENV` | `production` once Resend, object storage and mainnet are ready; the API refuses to start in production without them |
 | `DATABASE_URL` | Neon pooled connection string |
-| `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS` | `https://sardhana.com` |
-| `API_PUBLIC_URL` | `https://api.sardhana.com` |
-| `SESSION_COOKIE_DOMAIN` | `.sardhana.com` |
+| `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS` | `https://hustleon.com` |
+| `API_PUBLIC_URL` | `https://api.hustleon.com` |
+| `SESSION_COOKIE_DOMAIN` | `.hustleon.com` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Resend key and a verified sender |
 | `STORAGE_*` | S3-compatible bucket for recordings |
 | `SOLANA_CLUSTER`, `SOLANA_RPC_URL` | `mainnet-beta` and a paid RPC endpoint in production |
@@ -156,8 +156,8 @@ Set the project root to `frontend` and these variables:
 
 | Variable | Value |
 | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `https://api.sardhana.com` |
-| `NEXT_PUBLIC_SITE_URL` | `https://sardhana.com` |
+| `NEXT_PUBLIC_API_URL` | `https://api.hustleon.com` |
+| `NEXT_PUBLIC_SITE_URL` | `https://hustleon.com` |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | `mainnet-beta` in production |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | the same RPC endpoint as the API |
 | `INTERNAL_PROXY_SECRET` | the same value as on the API; server-side only |

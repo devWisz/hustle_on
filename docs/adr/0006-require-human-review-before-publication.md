@@ -4,7 +4,7 @@
 
 ## Context
 
-Sardhana's claim is that a published timelapse is a record of work that actually
+Hustle On's claim is that a published timelapse is a record of work that actually
 happened. Anything that undermines that claim — a reposted screen recording,
 a write-up describing work the video does not show, a link to somebody else's
 repository — makes every other entry on the feed worth less.

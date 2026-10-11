@@ -1,11 +1,11 @@
 export type Consent = "essential" | "all";
 
-export const CONSENT_COOKIE = "sardhana_consent";
-export const CONSENT_EVENT = "sardhana:consent";
-export const OPEN_COOKIE_SETTINGS = "sardhana:cookie-settings";
+export const CONSENT_COOKIE = "hustleon_consent";
+export const CONSENT_EVENT = "hustleon:consent";
+export const OPEN_COOKIE_SETTINGS = "hustleon:cookie-settings";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 
-const PREFERENCE_KEYS = ["theme", "sardhana-recent-searches", "sardhana-bookmarks"];
+const PREFERENCE_KEYS = ["theme", "hustleon-recent-searches", "hustleon-bookmarks"];
 
 export function readConsent(): Consent | null {
   if (typeof document === "undefined") return null;

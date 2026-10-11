@@ -1,6 +1,6 @@
 # auth
 
-Authentication primitives for Sardhana, kept in a separate Go module so the
+Authentication primitives for Hustle On, kept in a separate Go module so the
 rules live in one auditable place and the API server cannot accidentally
 reimplement them.
 

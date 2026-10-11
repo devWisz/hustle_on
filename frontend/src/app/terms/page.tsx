@@ -4,13 +4,13 @@ import { LegalPage } from "@/components/layout/legal";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions",
-  description: "The rules for recording, uploading, reviewing and sponsoring work on Sardhana.",
+  description: "The rules for recording, uploading, reviewing and sponsoring work on Hustle On.",
 };
 
 const sections = [
   {
-    title: "What Sardhana is",
-    body: "Sardhana is a place to show the work behind a project. You record yourself working, turn the recording into a timelapse, and upload it with a written account of what you did. A Sardhana reviewer reads every submission before it is published. Once it is live, anyone can watch it and, if they choose, sponsor you by sending SOL straight to your wallet or get in touch to hire you. These terms cover every part of that, and by creating an account or using the site you agree to them.",
+    title: "What Hustle On is",
+    body: "Hustle On is a place to show the work behind a project. You record yourself working, turn the recording into a timelapse, and upload it with a written account of what you did. A Hustle On reviewer reads every submission before it is published. Once it is live, anyone can watch it and, if they choose, sponsor you by sending SOL straight to your wallet or get in touch to hire you. These terms cover every part of that, and by creating an account or using the site you agree to them.",
   },
   {
     title: "Who can use it",
@@ -34,35 +34,35 @@ const sections = [
   },
   {
     title: "Your rights in your work",
-    body: "You keep ownership of everything you upload. You give Sardhana a worldwide, non-exclusive, royalty-free licence to store, process, display and stream it on the site, and to show short excerpts and thumbnails when promoting the site, for as long as the timelapse is published. The licence ends when you remove the timelapse, apart from copies that are already cached or in backups, which expire on their normal schedule.",
+    body: "You keep ownership of everything you upload. You give Hustle On a worldwide, non-exclusive, royalty-free licence to store, process, display and stream it on the site, and to show short excerpts and thumbnails when promoting the site, for as long as the timelapse is published. The licence ends when you remove the timelapse, apart from copies that are already cached or in backups, which expire on their normal schedule.",
   },
   {
     title: "Sponsorships",
-    body: "A sponsorship is a voluntary gift of SOL from a viewer's wallet to the creator's verified payout wallet. It is not a purchase, it does not buy any product, service or reward unless the creator separately promises one, and Sardhana is not a party to it. Sardhana never holds the funds and takes no fee; Solana network fees are paid by the sender. Confirmed transactions cannot be reversed by anyone, including us, so check the amount and recipient in your wallet before approving. Creators are responsible for any tax due on what they receive.",
+    body: "A sponsorship is a voluntary gift of SOL from a viewer's wallet to the creator's verified payout wallet. It is not a purchase, it does not buy any product, service or reward unless the creator separately promises one, and Hustle On is not a party to it. Hustle On never holds the funds and takes no fee; Solana network fees are paid by the sender. Confirmed transactions cannot be reversed by anyone, including us, so check the amount and recipient in your wallet before approving. Creators are responsible for any tax due on what they receive.",
   },
   {
     title: "Wallets and security",
-    body: "To receive sponsorships you verify a Solana address by signing a message. That signature proves you control the address and authorises no transfer. Sardhana will never ask for your seed phrase or private key; any page or message that does is not us. You are responsible for the security of your wallet.",
+    body: "To receive sponsorships you verify a Solana address by signing a message. That signature proves you control the address and authorises no transfer. Hustle On will never ask for your seed phrase or private key; any page or message that does is not us. You are responsible for the security of your wallet.",
   },
   {
     title: "Hiring and offers",
-    body: "If someone contacts you about paid work after watching your session, any agreement is between the two of you. Sardhana does not verify offers, is not an employer or agent, and is not responsible for arrangements made off the site.",
+    body: "If someone contacts you about paid work after watching your session, any agreement is between the two of you. Hustle On does not verify offers, is not an employer or agent, and is not responsible for arrangements made off the site.",
   },
   {
     title: "Suspension and closing accounts",
-    body: "We may suspend or close an account that breaks these terms, attempts to abuse the review process, or puts other users at risk. You can stop using Sardhana and ask for your account to be deleted at any time. Removing an account removes its published timelapses from the site; transactions already settled on the chain remain there.",
+    body: "We may suspend or close an account that breaks these terms, attempts to abuse the review process, or puts other users at risk. You can stop using Hustle On and ask for your account to be deleted at any time. Removing an account removes its published timelapses from the site; transactions already settled on the chain remain there.",
   },
   {
     title: "No warranty and limited liability",
-    body: "Sardhana is provided as it is and as available. We do not promise that the site will always be online, that any upload will be approved, or that anyone will sponsor you. To the fullest extent the law allows, Sardhana is not liable for indirect or consequential losses, for lost funds caused by wallet mistakes or compromised keys, or for arrangements users make with each other.",
+    body: "Hustle On is provided as it is and as available. We do not promise that the site will always be online, that any upload will be approved, or that anyone will sponsor you. To the fullest extent the law allows, Hustle On is not liable for indirect or consequential losses, for lost funds caused by wallet mistakes or compromised keys, or for arrangements users make with each other.",
   },
   {
     title: "Changes to these terms",
-    body: "We may update these terms as the product changes. When the change is material, we will say so on the site before it takes effect. Continuing to use Sardhana after that means you accept the updated terms.",
+    body: "We may update these terms as the product changes. When the change is material, we will say so on the site before it takes effect. Continuing to use Hustle On after that means you accept the updated terms.",
   },
   {
     title: "Contact",
-    body: "Questions about these terms, or a report about content on the site, go to support@sardhana.com.",
+    body: "Questions about these terms, or a report about content on the site, go to support@hustleon.com.",
   },
 ] as const;
 

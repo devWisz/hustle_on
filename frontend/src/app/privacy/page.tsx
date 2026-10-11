@@ -4,7 +4,7 @@ import { LegalPage } from "@/components/layout/legal";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "What Sardhana collects, why, who processes it, and how long it is kept.",
+  description: "What Hustle On collects, why, who processes it, and how long it is kept.",
 };
 
 const sections = [
@@ -62,7 +62,7 @@ const sections = [
   },
   {
     title: "Children",
-    body: "Sardhana is not for anyone under 18, and we do not knowingly collect data from children. If you believe a child has an account, tell us and we will remove it.",
+    body: "Hustle On is not for anyone under 18, and we do not knowingly collect data from children. If you believe a child has an account, tell us and we will remove it.",
   },
   {
     title: "Changes",
@@ -82,10 +82,10 @@ export default function PrivacyPage() {
         <p>
           Questions about your data go to{" "}
           <a
-            href="mailto:privacy@sardhana.com"
+            href="mailto:privacy@hustleon.com"
             className="font-medium text-fg underline underline-offset-4"
           >
-            privacy@sardhana.com
+            privacy@hustleon.com
           </a>
           . The rules for using the site are in the{" "}
           <Link href="/terms" className="font-medium text-fg underline underline-offset-4">

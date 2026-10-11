@@ -25,7 +25,7 @@ export function HeaderFallback() {
           className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight"
         >
           <LogoMark />
-          Sardhana
+          Hustle On
         </Link>
       </div>
     </header>

@@ -188,7 +188,7 @@ func (s *Server) notifyDecision(timelapseID string, approved bool, note string) 
 			return
 		}
 		link := strings.TrimRight(s.cfg.WebURL, "/") + "/dashboard"
-		subject := "Your session is live on Sardhana"
+		subject := "Your session is live on Hustle On"
 		lead := fmt.Sprintf("%q passed review and is now public.", c.Title)
 		if approved {
 			link = strings.TrimRight(s.cfg.WebURL, "/") + "/watch/" + c.Slug

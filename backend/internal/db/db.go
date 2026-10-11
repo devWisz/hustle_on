@@ -47,7 +47,7 @@ func Connect(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, er
 	if cfg.ConnConfig.RuntimeParams == nil {
 		cfg.ConnConfig.RuntimeParams = map[string]string{}
 	}
-	cfg.ConnConfig.RuntimeParams["application_name"] = "sardhana-api"
+	cfg.ConnConfig.RuntimeParams["application_name"] = "hustleon-api"
 
 	// Statement caching interacts badly with connection poolers in transaction
 	// mode: a prepared statement may not exist on the backend the pooler hands
