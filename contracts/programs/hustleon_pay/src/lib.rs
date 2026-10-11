@@ -38,12 +38,6 @@ pub mod hustleon_pay {
         config.fee_bps = fee_bps;
         config.bump = ctx.bumps.config;
 
-        emit!(ConfigUpdatedEvent {
-            admin: config.admin,
-            treasury: config.treasury,
-            fee_bps: config.fee_bps,
-        });
-
         Ok(())
     }
 
@@ -54,12 +48,6 @@ pub mod hustleon_pay {
         let config = &mut ctx.accounts.config;
         config.fee_bps = fee_bps;
         config.treasury = treasury;
-
-        emit!(ConfigUpdatedEvent {
-            admin: config.admin,
-            treasury: config.treasury,
-            fee_bps: config.fee_bps,
-        });
 
         Ok(())
     }
@@ -188,13 +176,6 @@ pub struct SponsorshipEvent {
     pub amount_lamports: u64,
     pub fee_lamports: u64,
     pub unix_timestamp: i64,
-}
-
-#[event]
-pub struct ConfigUpdatedEvent {
-    pub admin: Pubkey,
-    pub treasury: Pubkey,
-    pub fee_bps: u16,
 }
 
 // ---------------------------------------------------------------------------

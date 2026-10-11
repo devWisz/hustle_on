@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sardhana/auth/internal/base58"
+	"github.com/sardhana/auth/base58"
 )
 
 const testAppURL = "https://hustleon.com"

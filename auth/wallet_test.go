@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sardhana/auth/internal/base58"
+	"github.com/sardhana/auth/base58"
 )
 
 func TestVerifySolanaSignature(t *testing.T) {

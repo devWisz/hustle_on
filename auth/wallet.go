@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sardhana/auth/internal/base58"
+	"github.com/sardhana/auth/base58"
 )
 
 // ErrBadSignature means the presented proof does not verify for the address.
