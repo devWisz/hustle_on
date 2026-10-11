@@ -123,5 +123,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useToast(): ToastContextValue {
-  return useContext(ToastContext) ?? { toast: () => {}, success: () => {}, error: () => {} };
+  return (
+    useContext(ToastContext) ?? {
+      toast: () => {},
+      success: () => {},
+      info: () => {},
+      error: () => {},
+    }
+  );
 }

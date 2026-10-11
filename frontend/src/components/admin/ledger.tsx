@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiError, api } from "@/lib/api/client";
 import { explorerUrl, formatSol, timeAgo } from "@/lib/format";
 import type { LedgerEntry } from "@/lib/types";
-import { Avatar, Badge, Select, type Tone } from "../ui";
+import { useToast } from "../layout/toast";
+import { Avatar, Badge, Button, Select, type Tone } from "../ui";
 import { CoinsIcon, ExternalIcon } from "../ui/icons";
 import { DataTable, type Column } from "./data-table";
 
@@ -16,8 +19,44 @@ const STATUS: Record<LedgerEntry["status"], { label: string; tone: Tone }> = {
 };
 
 export function Ledger({ entries }: { entries: LedgerEntry[] }) {
+  const router = useRouter();
+  const toast = useToast();
   const [status, setStatus] = useState("all");
-  const rows = status === "all" ? entries : entries.filter((e) => e.status === status);
+  const [items, setItems] = useState(entries);
+  const [rechecking, setRechecking] = useState<string | null>(null);
+  const rows = status === "all" ? items : items.filter((e) => e.status === status);
+
+  /**
+   * Ask the chain about one donation now.
+   *
+   * The settle loop already retries unconfirmed donations every couple of minutes,
+   * so this is not a repair path: it is the answer to a donor who says they paid
+   * and cannot see it, given while they are still on the page. The server
+   * re-verifies against the stored amount and recipient, so nothing here can
+   * credit a transfer the chain does not support.
+   */
+  async function recheck(entry: LedgerEntry) {
+    setRechecking(entry.id);
+    try {
+      const result = await api<{ status: string; message?: string }>(
+        `/v1/admin/donations/${entry.id}/recheck`,
+        { method: "POST" },
+      );
+      if (result.status === "confirmed") {
+        setItems((list) =>
+          list.map((x) => (x.id === entry.id ? { ...x, status: "confirmed" } : x)),
+        );
+        toast.success("Confirmed against the chain and credited.");
+        router.refresh();
+      } else {
+        toast.info(result.message ?? "The network has not finalized that transaction yet.");
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "That re-check did not go through.");
+    } finally {
+      setRechecking(null);
+    }
+  }
 
   const columns: Column<LedgerEntry>[] = [
     {
@@ -58,9 +97,21 @@ export function Ledger({ entries }: { entries: LedgerEntry[] }) {
       sort: (e) => e.status,
       csv: (e) => e.status,
       cell: (e) => (
-        <Badge tone={STATUS[e.status].tone} dot>
-          {STATUS[e.status].label}
-        </Badge>
+        <span className="inline-flex items-center gap-2">
+          <Badge tone={STATUS[e.status].tone} dot>
+            {STATUS[e.status].label}
+          </Badge>
+          {e.status === "submitted" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={rechecking === e.id}
+              onClick={() => void recheck(e)}
+            >
+              Re-check
+            </Button>
+          ) : null}
+        </span>
       ),
     },
     {

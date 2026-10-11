@@ -1,16 +1,24 @@
 import { getAdmin } from "@/lib/data";
+import { apiServer } from "@/lib/api/server";
 import { formatSol } from "@/lib/format";
+import type { ChainStatus } from "@/lib/types";
 import { Ledger } from "@/components/admin/ledger";
 import { AdminHeader } from "@/components/admin/page-header";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
-import { EmptyState } from "@/components/ui";
+import { Badge, EmptyState } from "@/components/ui";
 import { CoinsIcon } from "@/components/ui/icons";
 
 export const metadata = { title: "Ledger" };
+export const dynamic = "force-dynamic";
 
 export default async function LedgerPage() {
-  const data = await getAdmin();
+  const [data, chain] = await Promise.all([
+    getAdmin(),
+    // Asked for here rather than in the shared admin loader: it is a live call to
+    // a third party, and it belongs on the page whose subject is the chain.
+    apiServer<ChainStatus>("/v1/admin/chain", 0),
+  ]);
   if (typeof data === "string") return null;
 
   const confirmed = data.ledger.filter((e) => e.status === "confirmed");
@@ -33,6 +41,23 @@ export default async function LedgerPage() {
         title="Ledger"
         description="Every sponsorship, as read back off the chain. Sardhana never holds these funds; this is the verification record."
       />
+
+      {chain ? (
+        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3 text-[13px]">
+          <Badge tone={chain.reachable ? "success" : "danger"} dot>
+            {chain.reachable ? "RPC reachable" : "RPC unreachable"}
+          </Badge>
+          <span className="text-fg-muted">
+            Verifying against <span className="font-mono text-fg">{chain.cluster}</span>
+          </span>
+          <span className="text-fg-subtle">
+            {chain.reachable
+              ? "Donations confirm on their own; Re-check asks the chain about one now."
+              : chain.detail}
+          </span>
+        </div>
+      ) : null}
+
       {data.ledger.length ? (
         <>
           <Reveal

@@ -199,7 +199,11 @@ export function OnboardingForm({ initial, next }: { initial: SelfUser; next: str
         </Field>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
-          <Button type="submit" loading={saving} disabled={!handleUsable || displayName.trim() === ""}>
+          <Button
+            type="submit"
+            loading={saving}
+            disabled={!handleUsable || displayName.trim() === ""}
+          >
             Save and continue
           </Button>
           <p className="text-[12.5px] text-fg-subtle">
