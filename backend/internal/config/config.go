@@ -61,6 +61,9 @@ type Config struct {
 	RateLimitEngage int
 	RateLimitWrite  int
 	RateLimitUpload int
+	// RateLimitPoster bounds poster-image upload URLs, which are small, admin
+	// only, and the thing an operator needs several of in a row.
+	RateLimitPoster int
 	RateLimitDonate int
 	RateLimitAdmin  int
 	// RateLimitIPCeiling is a deliberately generous per-address ceiling applied
@@ -164,6 +167,7 @@ func Load() (Config, error) {
 		RateLimitEngage: envInt("RATE_LIMIT_ENGAGE", 60),
 		RateLimitWrite:  envInt("RATE_LIMIT_WRITE", 60),
 		RateLimitUpload: envInt("RATE_LIMIT_UPLOAD", 10),
+		RateLimitPoster: envInt("RATE_LIMIT_POSTER", 60),
 		RateLimitDonate: envInt("RATE_LIMIT_DONATE", 10),
 		RateLimitAdmin:  envInt("RATE_LIMIT_ADMIN", 240),
 		// Ten times the per-caller budget: an office or a shared connection
@@ -229,6 +233,7 @@ func (c Config) validate() error {
 		{"RATE_LIMIT_ENGAGE", c.RateLimitEngage},
 		{"RATE_LIMIT_WRITE", c.RateLimitWrite},
 		{"RATE_LIMIT_UPLOAD", c.RateLimitUpload},
+		{"RATE_LIMIT_POSTER", c.RateLimitPoster},
 		{"RATE_LIMIT_DONATE", c.RateLimitDonate},
 		{"RATE_LIMIT_ADMIN", c.RateLimitAdmin},
 		{"RATE_LIMIT_IP_CEILING", c.RateLimitIPCeiling},

@@ -21,6 +21,7 @@ func validConfig() Config {
 		RateLimitEngage:    60,
 		RateLimitWrite:     60,
 		RateLimitUpload:    10,
+		RateLimitPoster:    60,
 		RateLimitDonate:    10,
 		RateLimitAdmin:     240,
 		RateLimitIPCeiling: 1200,

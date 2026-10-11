@@ -80,9 +80,10 @@ func (s *Server) routes() {
 	s.route("PATCH /v1/admin/timelapses/{id}", budgetAdmin, s.handleAdminEditTimelapse)
 	s.route("PUT /v1/admin/timelapses/{id}/thumbnail", budgetAdmin, s.handleAdminSetThumbnail)
 	s.route("DELETE /v1/admin/timelapses/{id}/thumbnail", budgetAdmin, s.handleAdminClearThumbnail)
-	// A poster goes to storage like a video does, so it is charged to the upload
-	// budget rather than the console one.
-	s.route("POST /v1/admin/uploads/thumbnail", budgetUpload, s.handleAdminPosterUpload)
+	// A poster goes to storage like a video does, but it is small and only an
+	// operator can ask for one, so it has an allowance of its own rather than
+	// sharing the tight video budget.
+	s.route("POST /v1/admin/uploads/thumbnail", budgetPoster, s.handleAdminPosterUpload)
 
 	// --- review (admin only) ---------------------------------------------
 	s.route("GET /v1/admin/queue", budgetAdmin, s.handleReviewQueue)

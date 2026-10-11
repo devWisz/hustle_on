@@ -30,9 +30,14 @@ const (
 	budgetEngage = "engage"
 	// budgetWrite covers creating and editing a creator's own work.
 	budgetWrite = "write"
-	// budgetUpload covers issuing upload URLs, which is the most expensive
-	// thing an unprivileged account can ask for.
+	// budgetUpload covers issuing upload URLs for video, which is the most
+	// expensive thing an unprivileged account can ask for.
 	budgetUpload = "upload"
+	// budgetPoster covers poster-image upload URLs. Separate from video because
+	// the cost is different by three orders of magnitude — a poster is at most a
+	// few megabytes and only an admin can ask for one — and because a console
+	// that refuses the third thumbnail in a row is a console nobody uses.
+	budgetPoster = "poster"
 	// budgetDonate covers recording and confirming sponsorship intents.
 	budgetDonate = "donate"
 	// budgetAuth covers requesting a sign-in link. Tight, because each request
@@ -82,6 +87,8 @@ func buildBudgets(cfg config.Config) map[string]*budget {
 			"You are publishing faster than the limit allows. Wait a moment and try again."),
 		mk(budgetUpload, cfg.RateLimitUpload, false,
 			"Too many uploads started from this account. Wait a moment and try again."),
+		mk(budgetPoster, cfg.RateLimitPoster, false,
+			"Too many poster uploads started from this account. Wait a moment and try again."),
 		mk(budgetDonate, cfg.RateLimitDonate, false,
 			"Too many sponsorship attempts. Wait a moment and try again."),
 		mk(budgetAuth, cfg.RateLimitAuth, true,
