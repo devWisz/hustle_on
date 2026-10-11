@@ -5,6 +5,7 @@ import { downloadCsv } from "@/lib/csv";
 import { cx } from "@/lib/format";
 import { Button, EmptyState, SearchField } from "../ui";
 import { ChevronDownIcon, DownloadIcon } from "../ui/icons";
+import { Panel } from "./console";
 
 export interface Column<T> {
   key: string;
@@ -88,7 +89,7 @@ export function DataTable<T extends { id: string | number }>({
           }}
           className="md:max-w-xs md:flex-1"
         />
-        {filters}
+        {filters ? <div className="flex flex-wrap gap-2">{filters}</div> : null}
         <Button variant="secondary" size="sm" onClick={exportCsv} className="md:ml-auto">
           <DownloadIcon size={14} />
           Export CSV
@@ -99,7 +100,7 @@ export function DataTable<T extends { id: string | number }>({
         <EmptyState className="mt-5" {...empty} />
       ) : (
         <>
-          <div className="mt-5 hidden overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface md:block">
+          <Panel className="mt-5 hidden md:block">
             <table className="w-full text-left text-[13.5px]">
               <thead className="border-b border-border bg-surface-raised/60 text-[12px] text-fg-muted">
                 <tr>
@@ -161,31 +162,43 @@ export function DataTable<T extends { id: string | number }>({
                 ))}
               </tbody>
             </table>
-          </div>
+          </Panel>
 
           <ul className="mt-5 space-y-3 md:hidden">
-            {shown.map((row) => (
-              <li
-                key={row.id}
-                className="rounded-[var(--radius-card)] border border-border bg-surface p-4"
-              >
-                {columns
-                  .filter((c) => c.primary)
-                  .map((c) => (
-                    <div key={c.key}>{c.cell(row)}</div>
-                  ))}
-                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+            {shown.map((row) => {
+              // Below md a row becomes a card: the primary cell leads, the rest read
+              // as labelled lines, and anything right-aligned on the desktop table is
+              // an action, so it gets a full-width row of its own instead of being
+              // squeezed into a column.
+              const details = columns.filter((c) => !c.primary && c.align !== "right");
+              const actions = columns.filter((c) => !c.primary && c.align === "right");
+              return (
+                <Panel as="li" key={row.id} className="p-4">
                   {columns
-                    .filter((c) => !c.primary)
+                    .filter((c) => c.primary)
                     .map((c) => (
-                      <div key={c.key} className="min-w-0">
-                        <dt className="text-[11.5px] text-fg-subtle">{c.header}</dt>
-                        <dd className="mt-0.5 text-[13px]">{c.cell(row)}</dd>
-                      </div>
+                      <div key={c.key}>{c.cell(row)}</div>
                     ))}
-                </dl>
-              </li>
-            ))}
+                  {details.length ? (
+                    <dl className="mt-3 space-y-3">
+                      {details.map((c) => (
+                        <div key={c.key} className="flex items-baseline justify-between gap-4">
+                          <dt className="text-[11.5px] text-fg-subtle">{c.header}</dt>
+                          <dd className="text-right text-[13px]">{c.cell(row)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                  {actions.length ? (
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
+                      {actions.map((c) => (
+                        <div key={c.key}>{c.cell(row)}</div>
+                      ))}
+                    </div>
+                  ) : null}
+                </Panel>
+              );
+            })}
           </ul>
 
           <div className="mt-4 flex items-center justify-between text-[12.5px] text-fg-muted">

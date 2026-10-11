@@ -6,6 +6,7 @@ import { downloadCsv } from "@/lib/csv";
 import { cx, formatStamp, timeAgo } from "@/lib/format";
 import { Avatar, Badge, Button, EmptyState, SearchField, type Tone } from "../ui";
 import { DownloadIcon, ListIcon, ShieldIcon } from "../ui/icons";
+import { FilterTabs, Panel, rowPad } from "./console";
 
 const ACTIONS: Record<string, { label: string; tone: Tone }> = {
   "timelapse.approve": { label: "Published", tone: "success" },
@@ -25,6 +26,9 @@ const ACTIONS: Record<string, { label: string; tone: Tone }> = {
   "timelapse.thumbnail.clear": { label: "Poster removed", tone: "neutral" },
   "featured.reorder": { label: "Front page rearranged", tone: "accent" },
 };
+
+/** The decisions on a submission, in the order the overview counts them. */
+export const DECISION_ACTIONS: readonly string[] = ["timelapse.approve", "timelapse.reject"];
 
 function meta(action: string) {
   return ACTIONS[action] ?? { label: action, tone: "neutral" as Tone };
@@ -50,7 +54,7 @@ export function AuditRow({ entry, compact = false }: { entry: AuditEntry; compac
   const order = list(entry, "order");
   const summary = title ?? (order.length ? order.join(" › ") : null);
   return (
-    <li className={cx("flex items-start gap-3", compact ? "py-3" : "px-4 py-4 sm:px-5")}>
+    <li className={cx("flex items-start gap-3", compact ? "py-3" : rowPad)}>
       {entry.actor ? (
         <Avatar name={entry.actor.displayName} src={entry.actor.avatarUrl} size={28} />
       ) : (
@@ -99,6 +103,13 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
   const [action, setAction] = useState("all");
 
   const actions = useMemo(() => Array.from(new Set(entries.map((e) => e.action))), [entries]);
+  const options = useMemo(
+    () => [
+      { value: "all", label: "Everything" },
+      ...actions.map((a) => ({ value: a, label: meta(a).label })),
+    ],
+    [actions],
+  );
   const visible = entries.filter((e) => {
     if (action !== "all" && e.action !== action) return false;
     if (!query.trim()) return true;
@@ -130,33 +141,21 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <SearchField
           placeholder="Search by person, title or note"
           aria-label="Search the audit trail"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="sm:max-w-xs sm:flex-1"
+          className="lg:max-w-xs lg:flex-1"
         />
-        <div className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0">
-          {["all", ...actions].map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setAction(a)}
-              aria-pressed={action === a}
-              className={cx(
-                "press shrink-0 rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
-                action === a
-                  ? "border-fg text-fg"
-                  : "border-border text-fg-muted hover:border-border-strong",
-              )}
-            >
-              {a === "all" ? "Everything" : meta(a).label}
-            </button>
-          ))}
-        </div>
-        <Button variant="secondary" size="sm" onClick={exportCsv} className="sm:ml-auto">
+        <FilterTabs
+          label="Filter by action"
+          options={options}
+          value={action}
+          onChange={setAction}
+        />
+        <Button variant="secondary" size="sm" onClick={exportCsv} className="lg:ml-auto">
           <DownloadIcon size={14} />
           CSV
         </Button>
@@ -166,7 +165,7 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
         <EmptyState
           className="mt-5"
           icon={<ListIcon size={18} />}
-          title={entries.length === 0 ? "No decisions recorded yet" : "No matching entries"}
+          title={entries.length === 0 ? "No decisions recorded yet" : "No entries match"}
           description={
             entries.length === 0
               ? "Every approval, rejection and takedown is written here, newest first."
@@ -174,11 +173,11 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
           }
         />
       ) : (
-        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <Panel as="ul" rows className="mt-5">
           {visible.map((entry) => (
             <AuditRow key={entry.id} entry={entry} />
           ))}
-        </ul>
+        </Panel>
       )}
     </div>
   );

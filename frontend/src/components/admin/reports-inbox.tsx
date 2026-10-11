@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
-import { cx, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import type { Report } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Avatar, Badge, Button, EmptyState, type Tone } from "../ui";
 import { AlertIcon, ExternalIcon } from "../ui/icons";
+import { FilterTabs, Panel, rowPad } from "./console";
 
 const REASON_LABEL: Record<Report["reason"], string> = {
   spam: "Spam",
@@ -26,13 +27,13 @@ const STATUS_TONE: Record<Report["status"], Tone> = {
 };
 
 const FILTERS = [
-  { id: "open", label: "Open" },
-  { id: "resolved", label: "Resolved" },
-  { id: "dismissed", label: "Dismissed" },
-  { id: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "resolved", label: "Resolved" },
+  { value: "dismissed", label: "Dismissed" },
+  { value: "all", label: "Everything" },
 ] as const;
 
-type Filter = (typeof FILTERS)[number]["id"];
+type Filter = (typeof FILTERS)[number]["value"];
 
 export function ReportsInbox({ initial }: { initial: Report[] }) {
   const router = useRouter();
@@ -84,34 +85,16 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
 
   return (
     <div>
-      <div
-        role="tablist"
-        aria-label="Filter reports"
-        className="scroll-x -mx-4 flex gap-1 px-4 sm:mx-0 sm:px-0"
-      >
-        {FILTERS.map((f) => {
-          const count =
-            f.id === "all" ? reports.length : reports.filter((r) => r.status === f.id).length;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={cx(
-                "press shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
-                filter === f.id
-                  ? "bg-inverse text-inverse-fg"
-                  : "text-fg-muted hover:bg-surface-raised hover:text-fg",
-              )}
-            >
-              {f.label}
-              <span className="ml-1.5 font-mono text-[11px] opacity-60">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <FilterTabs
+        label="Filter reports"
+        value={filter}
+        onChange={setFilter}
+        options={FILTERS.map((f) => ({
+          value: f.value,
+          label: f.label,
+          count: f.value === "all" ? reports.length : reports.filter((r) => r.status === f.value).length,
+        }))}
+      />
 
       {visible.length === 0 ? (
         <EmptyState
@@ -121,15 +104,12 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
           description="When someone reports a session or a note, it lands here with their reason."
         />
       ) : (
-        <ul className="mt-5 space-y-3">
+        <Panel as="ul" rows className="mt-5">
           {visible.map((r) => {
             const isOpen = r.status === "open";
             const pending = (kind: string) => busy === `${r.id}:${kind}`;
             return (
-              <li
-                key={r.id}
-                className="rounded-[var(--radius-card)] border border-border bg-surface p-4 sm:p-5"
-              >
+              <li key={r.id} className={cx(rowPad, "space-y-3")}>
                 <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
                   <Badge tone={STATUS_TONE[r.status]} dot>
                     {r.status === "open"
@@ -224,7 +204,7 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
               </li>
             );
           })}
-        </ul>
+        </Panel>
       )}
     </div>
   );

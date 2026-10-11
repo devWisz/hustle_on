@@ -9,6 +9,7 @@ import type { AdminNote } from "@/lib/types";
 import { useToast } from "../layout/toast";
 import { Avatar, Button, EmptyState, SearchField } from "../ui";
 import { MessageSquareIcon, ThumbsUpIcon } from "../ui/icons";
+import { Panel, rowPad } from "./console";
 
 export function NotesModeration({ initial }: { initial: AdminNote[] }) {
   const router = useRouter();
@@ -61,9 +62,9 @@ export function NotesModeration({ initial }: { initial: AdminNote[] }) {
           description="Notes people leave on published sessions appear here, newest first."
         />
       ) : (
-        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <Panel as="ul" rows className="mt-5">
           {visible.map((n) => (
-            <li key={n.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:p-5">
+            <li key={n.id} className={cx(rowPad, "flex flex-col gap-3 sm:flex-row sm:items-start")}>
               <Avatar name={n.author.displayName} src={n.author.avatarUrl} size={32} />
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
@@ -118,7 +119,7 @@ export function NotesModeration({ initial }: { initial: AdminNote[] }) {
               </div>
             </li>
           ))}
-        </ul>
+        </Panel>
       )}
     </div>
   );
