@@ -19,14 +19,12 @@ if (typeof window !== "undefined") gsap.registerPlugin(Flip);
 export function Feed({
   items: firstPage,
   sort,
-  demo,
   nextCursor: firstCursor,
   pageSize,
   emptyAction,
 }: {
   items: Timelapse[];
   sort: FeedSort;
-  demo: boolean;
   nextCursor?: string;
   pageSize: number;
   emptyAction?: React.ReactNode;
@@ -195,7 +193,7 @@ export function Feed({
           >
             {visible.map((t) => (
               <div key={t.id} data-flip-id={t.id}>
-                <TimelapseCard timelapse={t} demo={demo} />
+                <TimelapseCard timelapse={t} />
               </div>
             ))}
           </div>

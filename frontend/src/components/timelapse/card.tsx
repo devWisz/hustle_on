@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Timelapse } from "@/lib/types";
 import { formatCount, formatDuration, formatSession, formatSol, timeAgo } from "@/lib/format";
-import { DemoTag } from "../demo/tag";
 import { Avatar } from "../ui/avatar";
 import { EyeIcon } from "../ui/icons";
 import { BookmarkButton } from "./bookmark-button";
@@ -15,14 +14,7 @@ export function compression(
   return ratio > 1 ? ratio : null;
 }
 
-export function TimelapseCard({
-  timelapse: t,
-  demo = false,
-}: {
-  timelapse: Timelapse;
-  demo?: boolean;
-}) {
-
+export function TimelapseCard({ timelapse: t }: { timelapse: Timelapse }) {
   return (
     <article className="group relative">
       <div className="relative">
@@ -52,19 +44,15 @@ export function TimelapseCard({
               </span>
             ) : null}
           </span>
-          {demo ? (
-            <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90" />
-          ) : t.featured ? (
-            <DemoTag className="absolute left-3 top-3 border-transparent bg-surface/90 text-fg">
+          {t.featured ? (
+            <span className="absolute left-3 top-3 inline-flex items-center rounded-full border border-transparent bg-surface/90 px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-fg">
               Featured
-            </DemoTag>
+            </span>
           ) : null}
         </Link>
-        {demo ? null : (
-          <div className="absolute right-3 top-3 z-10">
-            <BookmarkButton timelapse={t} />
-          </div>
-        )}
+        <div className="absolute right-3 top-3 z-10">
+          <BookmarkButton timelapse={t} />
+        </div>
       </div>
 
       <div className="mt-4 px-0.5">

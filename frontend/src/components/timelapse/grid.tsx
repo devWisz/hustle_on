@@ -5,11 +5,9 @@ import { TimelapseCard } from "./card";
 
 export function TimelapseGrid({
   items,
-  demo = false,
   className,
 }: {
   items: Timelapse[];
-  demo?: boolean;
   className?: string;
 }) {
   return (
@@ -18,7 +16,7 @@ export function TimelapseGrid({
       className={cx("grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3", className)}
     >
       {items.map((t) => (
-        <TimelapseCard key={t.id} timelapse={t} demo={demo} />
+        <TimelapseCard key={t.id} timelapse={t} />
       ))}
     </Reveal>
   );
