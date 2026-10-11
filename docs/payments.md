@@ -1,14 +1,16 @@
 # Payments
 
-A donation is a plain SOL transfer from the donor's wallet to the creator's.
-There is no on-chain program, no escrow, no platform fee, and no custody.
-Hustle On's only role is to know which address to send to and to check afterwards
-that the transfer really happened.
+A donation is SOL moving from the donor's wallet to the creator's. Sponsorships go
+through the deployed `hustleon_pay` program when `HUSTLEON_PAY_PROGRAM_ID` is set:
+one `sponsor` instruction pays the creator, routes a platform fee to a treasury and
+leaves an on-chain receipt. With the variable empty the API falls back to verifying
+a plain SOL transfer. There is no escrow and no custody either way — the program
+detail is in [contracts/README.md](../contracts/README.md).
 
 Sponsoring requires an account. Both calls below answer `401` to a signed-out
 caller, every intent records its donor, and only that donor can confirm it. The
 watch page shows a signed-out visitor a prompt to sign in instead of the form,
-and the sign-in link returns them to the sponsor panel.
+and signing in returns them to the sponsor panel.
 
 ## The flow
 
@@ -37,7 +39,16 @@ API had no independent basis to check.
 
 ## What verification actually checks
 
-`backend/internal/solana/client.go` reads the transaction back and inspects the
+`backend/internal/solana/client.go` reads the transaction back at `finalized`
+commitment.
+
+With `HUSTLEON_PAY_PROGRAM_ID` set, it requires a `sponsor` instruction that
+belongs to that program, names this donor and this creator, and encodes an amount
+at least as large as the intent promised. Then it confirms the creator's balance
+rose by at least the amount less the maximum permitted fee — the instruction says
+what was asked for, the balance says what happened.
+
+With the variable empty it verifies a plain transfer instead, inspecting the
 **balance deltas** in the transaction meta:
 
 - The transaction did not fail on chain.
@@ -45,12 +56,14 @@ API had no independent basis to check.
 - The payer's balance fell.
 
 It does not decode instructions and it does not read logs. The delta is what
-actually happened; a transaction that emits convincing logs and transfers
-nothing fails here. Requiring the payer to be out of pocket means a transfer
-credited from some third account is not the transfer that was claimed.
+actually happened; a transaction that emits convincing logs and transfers nothing
+fails here. Requiring the payer to be out of pocket means a transfer credited from
+some third account is not the transfer that was claimed.
 
 Commitment is `finalized`, not `confirmed`. Money is only credited once the
-transaction can no longer be rolled back by a fork.
+transaction can no longer be rolled back by a fork. The fallback exists so a fresh
+clone works before anything is deployed; it is not meant for production, and
+`make preflight` warns when it is in use.
 
 ## Nothing is credited twice
 
@@ -88,10 +101,13 @@ moved. Telling a donor their donation failed at that moment would be a lie.
 ```bash
 SOLANA_CLUSTER=devnet                        # mainnet-beta is required in production
 SOLANA_RPC_URL=https://api.devnet.solana.com
+HUSTLEON_PAY_PROGRAM_ID=…                    # the deployed sponsorship program
 ```
 
-That is the entire payment configuration. There is no program id, no treasury
-address and no fee, because there is nothing between the two wallets.
+The cluster and RPC endpoint are required. `HUSTLEON_PAY_PROGRAM_ID` is what
+decides whether a sponsorship is recorded on chain or merely watched as a plain
+transfer; the program's address, its fee and its treasury are documented in
+[contracts/README.md](../contracts/README.md).
 
 The cluster is shown in the site footer on every page. Which chain real money
 settles on is not a detail to bury.

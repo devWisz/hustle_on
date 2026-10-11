@@ -1,7 +1,8 @@
 # Deployment
 
 Three things to run: the Go API, the Next.js app, and a Postgres database.
-Object storage and a transactional email provider are external.
+Object storage is external; the sponsorship program is deployed separately, from
+`contracts/`.
 
 ## Before the first deploy
 
@@ -12,10 +13,10 @@ secret manager, never in a tracked file:
 bash scripts/gen-secrets.sh
 ```
 
-Production refuses to start without a Resend key, without storage credentials,
-or on any cluster other than `mainnet-beta`. That is deliberate: the development
-conveniences are refused outright rather than degraded, so a variable somebody
-forgot cannot silently weaken the deployment.
+Production refuses to start without at least one `ADMIN_WALLETS` address, without
+storage credentials, or on any cluster other than `mainnet-beta`. That is
+deliberate: the development conveniences are refused outright rather than
+degraded, so a variable somebody forgot cannot silently weaken the deployment.
 
 ## Environment
 
@@ -33,7 +34,9 @@ DATABASE_URL=…pooler…?sslmode=require        # the API uses the pooled endpo
 DATABASE_URL_DIRECT=…                        # migrations use the direct one, as the owner
 DATABASE_MAX_CONNS=10                        # stay inside the pooler's allowance
 
-RESEND_API_KEY=…
+ADMIN_WALLETS=…                              # comma-separated Solana addresses; required
+                                             # in production, or nobody can administer it
+HUSTLEON_PAY_PROGRAM_ID=…                    # the deployed sponsorship program
 SOLANA_CLUSTER=mainnet-beta
 SOLANA_RPC_URL=…                             # a paid endpoint; the public one rate limits
 STORAGE_ACCESS_KEY_ID=…
@@ -47,8 +50,8 @@ Honouring it otherwise lets any client claim any address and bypass every
 per-address limit. Set it to the exact number of proxies you operate.
 
 Production refuses to start without `sslmode=require` on `DATABASE_URL`: session
-digests, emails and payout addresses cross that connection, and pgx would
-otherwise negotiate TLS only if the server offered it.
+digests and payout addresses cross that connection, and pgx would otherwise
+negotiate TLS only if the server offered it.
 
 The API should connect as a login role that inherits `sardhana_app`, not as the
 database owner — the owner is for migrations. See
@@ -67,8 +70,8 @@ and therefore reach production anyway:
 - `SESSION_COOKIE_NAME` and `NEXT_PUBLIC_SESSION_COOKIE` agreeing. If they
   disagree the frontend reads a cookie that is not there, and every
   state-changing request fails its CSRF check with nothing to explain why.
-- Origins that still point at localhost, an `EMAIL_FROM` on a local domain, an
-  `sslmode` that would let the database connection fall back to plaintext.
+- Origins that still point at localhost, an `sslmode` that would let the database
+  connection fall back to plaintext.
 - `SOLANA_CLUSTER` not being `mainnet-beta`, and the public RPC endpoint, which
   rate limits under load.
 - A storage endpoint that is not https — which would make the API serve uploads
@@ -76,9 +79,9 @@ and therefore reach production anyway:
 - `TRUSTED_PROXY_HOPS` at zero behind a load balancer, so every visitor looks
   like the proxy and the per-address limits act on the whole site at once.
 - The console reachable from anywhere, and admin sessions that never expire.
-- Development-seed accounts still holding a login, migrations not applied, and a
-  `DATABASE_URL` that connects as the **owner** of the tables — which makes every
-  least-privilege grant inert.
+- Accounts with no wallet address, which can never sign in; migrations not
+  applied, and a `DATABASE_URL` that connects as the **owner** of the tables —
+  which makes every least-privilege grant inert.
 
 It exits non-zero and names what to fix. Warnings are the settings worth a
 second look rather than blockers.
@@ -141,12 +144,13 @@ so give the API a custom domain before launch.
 
 | Variable | Value |
 | --- | --- |
-| `APP_ENV` | `production` once Resend, object storage and mainnet are ready; the API refuses to start in production without them |
+| `APP_ENV` | `production` once object storage, an admin wallet and mainnet are ready; the API refuses to start in production without them |
 | `DATABASE_URL` | Neon pooled connection string |
 | `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS` | `https://hustleon.com` |
 | `API_PUBLIC_URL` | `https://api.hustleon.com` |
 | `SESSION_COOKIE_DOMAIN` | `.hustleon.com` |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Resend key and a verified sender |
+| `ADMIN_WALLETS` | the operator wallets, comma-separated; required in production |
+| `HUSTLEON_PAY_PROGRAM_ID` | the deployed `hustleon_pay` program, so sponsorships are recorded on chain |
 | `STORAGE_*` | S3-compatible bucket for recordings |
 | `SOLANA_CLUSTER`, `SOLANA_RPC_URL` | `mainnet-beta` and a paid RPC endpoint in production |
 
@@ -183,7 +187,8 @@ above, so those two variables also shape the policy.
 
 - Migrations applied: `DATABASE_URL_DIRECT=… make db-migrate`
 - Development seed not loaded (the tool refuses when `APP_ENV=production`)
-- An admin account exists: sign in once, then `UPDATE users SET role = 'admin' WHERE email = '…';`
+- Accounts can sign in: every existing account has a wallet address, or it is unreachable
+- `ADMIN_WALLETS` holds at least one wallet and its owner can reach `/admin`
 - `/health/ready` is green on the API
 - Signing in on the web app lands on the dashboard (proves the cookie domain)
 - A test sponsorship on devnet confirms before switching to mainnet
@@ -221,7 +226,7 @@ least 30 seconds before it sends `SIGKILL`.
 
 ## After deploying
 
-- Request a sign-in link and open it end to end.
+- Sign in with a wallet end to end.
 - Upload something, approve it, confirm it appears on the feed.
 - Check `/health/ready` returns 200.
 - Confirm the footer says `mainnet-beta`.
@@ -232,8 +237,8 @@ least 30 seconds before it sends `SIGKILL`.
 client as `X-Request-Id`. A user reporting a failure can be matched to the exact
 request.
 
-**Query strings are never logged** — the sign-in callback carries a token in
-one.
+**Query strings are never logged** — feed searches and the login page's redirect
+target travel in them, and a log line is a durable copy.
 
 **The settle worker** runs inside the API process, sweeping unconfirmed
 donations every two minutes. Running several API instances means several

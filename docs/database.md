@@ -1,6 +1,6 @@
 # Database
 
-Eight migrations, eleven tables of product state (plus `schema_migrations`). The
+Thirteen migrations, eleven tables of product state (plus `schema_migrations`). The
 schema is small because the product is one path, and every table on it earns its
 place.
 
@@ -12,7 +12,6 @@ users ──┬──< timelapses ──< timelapse_views
         │         └────────< bookmarks
         │
         ├──< sessions
-        ├──< magic_link_tokens
         ├──< wallet_challenges
         └──< audit_log
 ```
@@ -20,7 +19,7 @@ users ──┬──< timelapses ──< timelapse_views
 | Migration | Adds |
 | --- | --- |
 | `0001_foundation` | `citext`, the `set_updated_at` trigger, `users` |
-| `0002_auth` | `magic_link_tokens`, `sessions`, `wallet_challenges`, `audit_log` |
+| `0002_auth` | `sessions`, `wallet_challenges`, `audit_log` |
 | `0003_timelapses` | `timelapses`, `timelapse_views` |
 | `0004_donations` | `donations` |
 | `0005_engagement` | `bookmarks`, `timelapse_notes`, `note_votes` |
@@ -31,6 +30,7 @@ users ──┬──< timelapses ──< timelapse_views
 | `0010_reports_and_featured` | `reports`, the report enums, and `timelapses.featured_at` |
 | `0011_featured_rank` | `timelapses.featured_rank` — an explicit, unique position on the curated front page |
 | `0012_profile_onboarding` | `users.onboarded_at` — whether the account holder has chosen their own name |
+| `0013_wallet_identity` | `users.wallet_address` as the account identity; `users.email` becomes optional and loses `UNIQUE`; `email_verified_at` and `magic_link_tokens` are dropped; `wallet_challenges` gains a nullable `user_id` and a `purpose`; `purge_expired_auth()` is redefined for the two remaining tables |
 
 Each has a matching `.down.sql`. Both directions are exercised before a
 migration is committed.
@@ -97,9 +97,9 @@ PRIMARY KEY (note_id, user_id)
 The same shape as the view deduplication: the tally cannot be inflated by asking
 twice, because the second ask is not a row.
 
-**An account is not a profile.** Signing in creates a row from an email address —
-a handle derived from it, a display name identical to that handle — which is
-enough to own a session and not enough to be credited for one.
+**An account is not a profile.** The first sign-in creates a row from a Solana
+address — a generated placeholder handle, a display name identical to that
+handle — which is enough to own a session and not enough to be credited for one.
 `users.onboarded_at` records that the person has chosen their own. It is
 deliberately not backfilled: an existing account has never been asked, so treating
 it as complete would mean nobody ever is, and the derived default would become the
@@ -124,8 +124,8 @@ six profile columns live on the account row.
 **Counters are denormalised** (`timelapse_count`, `donation_count`,
 `donation_total_lamports`) and maintained by the API inside the same transaction
 as the write that changes them. A profile card should not have to aggregate the
-donations table. `seeds/dev_seed.sql` recomputes them from the rows it inserts,
-which doubles as a check that the arithmetic in the store matches.
+donations table. The seed inserts no rows — it only empties the tables — so there
+is nothing for it to recompute.
 
 **Indexes are partial where the query is.** The feed indexes only rows that can
 appear in it; the review queue only rows waiting on a decision:
@@ -147,9 +147,9 @@ donations reference the row and a supporter's record must not vanish.
 creator changing their wallet later cannot retroactively change where an earlier
 donation was supposed to land.
 
-**Tokens are stored as digests.** `magic_link_tokens.token_hash` and
-`sessions.token_hash` are SHA-256. A dump of either table grants nobody a
-session.
+**Tokens are stored as digests.** `sessions.token_hash` is SHA-256. A dump of the
+table grants nobody a session — the plaintext exists only in the browser cookie
+that was issued.
 
 **A bookmark is a join row, not a copy.** `bookmarks` stores the pair of account
 and timelapse, so a corrected title or a takedown is reflected in every saved
@@ -203,11 +203,11 @@ do, on top of the ordinary grants:
 | `schema_migrations` | everything | An API that could edit the ledger could convince the next deployment a migration had run. |
 | `recount_totals()`, `purge_expired_auth(interval)` | `EXECUTE` from `PUBLIC` | Maintenance is a deliberate operator action. |
 
-Everything else keeps the write access it actually uses. Consuming a sign-in link
-`UPDATE`s `magic_link_tokens`, consuming a wallet challenge `UPDATE`s
-`wallet_challenges`, and withdrawing a "helpful" mark `DELETE`s from
-`note_votes` — all three are narrow, intended writes, and revoking them would
-break sign-in and voting rather than harden anything.
+Everything else keeps the write access it actually uses. Consuming a wallet
+challenge — for sign-in or for a payout address — `UPDATE`s `wallet_challenges`,
+and withdrawing a "helpful" mark `DELETE`s from `note_votes`. Both are narrow,
+intended writes, and revoking them would break sign-in and voting rather than
+harden anything.
 
 The role also carries session-level guards, set on the role because a pooled
 endpoint does not reliably forward connection-string parameters to whichever
@@ -259,7 +259,7 @@ nobody, which is the record `0002` intended.
 make db-migrate     # apply pending
 make db-status      # applied and pending
 make db-rollback    # revert the most recent
-make db-seed        # development data; refuses when APP_ENV=production
+make db-seed        # empties every table; refuses when APP_ENV=production
 ```
 
 `scripts/migrate.sh` uses `psql` when it is installed and falls back to

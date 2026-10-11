@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api/client";
+import { fetchAdminReports } from "@/lib/pagination";
 import { cx, timeAgo } from "@/lib/format";
 import type { Report } from "@/lib/types";
 import { useToast } from "../layout/toast";
-import { Avatar, Badge, Button, EmptyState, type Tone } from "../ui";
+import { Avatar, Badge, Button, EmptyState, PagedList, type Tone } from "../ui";
 import { AlertIcon, ExternalIcon } from "../ui/icons";
 import { FilterTabs, Panel, rowPad } from "./console";
 
@@ -35,23 +36,33 @@ const FILTERS = [
 
 type Filter = (typeof FILTERS)[number]["value"];
 
-export function ReportsInbox({ initial }: { initial: Report[] }) {
+export function ReportsInbox({
+  initial,
+  initialCursor,
+}: {
+  initial: Report[];
+  initialCursor?: string;
+}) {
   const router = useRouter();
   const toast = useToast();
-  const [reports, setReports] = useState(initial);
   const [filter, setFilter] = useState<Filter>("open");
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-
-  const visible = filter === "all" ? reports : reports.filter((r) => r.status === filter);
+  /**
+   * Resolving or dismissing moves a report to another status, and the inbox is
+   * ordered open first, so this component cannot re-sort or drop the item: each
+   * close records its new status here and the render applies it over whatever
+   * the pager holds. That keeps the report visible with its new badge, and
+   * leaves the accumulated pages and their cursor untouched.
+   */
+  const [edits, setEdits] = useState<Record<string, Partial<Report>>>({});
 
   async function close(report: Report, status: "resolved" | "dismissed", note = "") {
     await api(`/v1/admin/reports/${report.id}/resolve`, { method: "POST", body: { status, note } });
-    setReports((list) =>
-      list.map((r) =>
-        r.id === report.id ? { ...r, status, resolvedAt: new Date().toISOString() } : r,
-      ),
-    );
+    setEdits((current) => ({
+      ...current,
+      [report.id]: { status, resolvedAt: new Date().toISOString() },
+    }));
   }
 
   async function act(report: Report, kind: "resolve" | "dismiss" | "remove-note" | "take-down") {
@@ -84,129 +95,157 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
   }
 
   return (
-    <div>
-      <FilterTabs
-        label="Filter reports"
-        value={filter}
-        onChange={setFilter}
-        options={FILTERS.map((f) => ({
-          value: f.value,
-          label: f.label,
-          count:
-            f.value === "all" ? reports.length : reports.filter((r) => r.status === f.value).length,
-        }))}
-      />
+    <PagedList
+      initial={initial}
+      initialCursor={initialCursor}
+      load={(cursor) => fetchAdminReports(cursor, filter === "all" ? "" : filter)}
+      // Switching tab changes the question, so the list starts over from a
+      // filtered first page rather than keeping the unfiltered one the server
+      // rendered and appending filtered pages to it.
+      resetKey={filter}
+      label="Load more reports"
+      errorText="More reports could not be loaded. Try again."
+      className="mt-5 flex flex-col items-center gap-3"
+      render={(all) => {
+        const reports = all.map((r) => {
+          const edit = edits[r.id];
+          return edit ? { ...r, ...edit } : r;
+        });
+        const visible = filter === "all" ? reports : reports.filter((r) => r.status === filter);
 
-      {visible.length === 0 ? (
-        <EmptyState
-          className="mt-5"
-          icon={<AlertIcon size={18} />}
-          title={filter === "open" ? "Nothing to look at" : "No reports here"}
-          description="When someone reports a session or a note, it lands here with their reason."
-        />
-      ) : (
-        <Panel as="ul" rows className="mt-5">
-          {visible.map((r) => {
-            const isOpen = r.status === "open";
-            const pending = (kind: string) => busy === `${r.id}:${kind}`;
-            return (
-              <li key={r.id} className={cx(rowPad, "space-y-3")}>
-                <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
-                  <Badge tone={STATUS_TONE[r.status]} dot>
-                    {r.status === "open"
-                      ? "Open"
-                      : r.status === "resolved"
-                        ? "Resolved"
-                        : "Dismissed"}
-                  </Badge>
-                  <Badge tone="danger">{REASON_LABEL[r.reason]}</Badge>
-                  <span className="text-fg-subtle">
-                    {r.subjectType === "note" ? "Note" : "Session"} reported by{" "}
-                    {r.reporter ? r.reporter.displayName : "a deleted account"} ·{" "}
-                    {timeAgo(r.createdAt)}
-                  </span>
-                </div>
+        return (
+          <>
+            <FilterTabs
+              label="Filter reports"
+              value={filter}
+              onChange={setFilter}
+              options={FILTERS.map((f) => ({
+                value: f.value,
+                label: f.label,
+                count:
+                  f.value === "all"
+                    ? reports.length
+                    : reports.filter((r) => r.status === f.value).length,
+              }))}
+            />
 
-                <Link
-                  href={`/watch/${r.timelapse.slug}`}
-                  className="inline-flex items-center gap-1.5 text-[15px] font-semibold hover:text-accent"
-                >
-                  {r.timelapse.title}
-                  <ExternalIcon size={13} className="text-fg-subtle" />
-                </Link>
-                <p className="text-[12.5px] text-fg-subtle">
-                  by {r.timelapse.creator.displayName}
-                  {r.timelapse.status !== "published"
-                    ? ` · currently ${r.timelapse.status.replace("_", " ")}`
-                    : ""}
-                </p>
+            {visible.length === 0 ? (
+              <EmptyState
+                className="mt-5"
+                icon={<AlertIcon size={18} />}
+                title={filter === "open" ? "Nothing to look at" : "No reports here"}
+                description="When someone reports a session or a note, it lands here with their reason."
+              />
+            ) : (
+              <Panel as="ul" rows className="mt-5">
+                {visible.map((r) => {
+                  const isOpen = r.status === "open";
+                  const pending = (kind: string) => busy === `${r.id}:${kind}`;
+                  return (
+                    <li key={r.id} className={cx(rowPad, "space-y-3")}>
+                      <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
+                        <Badge tone={STATUS_TONE[r.status]} dot>
+                          {r.status === "open"
+                            ? "Open"
+                            : r.status === "resolved"
+                              ? "Resolved"
+                              : "Dismissed"}
+                        </Badge>
+                        <Badge tone="danger">{REASON_LABEL[r.reason]}</Badge>
+                        <span className="text-fg-subtle">
+                          {r.subjectType === "note" ? "Note" : "Session"} reported by{" "}
+                          {r.reporter ? r.reporter.displayName : "a deleted account"} ·{" "}
+                          {timeAgo(r.createdAt)}
+                        </span>
+                      </div>
 
-                {r.note ? (
-                  <div className="flex gap-3 rounded-[var(--radius-control)] bg-surface-raised p-3">
-                    <Avatar name={r.note.author.displayName} size={24} />
-                    <div className="min-w-0">
-                      <p className="text-[12.5px] font-medium">{r.note.author.displayName}</p>
-                      <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-fg-muted">
-                        {r.note.body}
+                      <Link
+                        href={`/watch/${r.timelapse.slug}`}
+                        className="inline-flex items-center gap-1.5 text-[15px] font-semibold hover:text-accent"
+                      >
+                        {r.timelapse.title}
+                        <ExternalIcon size={13} className="text-fg-subtle" />
+                      </Link>
+                      <p className="text-[12.5px] text-fg-subtle">
+                        by {r.timelapse.creator.displayName}
+                        {r.timelapse.status !== "published"
+                          ? ` · currently ${r.timelapse.status.replace("_", " ")}`
+                          : ""}
                       </p>
-                    </div>
-                  </div>
-                ) : null}
 
-                {r.details ? (
-                  <p className="border-l-2 border-border-strong pl-3 text-[13.5px] leading-relaxed text-fg-muted">
-                    &ldquo;{r.details}&rdquo;
-                  </p>
-                ) : null}
+                      {r.note ? (
+                        <div className="flex gap-3 rounded-[var(--radius-control)] bg-surface-raised p-3">
+                          <Avatar name={r.note.author.displayName} size={24} />
+                          <div className="min-w-0">
+                            <p className="text-[12.5px] font-medium">{r.note.author.displayName}</p>
+                            <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-fg-muted">
+                              {r.note.body}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
 
-                {isOpen ? (
-                  <div className="flex flex-wrap gap-2">
-                    {confirming === r.id ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          loading={pending(r.note ? "remove-note" : "take-down")}
-                          onClick={() => void act(r, r.note ? "remove-note" : "take-down")}
-                        >
-                          {r.note ? "Yes, remove the note" : "Yes, take the session down"}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {r.note || r.timelapse.status === "published" ? (
-                          <Button size="sm" variant="danger" onClick={() => setConfirming(r.id)}>
-                            {r.note ? "Remove note" : "Take down session"}
-                          </Button>
-                        ) : null}
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          loading={pending("resolve")}
-                          onClick={() => void act(r, "resolve")}
-                        >
-                          Mark resolved
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          loading={pending("dismiss")}
-                          onClick={() => void act(r, "dismiss")}
-                        >
-                          Dismiss
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </Panel>
-      )}
-    </div>
+                      {r.details ? (
+                        <p className="border-l-2 border-border-strong pl-3 text-[13.5px] leading-relaxed text-fg-muted">
+                          &ldquo;{r.details}&rdquo;
+                        </p>
+                      ) : null}
+
+                      {isOpen ? (
+                        <div className="flex flex-wrap gap-2">
+                          {confirming === r.id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                loading={pending(r.note ? "remove-note" : "take-down")}
+                                onClick={() => void act(r, r.note ? "remove-note" : "take-down")}
+                              >
+                                {r.note ? "Yes, remove the note" : "Yes, take the session down"}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              {r.note || r.timelapse.status === "published" ? (
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  onClick={() => setConfirming(r.id)}
+                                >
+                                  {r.note ? "Remove note" : "Take down session"}
+                                </Button>
+                              ) : null}
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                loading={pending("resolve")}
+                                onClick={() => void act(r, "resolve")}
+                              >
+                                Mark resolved
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                loading={pending("dismiss")}
+                                onClick={() => void act(r, "dismiss")}
+                              >
+                                Dismiss
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </Panel>
+            )}
+          </>
+        );
+      }}
+    />
   );
 }

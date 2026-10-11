@@ -38,7 +38,7 @@ Two properties matter more than the diagram:
 
 ## 1. Recording and submitting
 
-Frontend: `frontend/src/components/upload-form.tsx`
+Frontend: `frontend/src/components/account/upload-form.tsx`
 
 One form, four requests. It is not a wizard: everything on it is needed before
 anyone can review the result, and splitting that over four screens only hides
@@ -85,7 +85,7 @@ either.
 
 ## 2. Review
 
-Frontend: `frontend/src/components/review-queue.tsx`
+Frontend: `frontend/src/components/admin/review-desk.tsx`
 Backend: `backend/internal/server/admin_handlers.go`
 
 ```
@@ -147,11 +147,15 @@ insert was genuinely new.
 
 ## 4. Donating
 
-Frontend: `frontend/src/components/donate-panel.tsx`
+Frontend: `frontend/src/components/watch/donate-panel.tsx`
 Backend: `backend/internal/server/donation_handlers.go`
 
-SOL moves **wallet to wallet**. Hustle On never holds it and takes no cut. There
-is no on-chain program to deploy — a donation is a plain system transfer.
+SOL moves **wallet to wallet**. Hustle On never holds it. When
+`HUSTLEON_PAY_PROGRAM_ID` is set, the sponsorship goes through the deployed
+`hustleon_pay` program — one `sponsor` instruction that pays the creator, routes
+a platform fee to a treasury and leaves an on-chain receipt. With the variable
+empty the API falls back to verifying a plain system transfer. See
+[contracts/README.md](../contracts/README.md) for the program itself.
 
 ```
 POST /v1/donations                  { slug, donorAddress, amountLamports, message }
@@ -177,12 +181,15 @@ choose after the fact.
 changing their wallet later must not retroactively change where an earlier
 donation was supposed to land.
 
-**A signature is a claim, not evidence.** `solana.VerifyTransfer` reads the
-transaction back at `finalized` commitment and checks the *balance deltas* in
-the transaction meta — not decoded instructions, and not logs. The delta is what
-actually happened; a transaction that emits convincing logs and transfers
-nothing fails here. It also requires the payer's balance to have fallen, so a
-transfer credited from a third account is not the transfer that was claimed.
+**A signature is a claim, not evidence.** The API reads the transaction back at
+`finalized` commitment. With `HUSTLEON_PAY_PROGRAM_ID` set it requires a `sponsor`
+instruction from that program naming this donor and this creator, and then
+confirms the creator's balance actually rose by the amount less the maximum
+permitted fee. With no program id it falls back to the *balance deltas* in the
+transaction meta alone — not decoded instructions, and not logs. Either way the
+delta is what actually happened; a transaction that emits convincing logs and
+transfers nothing fails here. It also requires the payer's balance to have fallen,
+so a transfer credited from a third account is not the transfer that was claimed.
 
 **Nothing is credited twice.** `donations.signature` is `UNIQUE`, so a
 transaction already recorded against another intent is rejected at the database.

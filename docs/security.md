@@ -22,19 +22,21 @@ displays; they cannot take the money, because it never passes through here.
 ## Authentication
 
 No password exists anywhere in the schema, so there is nothing to leak, reset or
-reuse. Sign-in links and session tokens are stored as SHA-256 digests; the
-plaintext lives only in a recipient's inbox or a browser cookie.
+reuse. Sign-in is a Solana wallet signature, and session tokens are stored as
+SHA-256 digests; a session's plaintext lives only in a browser cookie. Nothing is
+emailed, so there is no inbox to compromise and no third party in the path.
 
 Full detail in [auth.md](auth.md). The properties that matter:
 
-- `request-link` answers identically for every address, so it cannot be used to
-  enumerate accounts.
-- Links are single-use, enforced by `consumed_at IS NULL` inside the same
-  `UPDATE` that reads the row — two concurrent requests race on the row lock.
-- Accounts are created on verification, not on request, so an unverified address
-  can never hold a handle.
+- `signin/challenge` looks up no account and answers identically for every
+  address, so it cannot be used to enumerate accounts.
+- Sign-in nonces are single-use, enforced by `consumed_at IS NULL` inside the
+  same `UPDATE` that reads the row — two concurrent requests race on the row
+  lock.
+- An account is created only when a signature verifies, so an address that has
+  proved nothing can never hold a handle or a session.
 - `next` must be a local path; absolute and protocol-relative values are
-  rejected, or the emailed link becomes an open redirect.
+  rejected, or a crafted link becomes an open redirect.
 
 ## Cookies
 
@@ -76,7 +78,8 @@ repeated per endpoint.
 A request that carries no session is protected by the origin check alone: there
 is no session for a token to be bound to, and demanding one would make signing in
 impossible. This keeps cross-site form posts from creating donation intents or
-mailing sign-in links at a victim's expense, which the origin check alone stops.
+starting a sign-in challenge in a visitor's browser, which the origin check alone
+stops.
 
 CORS reflects only allowlisted origins. Credentials are allowed, which is
 exactly why the origin is never reflected blindly.
@@ -174,9 +177,9 @@ Each endpoint is charged against a named budget for its class of work — readin
 engaging, writing, uploading, donating, signing in, verifying, administering —
 rather than every endpoint sharing one API-wide number. Without that split the
 budget has to be as generous as the busiest route, which lets the most expensive
-route to abuse (requesting a sign-in link, which sends mail) run at the same rate
-as reading the feed. The route table names the budget per route, so a new
-endpoint cannot be registered without one.
+route to abuse (asking for a sign-in challenge, which is anonymous and cheap to
+mint in bulk) run at the same rate as reading the feed. The route table names the
+budget per route, so a new endpoint cannot be registered without one.
 
 Sign-in and sign-in-token budgets are charged to the **address** even for a
 signed-in caller; the rest are charged to the account id when there is a session
@@ -185,8 +188,8 @@ itself, bounding the work one address can cause before we know who is asking, an
 is deliberately loose so an office or a carrier NAT is not treated as one abusive
 client.
 
-Every budget is also capped per email address for link requests
-(`MaxLinksPerHour`), so a distributed attempt on one inbox is still bounded.
+One address is also capped by how many unspent sign-in challenges it may hold at
+once, so a client cannot fill the table by requesting nonces in a loop.
 
 Limits are per process, in memory: they are the last line of defence behind an
 edge limiter, and a multi-instance deployment should also limit at the edge.
@@ -216,12 +219,12 @@ window (7–90) instead.
 
 ## Production refuses to degrade
 
-`config.Load` will not start in production without a Resend key, without storage
-credentials, on any cluster other than `mainnet-beta`, or with a `DATABASE_URL`
-whose `sslmode` would let the connection fall back to plaintext. Session digests,
-emails and payout addresses cross that connection, so TLS is required rather than
-negotiated. A missing variable fails loudly rather than silently weakening the
-deployment.
+`config.Load` will not start in production without at least one `ADMIN_WALLETS`
+address, without storage credentials, on any cluster other than `mainnet-beta`,
+or with a `DATABASE_URL` whose `sslmode` would let the connection fall back to
+plaintext. Session digests and payout addresses cross that connection, so TLS is
+required rather than negotiated. A missing variable fails loudly rather than
+silently weakening the deployment.
 
 The same validation rejects a `SESSION_COOKIE_NAME` that is not a valid cookie
 token and any rate-limit budget below 1 — a `0` is not "unlimited" here, it is a

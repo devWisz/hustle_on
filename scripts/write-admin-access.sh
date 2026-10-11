@@ -93,8 +93,8 @@ automatic and one-time.
 
 ### The console
 
-- Admin console: \`${ADMIN_PUBLIC_URL:-http://localhost:3002}/admin\` — signing in
-  as an operator is what unlocks it.
+- Admin console: \`${ADMIN_PUBLIC_URL:-http://localhost:3001}/admin\` — the console
+  is part of the web app, and signing in as an operator is what unlocks it.
 - Admin sessions expire after \`${ADMIN_SESSION_MAX_AGE_HOURS:-12}\` hours by
   default, regardless of the ordinary session length.
 - \`ADMIN_ALLOWED_IPS\`$( [[ -n "${ADMIN_ALLOWED_IPS:-}" ]] && echo " is set to \`${ADMIN_ALLOWED_IPS}\`" || echo " is **unset**, so the console is reachable from anywhere for a signed-in operator. Set it to a CIDR list to pin it to your network." )
@@ -130,8 +130,8 @@ make preflight
 
 ## Secrets
 
-Both live in \`.env\` and are symlinked to \`frontend/.env.local\` and
-\`admin/.env.local\`, so the web app and the API always read the same values.
+Both live in \`.env\`, which is symlinked to \`frontend/.env.local\` so the web app
+and the API always read the same values.
 
 | Variable | Purpose | Rotate by |
 |---|---|---|

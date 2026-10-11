@@ -24,9 +24,10 @@
 | Directory | What it is |
 | --- | --- |
 | `backend/` | Go HTTP API. The only process that writes to the database. |
-| `auth/` | A separate Go module: sign-in links, sessions, CSRF, wallet proofs. |
+| `auth/` | A separate Go module: wallet sign-in, sessions, CSRF, wallet proofs. |
 | `frontend/` | Next.js application, including the role-gated review queue. |
 | `database/` | Migrations, seed data, schema notes. |
+| `contracts/` | The `hustleon_pay` Anchor program. Deployed separately; the API only reads its transactions. |
 | `docs/` | This. |
 | `scripts/` | Developer tooling. |
 
@@ -65,7 +66,10 @@ holds no key that can move anyone's money.
 
 ## What is deliberately absent
 
-No message queue, no cache layer, no microservices, no on-chain program. Each
-would need to earn its place by solving a problem this product actually has, and
-at present none of them do. The review queue is a `WHERE status = 'in_review'`
-against a partial index; that is the correct amount of machinery for it.
+No message queue, no cache layer, no microservices. Each would need to earn its
+place by solving a problem this product actually has, and at present none of them
+do. The review queue is a `WHERE status = 'in_review'` against a partial index;
+that is the correct amount of machinery for it. The one thing that does live on
+chain is the sponsorship program, and it is there because a sponsorship needs a
+receipt the sender cannot quietly avoid — see
+[ADR 0008](adr/0008-on-chain-sponsorship-program.md).
