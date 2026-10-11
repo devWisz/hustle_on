@@ -24,6 +24,11 @@ keypairs/
 .anchor/
 test-ledger/
 
+# The deployed program's upgrade authority. It lives here as well as under
+# contracts/target/ because `anchor clean` deletes target/ — and losing this
+# keypair means the program can never be upgraded, only abandoned.
+contracts/.keys/
+
 # Tooling
 .DS_Store
 coverage/

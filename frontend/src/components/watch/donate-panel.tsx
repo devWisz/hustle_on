@@ -312,9 +312,7 @@ export function SupporterList({
               <li key={d.id} className="flex items-start gap-3 py-3">
                 <Avatar name={d.donor?.displayName ?? "Anonymous"} size={28} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] font-medium">
-                    {d.donor?.displayName ?? "Anonymous"}
-                  </p>
+                  <p className="text-[13.5px] font-medium">{d.donor?.displayName ?? "Anonymous"}</p>
                   {d.message ? (
                     <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">{d.message}</p>
                   ) : null}

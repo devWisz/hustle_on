@@ -1,5 +1,6 @@
 "use client";
 
+import { Buffer } from "buffer";
 import {
   Connection,
   LAMPORTS_PER_SOL,
@@ -199,7 +200,7 @@ export async function sponsorViaProgram(
       { pubkey: creatorStatsPda(program, creatorKey), isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
-    data,
+    data: Buffer.from(data),
   });
 
   const transaction = new Transaction().add(instruction);

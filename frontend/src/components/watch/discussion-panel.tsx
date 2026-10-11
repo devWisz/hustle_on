@@ -266,7 +266,9 @@ export function DiscussionPanel({
                             onClick={() => seek?.seek(note.timestampSeconds!)}
                             disabled={!seek}
                             className="press ml-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 font-mono text-[11px] font-medium text-accent transition-colors duration-200 hover:bg-accent/20 disabled:cursor-default disabled:opacity-60"
-                            title={seek ? "Jump the video to this moment" : "This page has no video"}
+                            title={
+                              seek ? "Jump the video to this moment" : "This page has no video"
+                            }
                           >
                             {formatDuration(note.timestampSeconds)}
                           </button>
@@ -310,7 +312,12 @@ export function DiscussionPanel({
                           )}
 
                           {!note.viewerCanDelete ? (
-                            <ReportButton slug={slug} noteId={note.id} signedIn={signedIn} compact />
+                            <ReportButton
+                              slug={slug}
+                              noteId={note.id}
+                              signedIn={signedIn}
+                              compact
+                            />
                           ) : null}
                           {note.viewerCanDelete ? (
                             <button

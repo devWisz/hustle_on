@@ -68,10 +68,30 @@ The build needs `cargo-build-sbf`, which ships with the Solana CLI. It produces
 `target/deploy/hustleon_pay.so` and, on first run, the program keypair that fixes
 the program id.
 
-**Keep `target/deploy/hustleon_pay-keypair.json`.** It is the program's upgrade
-authority. `target/` is gitignored, so it exists only on the machine that built
-it — lose it and the program can never be upgraded, only abandoned and redeployed
-under a new address.
+**Keep the program keypair.** It is the program's upgrade authority, and it lives
+in two places, both gitignored: `target/deploy/hustleon_pay-keypair.json`, where
+Anchor writes it, and `contracts/.keys/`, which survives `anchor clean` — because
+`anchor clean` deletes `target/`, and a keypair that exists only there is one
+stray command away from being lost. Lose it and the program can never be
+upgraded, only abandoned and redeployed under a new address.
+
+### The vendored `anchor-syn` patch
+
+`contracts/patches/anchor-syn/` is upstream anchor-syn 0.30.1 with a single call
+site changed in `src/idl/defined.rs` (`Span::source_file()` → `local_file()`), and
+`Cargo.lock` pins `proc-macro2` at or above 1.0.95. Both are load-bearing.
+
+Anchor 0.30.1 generates its IDL by running `cargo +nightly test
+__anchor_private_print_idl` with `RUSTFLAGS=--cfg procmacro2_semver_exempt`, which
+compiles an anchor-syn block calling `Span::source_file` — removed in proc-macro2
+1.0.95. Without the patch the build stops at `Error: Building IDL failed`. Pinning
+proc-macro2 *lower* does not help: 1.0.94 then fails inside proc-macro2 itself,
+against the removed nightly `proc_macro::SourceFile` API.
+
+If you would rather not vendor a patched crate, `anchor build --no-idl` skips only
+the IDL step and produces the same program. Nothing here consumes the IDL — the
+API derives the `sponsor` discriminator from the instruction name itself, and the
+browser builds the instruction by hand — so the IDL exists for reference only.
 
 ## Deploying
 

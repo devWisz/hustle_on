@@ -27,13 +27,7 @@ const FILTERS: { id: "all" | TimelapseStatus; label: string }[] = [
   { id: "rejected", label: "Needs changes" },
 ];
 
-export function Submissions({
-  items,
-  nextCursor,
-}: {
-  items: Timelapse[];
-  nextCursor?: string;
-}) {
+export function Submissions({ items, nextCursor }: { items: Timelapse[]; nextCursor?: string }) {
   const router = useRouter();
   const toast = useToast();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
@@ -153,10 +147,7 @@ export function Submissions({
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <h3 className="text-[15px] font-semibold leading-snug">
                               {href ? (
-                                <Link
-                                  href={href}
-                                  className="transition-colors hover:text-accent"
-                                >
+                                <Link href={href} className="transition-colors hover:text-accent">
                                   {t.title}
                                 </Link>
                               ) : (

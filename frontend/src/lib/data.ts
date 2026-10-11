@@ -132,10 +132,7 @@ async function loadWatch(slug: string): Promise<WatchData | null> {
 
   const [creator, donations, notes, feed] = await Promise.all([
     apiServer<PublicUser>(`/v1/creators/${live.creator.handle}`, 0),
-    apiServer<Page<Donation>>(
-      `/v1/timelapses/${slug}/donations?limit=${SUPPORTERS_PAGE_SIZE}`,
-      0,
-    ),
+    apiServer<Page<Donation>>(`/v1/timelapses/${slug}/donations?limit=${SUPPORTERS_PAGE_SIZE}`, 0),
     apiServer<Page<Note>>(`/v1/timelapses/${slug}/notes?limit=${NOTES_PAGE_SIZE}`, 0),
     apiServer<Page<Timelapse>>("/v1/timelapses?limit=5", 0),
   ]);
