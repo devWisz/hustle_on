@@ -47,7 +47,7 @@ export default async function LedgerPage() {
       ) : null}
 
       {data.ledger.length ? (
-        <>
+        <div className="space-y-6">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Confirmed volume"
@@ -83,7 +83,7 @@ export default async function LedgerPage() {
             />
           </div>
           <Ledger entries={data.ledger} />
-        </>
+        </div>
       ) : (
         <EmptyState
           icon={<CoinsIcon size={18} />}

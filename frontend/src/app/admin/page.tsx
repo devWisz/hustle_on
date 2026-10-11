@@ -4,7 +4,7 @@ import { formatSol, timeAgo } from "@/lib/format";
 import { formatWait, waitingMinutes } from "@/lib/review";
 import { ActivityChart } from "@/components/admin/activity-chart";
 import { AuditRow, DECISION_ACTIONS } from "@/components/admin/audit-log";
-import { AdminPage, Panel, StatCard, decisionTotals } from "@/components/admin/console";
+import { AdminPage, Panel, StatCard, decisionTotals, reviewHref } from "@/components/admin/console";
 import { CountUp } from "@/components/motion/count-up";
 import { Avatar, EmptyState } from "@/components/ui";
 import { InboxIcon } from "@/components/ui/icons";
@@ -130,7 +130,7 @@ export default async function AdminOverview() {
               {waiting.slice(0, 4).map((t) => (
                 <li key={t.id}>
                   <Link
-                    href={`/admin/queue?item=${encodeURIComponent(t.id)}`}
+                    href={reviewHref(t.id)}
                     className="group -mx-2 flex items-center gap-3 rounded-[var(--radius-control)] px-2 py-3 hover:bg-surface-raised"
                   >
                     <Avatar name={t.creator.displayName} src={t.creator.avatarUrl} size={32} />

@@ -7,14 +7,18 @@ Next.js 15 App Router, React 19, Tailwind v4, GSAP 3, TypeScript in strict mode.
 
 ```
 src/app                      routes; server components unless a page needs interactivity
-src/app/admin                overview, review desk, library, members, ledger, audit trail
+src/app/admin                overview, review desk, reports, library, front page,
+                             members, ledger, notes, audit trail
 src/components/ui            primitives (button, card, form, badge, avatar, layout) and icons
 src/components/layout        header, footer, command palette, shortcuts, toasts, theme
-src/components/motion        GSAP wrappers: reveal, split headings, count-up, marquee, magnetic
-src/components/timelapse     card, feed, hero showcase, player, preview
-src/components/watch         donate panel, discussion, share card, up next
-src/components/account       login, upload, settings, submissions, saved list
-src/components/admin         admin nav, data table, activity chart, review desk, tables
+src/components/motion        GSAP wrappers: reveal, split headings, count-up, magnetic, scroll-scale
+src/components/timelapse     card, feed, grid, hero showcase, player, session inspector
+src/components/watch         donate panel, discussion, share card, up next, report button
+src/components/account       login, guest actions and notice, onboarding, upload,
+                             settings, submissions, saved list
+src/components/admin         admin nav, data table, activity chart, review desk,
+                             reports inbox, notes moderation, library, front page,
+                             members, ledger, audit log
 src/lib/api                  browser client and server fetcher
 src/lib/data.ts              every page's server-side data, read straight from the API
 src/middleware.ts            security headers and cache rules

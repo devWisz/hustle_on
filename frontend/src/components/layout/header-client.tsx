@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "@/lib/format";
 import { SITE_NAME } from "@/lib/brand";
+import { startGuestSession } from "@/lib/guest";
 import { MOTION, ScrollTrigger, gsap, useGSAP } from "../motion/gsap";
 import { Avatar } from "../ui/avatar";
 import { buttonClass } from "../ui/button";
@@ -28,6 +29,7 @@ interface NavItem {
 }
 
 export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest?: boolean }) {
+  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const bar = useRef<HTMLElement>(null);
@@ -184,13 +186,30 @@ export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest
               </Link>
             </>
           )}
-          <Link
-            href="/upload"
-            className={buttonClass("inverse", "sm", "ml-1 hidden sm:inline-flex")}
-          >
-            <UploadIcon size={14} />
-            Upload
-          </Link>
+          {user || guest ? (
+            <Link
+              href="/upload"
+              className={buttonClass("inverse", "sm", "ml-1 hidden sm:inline-flex")}
+            >
+              <UploadIcon size={14} />
+              Upload
+            </Link>
+          ) : (
+            // A stranger cannot upload, so offering it as the first thing in the
+            // header is a dead end. The button that can actually be used is the
+            // one that opens the site.
+            <button
+              type="button"
+              onClick={() => {
+                startGuestSession();
+                router.push("/#feed");
+                router.refresh();
+              }}
+              className={buttonClass("inverse", "sm", "ml-1 hidden sm:inline-flex")}
+            >
+              Continue as guest
+            </button>
+          )}
           {user ? (
             <span className="ml-1 hidden md:block">
               <AccountMenu user={user} />
@@ -274,6 +293,20 @@ export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest
                   </Link>
                 ) : (
                   <>
+                    {guest ? null : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          startGuestSession();
+                          setOpen(false);
+                          router.push("/#feed");
+                          router.refresh();
+                        }}
+                        className={buttonClass("secondary", "lg", "w-full")}
+                      >
+                        Continue as guest
+                      </button>
+                    )}
                     <Link href="/upload" className={buttonClass("secondary", "lg", "w-full")}>
                       Upload a timelapse
                     </Link>

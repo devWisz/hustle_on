@@ -266,11 +266,7 @@ export function ReviewDesk({
               <option value="newest">Newest first</option>
               <option value="longest">Longest session</option>
             </Select>
-            <ul
-              id="review-queue"
-              aria-label="Submissions"
-              className="max-h-[70vh] space-y-1.5 overflow-y-auto pr-1"
-            >
+            <ul aria-label="Submissions" className="space-y-1.5">
               {visible.map((t) => {
                 const itemFlags = reviewFlags(t);
                 const selected = t.id === current?.id;
@@ -331,7 +327,9 @@ export function ReviewDesk({
               </button>
 
               <Panel as="section" label="review-detail-title" rows={false}>
-                <VideoStage timelapse={current} />
+                {/* Keyed by id so a recording that failed on one submission does not
+                    carry that verdict to the next one. */}
+                <VideoStage key={current.id} timelapse={current} />
 
                 <div className="p-5 sm:p-6">
                   <div

@@ -129,12 +129,12 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
 
                 <Link
                   href={`/watch/${r.timelapse.slug}`}
-                  className="mt-3 inline-flex items-center gap-1.5 text-[15px] font-semibold hover:text-accent"
+                  className="inline-flex items-center gap-1.5 text-[15px] font-semibold hover:text-accent"
                 >
                   {r.timelapse.title}
                   <ExternalIcon size={13} className="text-fg-subtle" />
                 </Link>
-                <p className="mt-0.5 text-[12.5px] text-fg-subtle">
+                <p className="text-[12.5px] text-fg-subtle">
                   by {r.timelapse.creator.displayName}
                   {r.timelapse.status !== "published"
                     ? ` · currently ${r.timelapse.status.replace("_", " ")}`
@@ -142,7 +142,7 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
                 </p>
 
                 {r.note ? (
-                  <div className="mt-3 flex gap-3 rounded-[var(--radius-control)] bg-surface-raised p-3">
+                  <div className="flex gap-3 rounded-[var(--radius-control)] bg-surface-raised p-3">
                     <Avatar name={r.note.author.displayName} size={24} />
                     <div className="min-w-0">
                       <p className="text-[12.5px] font-medium">{r.note.author.displayName}</p>
@@ -154,13 +154,13 @@ export function ReportsInbox({ initial }: { initial: Report[] }) {
                 ) : null}
 
                 {r.details ? (
-                  <p className="mt-3 border-l-2 border-border-strong pl-3 text-[13.5px] leading-relaxed text-fg-muted">
+                  <p className="border-l-2 border-border-strong pl-3 text-[13.5px] leading-relaxed text-fg-muted">
                     &ldquo;{r.details}&rdquo;
                   </p>
                 ) : null}
 
                 {isOpen ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {confirming === r.id ? (
                       <>
                         <Button

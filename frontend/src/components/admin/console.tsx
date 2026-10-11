@@ -155,8 +155,10 @@ export function StatCard({
 /**
  * A row of filter pills, driven by a button and the value it sets.
  *
- * Laid out with wrapping rather than sideways scrolling, and arrow keys move
- * between the pills, so nothing here needs a trackpad or a pointer.
+ * A pressed/not-pressed group rather than a tablist, since the list they filter
+ * is not a tab panel. Laid out with wrapping rather than sideways scrolling, and
+ * arrow keys move between the pills, so nothing here needs a trackpad or a
+ * pointer.
  */
 export function FilterTabs<T extends string>({
   options,
@@ -181,16 +183,14 @@ export function FilterTabs<T extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className={cx("flex flex-wrap gap-1.5", className)}>
+    <div aria-label={label} className={cx("flex flex-wrap gap-1.5", className)} role="group">
       {options.map((option) => {
         const current = option.value === value;
         return (
           <button
             key={option.value}
             type="button"
-            role="tab"
-            aria-selected={current}
-            tabIndex={current ? 0 : -1}
+            aria-pressed={current}
             onClick={() => onChange(option.value)}
             onKeyDown={step}
             className={cx(
