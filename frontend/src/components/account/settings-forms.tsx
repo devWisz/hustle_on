@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api/client";
 import { shortAddress } from "@/lib/format";
 import { connectWallet, signOwnershipProof, walletAvailable, WalletError } from "@/lib/wallet";
-import type { SelfUser } from "@/lib/types";
-import { Button, Card, Field, Input, Textarea } from "../ui";
+import type { SelfUser, Upload } from "@/lib/types";
+import { uploadToStorage } from "@/lib/upload";
+import { Avatar, Button, Card, Field, Input, Textarea } from "../ui";
 import { useToast } from "../layout/toast";
 import { CheckIcon, WalletIcon } from "../ui/icons";
 
@@ -178,5 +179,100 @@ export function SignOutButton({ everywhere = false }: { everywhere?: boolean }) 
     <Button onClick={signOut} loading={busy} variant={everywhere ? "secondary" : "ghost"}>
       {everywhere ? "Sign out everywhere" : "Sign out"}
     </Button>
+  );
+}
+
+const MAX_AVATAR_BYTES = 8 * 1024 * 1024;
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * The picture on the account, changeable after onboarding.
+ *
+ * The claim an upload makes is the key it leaves in the bucket, and the API
+ * refuses a key this account did not upload — so the form uploads first and
+ * claims second, and a picture somebody else uploaded cannot be adopted by
+ * guessing its path. Removing the picture is a first-class action rather than an
+ * empty upload, because "no picture" is a complete answer: the site falls back to
+ * the account's initials.
+ */
+export function AvatarForm({ user }: { user: SelfUser }) {
+  const router = useRouter();
+  const toast = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    if (!AVATAR_TYPES.includes(file.type)) {
+      toast.error("Choose a JPEG, PNG or WebP image.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      toast.error("That image is over 8 MB. Choose a smaller one.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const upload = await api<Upload>("/v1/uploads/avatar", {
+        body: { contentType: file.type, sizeBytes: file.size },
+      });
+      await uploadToStorage(upload.url, file);
+      await api<SelfUser>("/v1/me/avatar", { method: "PUT", body: { key: upload.key } });
+      toast.success("Picture updated.");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "That image did not upload.");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function clear() {
+    setBusy(true);
+    try {
+      await api<SelfUser>("/v1/me/avatar", { method: "DELETE" });
+      toast.success("Picture removed.");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not remove the picture.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card as="section" className="p-5">
+      <h2 className="text-[15px] font-semibold">Picture</h2>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <Avatar name={user.displayName} src={user.avatarUrl} size={56} />
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept={AVATAR_TYPES.join(",")}
+            className="sr-only"
+            onChange={(e) => void pick(e.target.files?.[0])}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            loading={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            {user.avatarUrl ? "Change picture" : "Add a picture"}
+          </Button>
+          {user.avatarUrl ? (
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => void clear()}>
+              Remove
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <p className="mt-3 text-[12.5px] leading-relaxed text-fg-subtle">
+        JPEG, PNG or WebP, up to 8 MB. Without one, the site shows your initials.
+      </p>
+    </Card>
   );
 }

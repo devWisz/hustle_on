@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { getAccount, getViewer } from "@/lib/data";
 import { shortAddress } from "@/lib/format";
 import { GuestNotice } from "@/components/account/guest-notice";
-import { ProfileForm, SignOutButton, WalletForm } from "@/components/account/settings-forms";
+import {
+  AvatarForm,
+  ProfileForm,
+  SignOutButton,
+  WalletForm,
+} from "@/components/account/settings-forms";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
 import { Card, Container } from "@/components/ui";
@@ -38,6 +43,7 @@ export default async function SettingsPage() {
       </SplitHeading>
 
       <Reveal stagger={0.08} immediate className="mt-8 space-y-5">
+        <AvatarForm user={me} />
         <ProfileForm user={me} />
         <WalletForm user={me} />
         <Card
