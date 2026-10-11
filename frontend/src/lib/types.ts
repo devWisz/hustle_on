@@ -64,6 +64,12 @@ export interface ChainStatus {
   reachable: boolean;
   detail: string;
   checkedAt: string;
+  /** The sponsorship program this API verifies against, or empty if none is set. */
+  programId?: string;
+  /** Whether that program is actually present and executable on chain. */
+  programDeployed?: boolean;
+  /** Plain-language summary of whichever of those states applies. */
+  programDetail?: string;
 }
 
 export interface Donation {

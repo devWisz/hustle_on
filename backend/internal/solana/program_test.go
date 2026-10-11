@@ -262,3 +262,31 @@ func TestPlainTransferStillVerifies(t *testing.T) {
 		t.Fatalf("a transfer that cost the sender nothing was accepted: %v", err)
 	}
 }
+
+// The two rules are not interchangeable, and this is the test that says so.
+//
+// A sponsorship that goes through the program pays the creator the amount less
+// the platform fee, so the creator's balance rises by *less* than the amount the
+// donor promised. The plain-transfer rule demands the full amount and therefore
+// rejects a payment that genuinely happened. Any call site that reaches for the
+// plain rule when a program is configured will mark real money as failed.
+//
+// Both rules are unexported and VerifySponsorship is the only exported entry
+// point, so a caller cannot get this wrong; this test exists so that the reason
+// is written down where someone tempted to re-export them will read it.
+func TestTheTwoRulesDisagreeOnAProgramSponsorship(t *testing.T) {
+	const amount = 1_000_000
+	tx := sponsorTransaction(t, amount)
+
+	if _, err := checkProgramTransfer(tx, check(amount)); err != nil {
+		t.Fatalf("the program rule rejected a valid sponsorship: %v", err)
+	}
+
+	_, err := checkTransfer(tx, TransferCheck{
+		Signature: "sig", From: sponsor, To: creator, MinLamports: amount,
+	})
+	if !errors.Is(err, ErrMismatch) {
+		t.Fatalf("the plain rule gave %v for a program sponsorship, want ErrMismatch — "+
+			"if this now passes, the fee is no longer being taken and the comment above is stale", err)
+	}
+}

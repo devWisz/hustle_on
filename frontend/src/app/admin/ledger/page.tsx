@@ -38,11 +38,24 @@ export default async function LedgerPage() {
           <span className="text-fg-muted">
             Verifying against <span className="font-mono text-fg">{chain.cluster}</span>
           </span>
+          {chain.programId ? (
+            <Badge tone={chain.programDeployed ? "success" : "danger"} dot>
+              {chain.programDeployed ? "Program deployed" : "Program not deployed"}
+            </Badge>
+          ) : (
+            <Badge tone="warning" dot>
+              Plain transfers
+            </Badge>
+          )}
           <span className="text-fg-subtle">
-            {chain.reachable
-              ? "Donations confirm on their own; Re-check asks the chain about one now."
-              : chain.detail}
+            {chain.programDetail ??
+              (chain.reachable
+                ? "Donations confirm on their own; Re-check asks the chain about one now."
+                : chain.detail)}
           </span>
+          {chain.programId ? (
+            <span className="w-full font-mono text-[11.5px] text-fg-subtle">{chain.programId}</span>
+          ) : null}
         </Panel>
       ) : null}
 

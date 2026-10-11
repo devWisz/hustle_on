@@ -2,7 +2,8 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 .PHONY: help setup dev dev-api dev-web build test lint fmt \
-        db-migrate db-rollback db-status db-seed preflight clean
+        db-migrate db-rollback db-status db-seed preflight \
+        program-build program-check program-deploy clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -55,6 +56,15 @@ db-seed: ## Load development seed data
 
 preflight: ## Check the environment for production readiness
 	@bash scripts/preflight.sh
+
+program-build: ## Build the sponsorship Anchor program
+	cd contracts && anchor build
+
+program-check: ## Check the deployed program is usable (exit 0 only if sponsorships would work)
+	@NODE_PATH="$$PWD/frontend/node_modules" node contracts/scripts/check-program.cjs
+
+program-deploy: ## Build, deploy and initialize the program, then verify it
+	@bash scripts/deploy-program.sh
 
 clean: ## Remove build output
 	rm -rf backend/bin backend/data frontend/.next

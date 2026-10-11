@@ -44,11 +44,40 @@ func (s *Server) handleAdminChainStatus(w http.ResponseWriter, r *http.Request) 
 			s.log.ErrorContext(r.Context(), "chain health check failed", "error", err)
 		}
 	}
+
+	// Whether sponsorships leave an on-chain record is a property of this
+	// deployment rather than of the request, so it is reported on every read of
+	// this endpoint instead of being something an operator has to remember to ask.
+	//
+	// A program that is *configured* but not *deployed* is the state worth
+	// catching: every sponsorship then fails verification, and that failure looks
+	// identical to a donor having sent the wrong transaction — which is the most
+	// expensive thing on this site to be confused about.
+	programID := s.chain.ProgramID()
+	programDeployed := false
+	programDetail := "No sponsorship program is configured, so sponsorships are verified as plain SOL transfers and nothing is recorded on chain."
+	if programID != "" {
+		deployed, err := s.chain.ProgramDeployed(ctx, programID)
+		switch {
+		case err != nil:
+			programDetail = "The sponsorship program could not be checked: the RPC endpoint did not answer."
+		case deployed:
+			programDeployed = true
+			programDetail = "Sponsorships go through the deployed program and are recorded on chain."
+		default:
+			programDetail = "A program address is configured but nothing executable is deployed there, so every sponsorship will fail verification."
+			s.log.ErrorContext(r.Context(), "program configured but not deployed", "program", programID)
+		}
+	}
+
 	return writeJSON(w, http.StatusOK, map[string]any{
-		"cluster":   s.chain.Cluster(),
-		"reachable": reachable,
-		"detail":    detail,
-		"checkedAt": time.Now().UTC(),
+		"cluster":         s.chain.Cluster(),
+		"reachable":       reachable,
+		"detail":          detail,
+		"checkedAt":       time.Now().UTC(),
+		"programId":       programID,
+		"programDeployed": programDeployed,
+		"programDetail":   programDetail,
 	})
 }
 

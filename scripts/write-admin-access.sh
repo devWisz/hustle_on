@@ -170,8 +170,14 @@ Deploying or redeploying the program:
 
 \`\`\`bash
 scripts/deploy-program.sh --check   # what it will cost, changes nothing
-scripts/deploy-program.sh           # build, deploy, write .env
+scripts/deploy-program.sh           # build, deploy, initialize Config, verify, write .env
+make program-check                  # exit 0 only if a sponsorship would actually work
 \`\`\`
+
+\`scripts/deploy-program.sh\` accepts \`--keypair <path>\` if you would rather pay from
+a funded keypair other than \`$KEYPAIR_PATH\`, plus \`--fee-bps\` and \`--treasury\`
+to fix the platform fee and where it goes. Both are decided once, when the
+program's Config account is created.
 
 A devnet deploy needs roughly 1.6 SOL of rent plus a refundable buffer. Get SOL
 from <https://faucet.solana.com> — it needs a signed-in session, so it cannot be

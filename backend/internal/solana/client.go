@@ -58,6 +58,33 @@ func (c *Client) SetProgramID(id string) { c.programID = id }
 // ProgramID returns the configured program, or the empty string.
 func (c *Client) ProgramID() string { return c.programID }
 
+// ProgramDeployed reports whether an address holds an executable program.
+//
+// "Configured" and "deployed" are different things, and the gap between them is
+// silent: an API with HUSTLEON_PAY_PROGRAM_ID set to an address where nothing was
+// ever deployed will reject every sponsorship, and the rejection looks exactly
+// like a donor sending the wrong transaction. This is the question that tells the
+// two apart, and it needs no PDA derivation — the program account is a direct
+// lookup.
+func (c *Client) ProgramDeployed(ctx context.Context, address string) (bool, error) {
+	if address == "" {
+		return false, nil
+	}
+	var out struct {
+		Value *struct {
+			Executable bool   `json:"executable"`
+			Owner      string `json:"owner"`
+		} `json:"value"`
+	}
+	if err := c.call(ctx, "getAccountInfo", []any{
+		address,
+		map[string]any{"encoding": "base64"},
+	}, &out); err != nil {
+		return false, err
+	}
+	return out.Value != nil && out.Value.Executable, nil
+}
+
 // VerifySponsorship verifies a sponsorship by whichever rule this deployment
 // uses: the on-chain program when one is configured, a plain transfer otherwise.
 //

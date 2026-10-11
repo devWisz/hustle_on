@@ -97,18 +97,53 @@ browser builds the instruction by hand — so the IDL exists for reference only.
 
 ```bash
 scripts/deploy-program.sh --check   # report the cost, change nothing
-scripts/deploy-program.sh           # build, deploy to devnet, write .env
+scripts/deploy-program.sh           # build, deploy, initialize, verify, write .env
 ```
+
+That one command does four things, in this order: builds, deploys, creates the
+`Config` account, and reads both back off the cluster. The verification step
+matters because "deployed" and "usable" are different states — a program can be
+sitting on chain, fully executable, and unable to take a single sponsorship
+because `Config` was never created (`sponsor` reads the fee from it).
+
+Useful flags:
+
+| flag | why |
+|---|---|
+| `--keypair <path>` | Pay from a funded keypair other than `~/.config/solana/id.json`. `ANCHOR_WALLET` does the same thing. |
+| `--fee-bps <n>` | The platform fee, in basis points, max 1000 (10%). Default 500 (5%). |
+| `--treasury <address>` | Where the fee goes. Defaults to the deploying wallet. |
+| `--cluster mainnet-beta` | Deploy for real. |
+
+The fee and the treasury are decided **once**, when `Config` is created. An
+operator can change them afterwards with `update_config`, signed by the config
+admin — but not by re-running the deploy, because the account already exists.
 
 Deploying costs about 1.6 SOL of rent for a 227 KB program, and briefly about
 twice that while the buffer account carries the upload; the buffer is closed and
 refunded when the deploy finishes. On devnet, get SOL from
-<https://faucet.solana.com> — it needs a signed-in session and a captcha, so it
-is the one step that cannot be scripted from here. The script prints the exact
-faucet URL for the deployer wallet when the balance is short.
+<https://faucet.solana.com> — it needs a signed-in session and a captcha, so it is
+the one step that cannot be scripted. The script prints the exact faucet URL for
+the wallet it is about to spend from when the balance is short. A failed
+`solana airdrop` is almost always the faucet's per-IP allowance rather than
+anything wrong here.
 
-After deploying, `initialize_config` has to be called once to create the `Config`
-PDA and set the treasury and fee; until it exists, every `sponsor` call fails.
+Check the state at any time, with or without the rest:
+
+```bash
+make program-check          # exit 0 only if a sponsorship would actually work
+```
+
+It reports whether the program is deployed and executable, whether `Config`
+exists, and — if it does — the admin, treasury and fee recorded on chain. It exits
+non-zero when something is missing, so it is safe to use as a gate.
+
+The same state is visible to an operator in the console: `GET /v1/admin/chain`
+reports `programId`, `programDeployed` and a plain-language summary, and the
+ledger page shows it as a badge. A program address that is configured but has
+nothing deployed at it is the state worth catching early — every sponsorship then
+fails verification, and the failure looks exactly like a donor having sent the
+wrong transaction.
 
 ## How the API verifies a sponsorship
 
