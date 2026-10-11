@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAccount } from "@/lib/data";
 import { UploadForm } from "@/components/account/upload-form";
-import { DemoNote } from "@/components/demo/tag";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
 import { Container } from "@/components/ui";
@@ -23,9 +22,8 @@ const CHECKLIST = [
 ];
 
 export default async function UploadPage() {
-  const account = await getAccount();
-  if (account === "signin") redirect("/login?next=/upload");
-  const { me, demo } = account;
+  const me = await getAccount();
+  if (me === "signin") redirect("/login?next=/upload");
 
   return (
     <Container width="wide" className="pt-10 sm:pt-14">
@@ -42,11 +40,7 @@ export default async function UploadPage() {
             </p>
           </Reveal>
 
-          {demo ? (
-            <DemoNote className="mt-8">
-              This is the real form. Fill it in as far as you like; submitting needs an account.
-            </DemoNote>
-          ) : !me.payoutVerified ? (
+          {!me.payoutVerified ? (
             <p className="mt-8 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft px-4 py-3 text-[13.5px] leading-relaxed text-warning">
               You have no payout wallet yet. You can still submit, but nobody can sponsor you until
               you verify one in{" "}
@@ -58,7 +52,7 @@ export default async function UploadPage() {
           ) : null}
 
           <Reveal immediate delay={0.25} className="mt-8">
-            <UploadForm preview={demo} />
+            <UploadForm />
           </Reveal>
         </div>
 

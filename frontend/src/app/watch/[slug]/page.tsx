@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getWatch } from "@/lib/data";
-import { isSampleSlug } from "@/lib/demo/content";
 import { formatCount, formatDate, formatDuration, formatSession, formatSol } from "@/lib/format";
-import { DemoNote, DemoTag } from "@/components/demo/tag";
 import { Reveal } from "@/components/motion/reveal";
 import { BookmarkButton } from "@/components/timelapse/bookmark-button";
 import { compression } from "@/components/timelapse/card";
@@ -41,8 +39,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await getWatch(slug);
   if (!data) return { title: "Session" };
   const t = data.timelapse;
-  if (isSampleSlug(slug))
-    return { title: `${t.title} (demo)`, robots: { index: false, follow: false } };
   return {
     title: t.title,
     description: t.summary.slice(0, 160),
@@ -55,7 +51,7 @@ export default async function WatchPage({ params }: Props) {
   const data = await getWatch(slug);
   if (!data) notFound();
 
-  const { timelapse: t, demo } = data;
+  const t = data.timelapse;
   const ratio = compression(t);
   const facts = [
     {
@@ -91,41 +87,32 @@ export default async function WatchPage({ params }: Props) {
             <Reveal immediate y={16}>
               <TimelapsePlayer timelapse={t} />
             </Reveal>
-            {demo ? (
-              <DemoNote className="mt-4">
-                A generated demo session, so the page has something real to play. Sponsoring and
-                discussion are switched off here.
-              </DemoNote>
-            ) : null}
 
             <Reveal immediate delay={0.1} className="mt-8">
               <div className="flex flex-wrap items-center gap-2 text-[13px] text-fg-muted">
                 {t.publishedAt ? (
                   <time dateTime={t.publishedAt}>Published {formatDate(t.publishedAt)}</time>
                 ) : null}
-                {demo ? <DemoTag /> : null}
               </div>
               <h1 className="text-title mt-3 max-w-3xl">{t.title}</h1>
 
               <div className="mt-6 flex flex-col gap-4 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
                 <CreatorLine creator={t.creator} />
-                {demo ? null : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {data.payoutAddress && !data.isOwner ? (
-                      <a href="#sponsor" className={buttonClass("primary", "sm")}>
-                        <SolanaIcon size={12} />
-                        Sponsor
-                      </a>
-                    ) : null}
-                    <ShareButton
-                      title={t.title}
-                      text={t.summary.slice(0, 120)}
-                      path={`/watch/${t.slug}`}
-                    />
-                    <BookmarkButton timelapse={t} variant="inline" />
-                    <ReportButton slug={t.slug} signedIn={data.signedIn} />
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {data.payoutAddress && !data.isOwner ? (
+                    <a href="#sponsor" className={buttonClass("primary", "sm")}>
+                      <SolanaIcon size={12} />
+                      Sponsor
+                    </a>
+                  ) : null}
+                  <ShareButton
+                    title={t.title}
+                    text={t.summary.slice(0, 120)}
+                    path={`/watch/${t.slug}`}
+                  />
+                  <BookmarkButton timelapse={t} variant="inline" />
+                  <ReportButton slug={t.slug} signedIn={data.signedIn} />
+                </div>
               </div>
 
               <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-4">
@@ -149,19 +136,7 @@ export default async function WatchPage({ params }: Props) {
 
           <aside className="min-w-0 space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <Reveal immediate delay={0.15} id="sponsor" className="scroll-mt-24">
-              {demo ? (
-                <Card className="p-5 sm:p-6">
-                  <h2 className="flex items-center gap-2 text-[16px] font-semibold">
-                    Sponsor this work
-                    <DemoTag />
-                  </h2>
-                  <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
-                    On a real session this is where you choose an amount. Your wallet shows the
-                    recipient before you approve, the SOL never passes through Sardhana, and the
-                    transfer is verified on-chain before it is counted.
-                  </p>
-                </Card>
-              ) : !data.payoutAddress ? (
+              {!data.payoutAddress ? (
                 <DonationsUnavailable name={t.creator.displayName} />
               ) : !data.signedIn ? (
                 <SponsorSignIn slug={t.slug} name={t.creator.displayName} />
@@ -194,10 +169,10 @@ export default async function WatchPage({ params }: Props) {
               </Card>
             </Reveal>
 
-            {demo ? null : <ShareCard timelapse={t} siteUrl={SITE_URL} />}
+            <ShareCard timelapse={t} siteUrl={SITE_URL} />
 
             <Reveal delay={0.25}>
-              <UpNext items={data.upNext} demo={demo} />
+              <UpNext items={data.upNext} />
             </Reveal>
           </aside>
 
@@ -207,7 +182,6 @@ export default async function WatchPage({ params }: Props) {
               title={t.title}
               initialNotes={data.notes}
               signedIn={data.signedIn}
-              demo={demo}
             />
           </div>
         </div>

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCreator } from "@/lib/data";
 import { formatDate, shortAddress } from "@/lib/format";
-import { DemoNote } from "@/components/demo/tag";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
@@ -19,8 +18,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const result = await getCreator(handle);
   if (!result) return { title: "Creator" };
   const { creator } = result.data;
-  if (result.demo)
-    return { title: `${creator.displayName} (demo)`, robots: { index: false, follow: false } };
   return {
     title: creator.displayName,
     description: creator.bio ?? `Sessions published by ${creator.displayName}.`,
@@ -86,15 +83,10 @@ export default async function CreatorPage({ params }: Props) {
       </section>
 
       <Container width="wide" className="pt-12 sm:pt-16">
-        {result.demo ? (
-          <DemoNote className="mb-10">
-            A demo creator from the sample library. Real profiles look exactly like this.
-          </DemoNote>
-        ) : null}
         <h2 className="text-title">Sessions</h2>
         <div className="mt-8">
           {items.length > 0 ? (
-            <TimelapseGrid items={items} demo={result.demo} />
+            <TimelapseGrid items={items} />
           ) : (
             <EmptyState
               icon={<FilmIcon size={18} />}

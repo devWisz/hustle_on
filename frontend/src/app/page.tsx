@@ -330,16 +330,12 @@ function Closing({ signedIn }: { signedIn: boolean }) {
               </ButtonLink>
             </Magnetic>
             <ButtonLink
-              href={signedIn || demo ? "/dashboard" : "/login"}
+              href={signedIn ? "/dashboard" : "/login"}
               size="lg"
               variant="ghost"
               className="w-full text-inverse-fg/70 hover:bg-inverse-fg/10 hover:text-inverse-fg sm:w-auto"
             >
-              {signedIn
-                ? "Open your dashboard"
-                : demo
-                  ? "See the creator dashboard"
-                  : "Create an account"}
+              {signedIn ? "Open your dashboard" : "Create an account"}
             </ButtonLink>
           </div>
         </Reveal>

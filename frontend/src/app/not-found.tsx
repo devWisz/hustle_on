@@ -64,7 +64,7 @@ export default async function NotFound() {
             Most watched right now
           </h2>
           <div className="mt-8">
-            <TimelapseGrid items={popular} demo={feed.demo} />
+            <TimelapseGrid items={popular} />
           </div>
         </section>
       ) : null}

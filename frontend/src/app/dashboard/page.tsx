@@ -4,8 +4,6 @@ import { getDashboard } from "@/lib/data";
 import { formatSol, timeAgo } from "@/lib/format";
 import { SavedList } from "@/components/account/saved-list";
 import { Submissions } from "@/components/account/submissions";
-import { DemoGate } from "@/components/demo/demo";
-import { DemoNote } from "@/components/demo/tag";
 import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
 import { SplitHeading } from "@/components/motion/split-heading";
@@ -18,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const data = await getDashboard();
   if (data === "signin") redirect("/login?next=/dashboard");
-  const { me, items, donations, demo } = data;
+  const { me, items, donations } = data;
 
   const views = items.reduce((n, t) => n + t.viewCount, 0);
   const inReview = items.filter((t) => t.status === "in_review").length;
@@ -54,13 +52,6 @@ export default async function DashboardPage() {
         </Reveal>
       </div>
 
-      {demo ? (
-        <DemoNote className="mt-8">
-          A sample account, so you can see the screen with work on it. Nothing here belongs to
-          anybody and nothing you do is saved.
-        </DemoNote>
-      ) : null}
-
       <Reveal as="dl" stagger={0.07} className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((t) => (
           <div
@@ -81,16 +72,8 @@ export default async function DashboardPage() {
             Submissions
           </h2>
           <div className="mt-4">
-            <Submissions items={items} demo={demo} />
+            <Submissions items={items} />
           </div>
-          {demo ? (
-            <DemoGate
-              className="mt-6"
-              title="This is where your own submissions would be"
-              body="An account is one email and one click on a link. Your first upload goes to review the same day."
-              next="/upload"
-            />
-          ) : null}
         </Reveal>
 
         <aside className="space-y-6">
@@ -161,14 +144,12 @@ export default async function DashboardPage() {
             </Card>
           </Reveal>
 
-          {demo ? null : (
-            <section>
-              <h2 className="text-[15px] font-semibold">Saved</h2>
-              <div className="mt-3">
-                <SavedList />
-              </div>
-            </section>
-          )}
+          <section>
+            <h2 className="text-[15px] font-semibold">Saved</h2>
+            <div className="mt-3">
+              <SavedList />
+            </div>
+          </section>
         </aside>
       </div>
     </Container>
