@@ -133,8 +133,8 @@ const STEPS = [
     body: "Say what you set out to do, what went wrong and what you ended up with, and link the finished result so anyone can check.",
   },
   {
-    title: "An admin approves it",
-    body: "A reviewer compares the write-up with the recording before anything goes public. If it is sent back, you get a reason you can act on.",
+    title: "A person approves it",
+    body: "Every submission waits for a human. That wait is the spam filter: it makes bulk posting worthless, and it keeps the feed to work somebody actually did. If it is sent back you get a specific reason, not a form rejection.",
   },
   {
     title: "People sponsor your hustle",
