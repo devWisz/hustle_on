@@ -1,16 +1,13 @@
-import { FEED_PAGE_SIZE, getFeatured, getFeed, getViewer } from "@/lib/data";
-import type { Timelapse } from "@/lib/types";
+import { FEED_PAGE_SIZE, getFeed, getViewer } from "@/lib/data";
 import { Magnetic } from "@/components/motion/magnetic";
 import { ProgressRail } from "@/components/motion/progress-rail";
 import { Reveal } from "@/components/motion/reveal";
-import { ScrollScale } from "@/components/motion/scroll-scale";
 import { SplitHeading } from "@/components/motion/split-heading";
 import { parseSort } from "@/lib/feed";
 import { SITE_TAGLINE } from "@/lib/brand";
 import { Feed } from "@/components/timelapse/feed";
-import { Showcase } from "@/components/timelapse/showcase";
 import { ButtonLink, Container, SectionHeader } from "@/components/ui";
-import { ArrowRightIcon, PlayIcon, ShieldIcon, WalletIcon, ZapIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, ShieldIcon, WalletIcon, ZapIcon } from "@/components/ui/icons";
 
 export default async function HomePage({
   searchParams,
@@ -18,19 +15,15 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sort = parseSort((await searchParams).sort);
-  const [feed, viewer, featured] = await Promise.all([
+  const [feed, viewer] = await Promise.all([
     getFeed(sort),
     getViewer(),
-    getFeatured(),
   ]);
-  const featuredIds = new Set(featured.map((t) => t.id));
-  const reel = [...featured, ...feed.data.filter((t) => !featuredIds.has(t.id))];
   const signedIn = Boolean(viewer.user);
 
   return (
     <>
       <Hero />
-      <Stage items={reel} />
 
       <Container width="wide" className="pt-12 sm:pt-16">
         <ProofBar />
@@ -123,48 +116,6 @@ function ProofBar() {
         </div>
       ))}
     </Reveal>
-  );
-}
-
-/**
- * The product shot, sitting directly under the hero so the fold cuts it — the
- * composition the reference uses. With nothing published yet the reel would
- * render nothing at all and the whole first screen would go blank, so the empty
- * state holds the identical frame and aspect instead.
- */
-function Stage({ items }: { items: Timelapse[] }) {
-  const hasReel = items.some((t) => t.playbackUrl);
-  return (
-    <section className="pt-14 sm:pt-20">
-      <Container width="wide">
-        <div className="relative isolate">
-          {hasReel ? (
-            <ScrollScale>
-              <Showcase items={items} />
-            </ScrollScale>
-          ) : (
-            <StageEmpty />
-          )}
-        </div>
-      </Container>
-    </section>
-  );
-}
-
-function StageEmpty() {
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-lifted)]">
-      <div className="grid-backdrop flex h-[380px] flex-col items-center justify-center gap-6 px-6 text-center sm:h-[460px]">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-bg text-fg-muted">
-          <PlayIcon size={20} />
-        </span>
-        <p className="max-w-md text-[15px] leading-relaxed text-fg-muted">
-          Nothing has been published yet. Every session is read before it goes up, so the first
-          ones are being reviewed right now.
-        </p>
-        <ButtonLink href="/upload">Upload the first one</ButtonLink>
-      </div>
-    </div>
   );
 }
 

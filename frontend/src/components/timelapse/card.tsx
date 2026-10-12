@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Timelapse } from "@/lib/types";
 import { formatCount, formatDuration, formatSession, formatSol, timeAgo } from "@/lib/format";
 import { Avatar } from "../ui/avatar";
-import { EyeIcon } from "../ui/icons";
+import { ArrowRightIcon, EyeIcon, WalletIcon } from "../ui/icons";
 import { BookmarkButton } from "./bookmark-button";
 import { CardPreview } from "./preview";
 
@@ -93,6 +93,26 @@ export function TimelapseCard({ timelapse: t }: { timelapse: Timelapse }) {
               raised
             </span>
           ) : null}
+        </div>
+
+        {/* The image and the title are already links, so these are siblings
+            rather than nested anchors — the card does not become a link inside
+            a link. Funding is one click from the feed instead of two. */}
+        <div className="mt-4 flex items-center gap-2">
+          <Link
+            href={`/watch/${t.slug}`}
+            className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-4 text-[13px] font-medium text-accent-fg transition-opacity hover:opacity-90"
+          >
+            Watch
+            <ArrowRightIcon size={14} className="nudge-icon" />
+          </Link>
+          <Link
+            href={`/watch/${t.slug}#sponsor`}
+            className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-4 text-[13px] font-medium text-fg transition-colors hover:border-border-strong"
+          >
+            <WalletIcon size={14} />
+            Fund
+          </Link>
         </div>
       </div>
     </article>
