@@ -86,19 +86,8 @@ const PROOF = [
 function Hero() {
   return (
     <section className="grid-backdrop">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 mx-auto h-[460px] w-full max-w-5xl rounded-full bg-accent/15 blur-[130px]"
-      />
-      <Container width="wide" className="pt-14 text-center sm:pt-16 lg:pt-20">
-        <Reveal immediate className="flex justify-center">
-          <span className="inline-flex items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-3 pr-4">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
-            <span className="text-eyebrow text-fg-muted">Show the work. Get funded.</span>
-          </span>
-        </Reveal>
-
-        <SplitHeading as="h1" onScroll={false} className="text-hero mx-auto mt-8 max-w-5xl">
+      <Container width="wide" className="pt-16 text-center sm:pt-20 lg:pt-24">
+        <SplitHeading as="h1" onScroll={false} className="text-hero mx-auto max-w-5xl">
           {SITE_TAGLINE}
         </SplitHeading>
 
@@ -155,10 +144,6 @@ function Stage({ items }: { items: Timelapse[] }) {
     <section className="pt-14 sm:pt-20">
       <Container width="wide">
         <div className="relative isolate">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-x-4 -top-8 bottom-8 -z-10 rounded-[48px] bg-accent/10 blur-[110px]"
-          />
           {hasReel ? (
             <ScrollScale>
               <Showcase items={items} />
