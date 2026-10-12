@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import { Button, Field, Input } from "../ui";
@@ -19,7 +18,6 @@ type Mode = "signin" | "signup";
  * holds the database. The form says so rather than pretending otherwise.
  */
 export function EmailAuthForm({ next, className }: { next?: string; className?: string }) {
-  const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,10 +45,18 @@ export function EmailAuthForm({ next, className }: { next?: string; className?: 
           ? { name: name.trim(), email: email.trim(), password }
           : { email: email.trim(), password },
       });
-      // The session is a cookie the server just set, so the server-rendered pages
-      // have to be re-fetched, not merely navigated to.
-      router.push(next ?? "/dashboard");
-      router.refresh();
+      // A full navigation, not router.push.
+      //
+      // The session is a cookie the API just set on its own origin. `router.push`
+      // is a client-side transition: the router hands the new URL to the server
+      // while this tab's client-side state still describes a signed-out visitor,
+      // and the page can render — or redirect — from that stale state before the
+      // refreshed one lands. The symptom is exactly "I signed up and nothing
+      // happened", which is what this is here to end. Asking the browser for the
+      // page makes the request carry the new cookie and rebuilds everything from
+      // the server's answer.
+      window.location.assign(next ?? "/dashboard");
+      return;
     } catch (err) {
       if (err instanceof ApiError) {
         // Per-field messages come back keyed by input, so each one lands beside

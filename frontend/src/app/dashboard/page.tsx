@@ -100,6 +100,25 @@ export default async function DashboardPage() {
         </Reveal>
 
         <aside className="space-y-6">
+          {me.role === "admin" ? (
+            // The console was reachable only from the account dropdown, which meant
+            // the person who needed it most — whoever just made themselves an
+            // operator — had to know it was in there. Reviewing is a daily task, so
+            // it belongs on the page an operator actually opens.
+            <Reveal>
+              <Card className="p-5">
+                <h2 className="text-[15px] font-semibold">Admin console</h2>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
+                  The review queue, reports, members and the sponsorship ledger.
+                </p>
+                <ButtonLink href="/admin/queue" variant="secondary" size="sm" className="mt-4">
+                  Open the queue
+                  <ArrowRightIcon size={13} className="nudge-icon" />
+                </ButtonLink>
+              </Card>
+            </Reveal>
+          ) : null}
+
           <Reveal delay={0.1}>
             <Card className="p-5">
               <h2 className="flex items-center gap-2 text-[15px] font-semibold">

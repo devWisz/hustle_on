@@ -50,6 +50,14 @@ type Config struct {
 	// when it signs in, and the grant is written to the audit log.
 	AdminWallets []string
 
+	// AdminEmails lists operator accounts by email address, for the same reason
+	// and with the same effect as AdminWallets. It exists because an operator with
+	// an email and a password otherwise has no way to be one at all: the role is a
+	// property of the environment, and every environment variable that could grant
+	// it named a wallet. Creating the account with cmd/setpassword --admin works
+	// once, but a restored database or a second operator brings you back here.
+	AdminEmails []string
+
 	SolanaCluster string
 	SolanaRPCURL  string
 	// PayProgramID is the deployed sponsorship program. When it is set, a
@@ -110,6 +118,39 @@ func (c Config) IsAdminWallet(address string) bool {
 		}
 	}
 	return false
+}
+
+// IsAdminEmail reports whether an address is listed as an operator account.
+//
+// Unlike a wallet address this comparison folds case, because an email address is
+// case-insensitive in practice and somebody will write it the way they type it.
+//
+// An empty address never matches, so an account without an email cannot be
+// promoted by an empty entry in the list.
+func (c Config) IsAdminEmail(email string) bool {
+	if email == "" {
+		return false
+	}
+	for _, e := range c.AdminEmails {
+		if strings.EqualFold(strings.TrimSpace(e), strings.TrimSpace(email)) {
+			return true
+		}
+	}
+	return false
+}
+
+// AdminSource returns where an account's operator role should come from, or an
+// empty string if it is not an operator. Naming the source lets the audit log
+// record which variable granted it, which is the whole reason the role lives in
+// the environment: the decision is visible and reversible.
+func (c Config) AdminSource(wallet, email string) string {
+	if c.IsAdminWallet(wallet) {
+		return "ADMIN_WALLETS"
+	}
+	if c.IsAdminEmail(email) {
+		return "ADMIN_EMAILS"
+	}
+	return ""
 }
 
 // loadDotEnv finds and loads .env from current or parent directories if not already set.
@@ -177,6 +218,7 @@ func Load() (Config, error) {
 		ChallengeTTL:        time.Duration(envInt("SIGNIN_CHALLENGE_TTL_MINUTES", 5)) * time.Minute,
 
 		AdminWallets: splitList(os.Getenv("ADMIN_WALLETS")),
+		AdminEmails:  splitList(os.Getenv("ADMIN_EMAILS")),
 
 		SolanaCluster: env("SOLANA_CLUSTER", "devnet"),
 		SolanaRPCURL:  env("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
@@ -320,8 +362,8 @@ func (c Config) validate() error {
 		// Development conveniences are refused outright in production rather
 		// than degraded, so a missing variable cannot silently weaken the
 		// deployment.
-		if len(c.AdminWallets) == 0 {
-			problems = append(problems, "ADMIN_WALLETS must list at least one address in production, or the deployment has no way to be administered")
+		if len(c.AdminWallets) == 0 && len(c.AdminEmails) == 0 {
+			problems = append(problems, "ADMIN_WALLETS or ADMIN_EMAILS must list at least one operator in production, or the deployment has no way to be administered")
 		}
 		if !strings.HasPrefix(c.WebURL, "https://") {
 			problems = append(problems, "WEB_PUBLIC_URL must use https in production")

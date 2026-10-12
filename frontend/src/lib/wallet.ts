@@ -1,14 +1,56 @@
 "use client";
 
-import { Buffer } from "buffer";
-import {
-  Connection,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-} from "@solana/web3.js";
+// Type only, so the bundler erases it: the actual client is imported at the first
+// moment a connection is needed, further down this file.
+import type { Connection, PublicKey as PublicKeyType, Transaction } from "@solana/web3.js";
+
+/**
+ * Every Wallet Standard wallet in this browser.
+ *
+ * A wallet announces itself by answering `wallet-standard:app-ready` — either by
+ * emitting `wallet-standard:register-wallet` or by calling the `register` callback
+ * carried in the event detail — so both have to be listened for. The announcement
+ * is synchronous, which is why `detectWallets` waits a turn before reading the
+ * list: a wallet that answers in a microtask or a timer is otherwise missed.
+ */
+type WalletStandardWallet = {
+  name: string;
+  icon: string;
+  chains: string[];
+  features: Record<string, unknown>;
+};
+
+const standardWallets: WalletStandardWallet[] = [];
+const seenStandardNames = new Set<string>();
+
+function addStandardWallet(wallet: WalletStandardWallet): void {
+  if (!wallet || typeof wallet.name !== "string") return;
+  // Some wallets re-register on every app-ready pass, and a few register under a
+  // slightly different name than the one they first announced. The name is the
+  // only identifier the protocol gives us, so it is what dedupes the list.
+  const key = wallet.name.trim().toLowerCase();
+  if (seenStandardNames.has(key)) return;
+  seenStandardNames.add(key);
+  standardWallets.push(wallet);
+}
+
+let announced = false;
+
+function announceAppReady(): void {
+  if (announced) return;
+  announced = true;
+
+  window.addEventListener("wallet-standard:register-wallet", (event) => {
+    const { wallets } = (event as CustomEvent<{ wallets?: WalletStandardWallet[] }>).detail ?? {};
+    if (wallets) for (const wallet of wallets) addStandardWallet(wallet);
+  });
+
+  window.dispatchEvent(
+    new CustomEvent("wallet-standard:app-ready", {
+      detail: { register: (...wallets: WalletStandardWallet[]) => wallets.forEach(addStandardWallet) },
+    }),
+  );
+}
 
 interface InjectedWallet {
   isConnected?: boolean;
@@ -32,18 +74,15 @@ declare global {
 }
 
 /**
- * The wallets this site knows how to ask for a signature.
+ * The wallets that predate Wallet Standard and still hang an object on `window`.
  *
- * There is no wallet-adapter dependency behind this: a browser wallet announces
- * itself by hanging an object on `window`, and that is the whole protocol. Listing
- * them means the person chooses, which matters because a browser can have several
- * installed and the one that happens to be found first is not always the one
- * holding the key they meant to use.
- *
- * The generic `window.solana` is offered last, and only when no named wallet
- * claimed it, so a known wallet is never shadowed by it.
+ * MetaMask, Coinbase and the rest are reachable through Wallet Standard alone, so
+ * this table is a fallback rather than the mechanism. The generic `window.solana`
+ * is deliberately absent: it is every legacy wallet's shared claim, so its owner
+ * is found by checking which of these more specific globals is the same object,
+ * and it is offered last so a wallet is never shadowed by its own generic alias.
  */
-const KNOWN_WALLETS: {
+const INJECTED_WALLETS: {
   id: string;
   name: string;
   install: string;
@@ -57,34 +96,279 @@ const KNOWN_WALLETS: {
   { id: "okx", name: "OKX Wallet", install: "https://www.okx.com/web3", get: (w) => w.okxwallet?.solana },
 ];
 
-export interface WalletOption {
+/**
+ * Major wallets worth installing, in the order a person is most likely to want them.
+ *
+ * This list exists for the browser that has none of them: Wallet Standard is how an
+ * *installed* wallet is found, and it needs no entry to be discoverable, so these
+ * links are only ever shown as suggestions.
+ */
+const SUGGESTED_WALLETS: { name: string; install: string }[] = [
+  { name: "MetaMask", install: "https://metamask.io/download/" },
+  { name: "Phantom", install: "https://phantom.app/download" },
+  { name: "Solflare", install: "https://solflare.com/download" },
+  { name: "Coinbase Wallet", install: "https://www.coinbase.com/wallet/downloads" },
+  { name: "Trust Wallet", install: "https://trustwallet.com/download" },
+  { name: "Backpack", install: "https://backpack.app/download" },
+  { name: "Ledger", install: "https://www.ledger.com/ledger-live" },
+  { name: "Magic Eden", install: "https://wallet.magiceden.io/" },
+  { name: "Nightly", install: "https://nightly.app/" },
+];
+
+interface StandardAccount {
+  address: string;
+  publicKey: Uint8Array;
+  chains: string[];
+  features: string[];
+}
+
+interface ConnectFeature {
+  connect(input?: { silent?: boolean }): Promise<{ accounts: StandardAccount[] }>;
+}
+
+interface SignMessageFeature {
+  signMessage(input: { account: StandardAccount; message: Uint8Array }): Promise<
+    { signature: Uint8Array; signedMessage: Uint8Array }[]
+  >;
+}
+
+interface SignAndSendFeature {
+  signAndSendTransaction(input: {
+    account: StandardAccount;
+    transaction: Uint8Array;
+  }): Promise<{ signature: Uint8Array }>;
+}
+
+/**
+ * A connected account, and the only thing that can sign as it.
+ *
+ * The account has to travel with the signature rather than be passed around
+ * separately, because a wallet can hold several and `solana:signMessage` names the
+ * one to sign as. Signing as a different account than the one that asked for the
+ * challenge is how a valid signature gets refused.
+ */
+export interface WalletSession {
+  address: string;
+  signMessage(message: Uint8Array): Promise<Uint8Array>;
+  signAndSend(transaction: Transaction): Promise<{ signature: string }>;
+}
+
+/**
+ * A wallet, whichever protocol it speaks.
+ *
+ * The injected shape and the standard shape are kept behind one object because the
+ * signing helpers below care about obtaining a signature, not about which era of
+ * the ecosystem a wallet is from. `provider` is the same handle, for the callers
+ * that want to recognise a wallet rather than use it.
+ */
+export type WalletOption = {
   id: string;
   name: string;
   install: string;
-  provider: InjectedWallet;
+  provider: object;
+} & WalletConnector;
+
+// A wallet's icon arrives as a data URI. Anything else — a remote URL, an empty
+// string, an absurd payload — is not something to put in an `img` src from a
+// third-party announcement, so the callers fall back to a drawn wallet glyph.
+const ICON_LIMIT = 200_000;
+
+function usableIcon(icon: unknown): string | undefined {
+  return typeof icon === "string" && icon.startsWith("data:image/") && icon.length <= ICON_LIMIT
+    ? icon
+    : undefined;
+}
+
+function signMessageFeature(wallet: WalletStandardWallet): SignMessageFeature | undefined {
+  const connect = wallet.features["standard:connect"] as ConnectFeature | undefined;
+  const signMessage = wallet.features["solana:signMessage"] as SignMessageFeature | undefined;
+  // Without both of these the wallet cannot do what this site asks, and a button
+  // that fails on press is worse than no button.
+  return connect && typeof connect.connect === "function" && signMessage && typeof signMessage.signMessage === "function"
+    ? signMessage
+    : undefined;
+}
+
+function isSolanaWallet(wallet: WalletStandardWallet): boolean {
+  return (
+    Array.isArray(wallet.chains) &&
+    wallet.chains.some((chain) => typeof chain === "string" && chain.startsWith("solana:")) &&
+    signMessageFeature(wallet) !== undefined
+  );
+}
+
+/** The account a multi-account wallet should be signed in as. */
+function signingAccount(wallet: WalletStandardWallet, accounts: StandardAccount[]): StandardAccount {
+  const supported = accounts.filter((account) => account.features?.includes("solana:signMessage"));
+  return supported[0] ?? accounts[0]!;
+}
+
+interface WalletConnector {
+  icon?: string;
+  connect(): Promise<WalletSession>;
+}
+
+function standardSession(
+  wallet: WalletStandardWallet,
+  account: StandardAccount,
+  signMessage: SignMessageFeature,
+  signAndSend: SignAndSendFeature | undefined,
+): WalletSession {
+  return {
+    address: account.address,
+    async signMessage(message) {
+      const [signed] = await signMessage.signMessage({ account, message });
+      if (!signed) throw new WalletError("That wallet returned no signature.");
+      return signed.signature;
+    },
+    async signAndSend(transaction) {
+      if (!signAndSend) {
+        throw new WalletError(`${wallet.name} cannot send this transaction from here.`);
+      }
+      const { signature } = await signAndSend.signAndSendTransaction({
+        account,
+        // The standard feature takes bytes, so the transaction is serialised here
+        // rather than handed over as an object only some wallets understand.
+        transaction: new Uint8Array(transaction.serialize({ requireAllSignatures: false })),
+      });
+      const { default: bs58 } = await import("./base58");
+      return { signature: bs58.encode(signature) };
+    },
+  };
+}
+
+function standardConnector(wallet: WalletStandardWallet): WalletConnector {
+  const connect = wallet.features["standard:connect"] as ConnectFeature;
+  const signMessage = signMessageFeature(wallet)!;
+  const signAndSend = wallet.features["solana:signAndSendTransaction"] as
+    | SignAndSendFeature
+    | undefined;
+
+  // Kept for the life of the connector so a re-connect reuses the account the
+  // person already agreed to rather than asking the wallet to choose again.
+  let session: WalletSession | null = null;
+
+  return {
+    icon: usableIcon(wallet.icon),
+    async connect() {
+      if (session) return session;
+      const { accounts } = await connect.connect();
+      const solana = accounts.filter((candidate) =>
+        candidate.chains?.some((chain) => chain.startsWith("solana:")),
+      );
+      if (!solana.length) {
+        throw new WalletError("That wallet did not offer a Solana account.");
+      }
+      session = standardSession(wallet, signingAccount(wallet, solana), signMessage, signAndSend);
+      return session;
+    },
+  };
+}
+
+function injectedConnector(provider: InjectedWallet): WalletConnector {
+  return {
+    async connect() {
+      // Asking is how a legacy wallet adopts an existing session and fills in the
+      // `publicKey` that `signAndSendTransaction` reads, so it is called even when
+      // the wallet is already connected.
+      const { publicKey } = await provider.connect();
+      return {
+        address: publicKey.toString(),
+        async signMessage(message) {
+          const result = await provider.signMessage(message, "utf8");
+          // Legacy wallets mostly answer with `{ signature }`, but one or two hand
+          // back the raw bytes.
+          const signature =
+            result instanceof Uint8Array
+              ? result
+              : (result as { signature?: Uint8Array } | undefined)?.signature;
+          if (!(signature instanceof Uint8Array)) {
+            throw new WalletError("That wallet returned no signature.");
+          }
+          return signature;
+        },
+        async signAndSend(transaction) {
+          return provider.signAndSendTransaction(transaction);
+        },
+      };
+    },
+  };
 }
 
 /** Every wallet this browser actually has installed. */
 export function detectWallets(): WalletOption[] {
   if (typeof window === "undefined") return [];
-  const found: WalletOption[] = [];
-  for (const w of KNOWN_WALLETS) {
-    const provider = w.get(window);
-    if (provider) found.push({ id: w.id, name: w.name, install: w.install, provider });
+  announceAppReady();
+
+  const found: WalletOption[] = standardWallets.filter(isSolanaWallet).map((wallet) => ({
+    id: standardWalletId(wallet.name),
+    name: wallet.name,
+    install: "",
+    ...standardConnector(wallet),
+    provider: wallet,
+  }));
+
+  const named = new Set(found.map((wallet) => wallet.name.trim().toLowerCase()));
+
+  for (const known of INJECTED_WALLETS) {
+    let provider: InjectedWallet | undefined;
+    try {
+      provider = known.get(window);
+    } catch {
+      // A page can define these globals as getters that throw. A wallet that
+      // cannot be read is a wallet that cannot be used, and it must not take the
+      // rest of the list down with it.
+      continue;
+    }
+    if (!provider || typeof provider.signMessage !== "function") continue;
+    if (named.has(known.name.toLowerCase())) continue;
+    named.add(known.name.toLowerCase());
+    found.push({
+      id: known.id,
+      name: known.name,
+      install: known.install,
+      ...injectedConnector(provider),
+      provider,
+    });
   }
+
   const generic = window.solana;
-  if (generic && !found.some((f) => f.provider === generic)) {
-    found.push({ id: "solana", name: "Browser wallet", install: "", provider: generic });
+  if (
+    generic &&
+    typeof generic.signMessage === "function" &&
+    !found.some((wallet) => wallet.provider === generic)
+  ) {
+    found.push({
+      id: "solana",
+      name: "Browser wallet",
+      install: "",
+      ...injectedConnector(generic),
+      provider: generic,
+    });
   }
+
   return found;
+}
+
+/**
+ * A stable id for a standard wallet.
+ *
+ * Wallet Standard identifies wallets by name, so the id is derived from it rather
+ * than invented, which keeps `selectWallet(id)` meaningful across a re-detection
+ * (wallets register again on some navigations) without a second lookup table.
+ */
+function standardWalletId(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `standard:${slug || "wallet"}`;
 }
 
 /** The wallets worth offering to install, for a browser that has none. */
 export function installableWallets(): { name: string; install: string }[] {
-  return KNOWN_WALLETS.filter((w) => w.id === "phantom" || w.id === "solflare").map((w) => ({
-    name: w.name,
-    install: w.install,
-  }));
+  return SUGGESTED_WALLETS;
 }
 
 /**
@@ -96,25 +380,34 @@ export function installableWallets(): { name: string; install: string }[] {
  * sign a sponsorship. It is set by the chooser, in the browser, immediately before
  * the flow that needs it.
  */
-let chosen: InjectedWallet | null = null;
+let chosen: WalletOption | null = null;
 
 export function selectWallet(id: string): boolean {
-  const match = detectWallets().find((w) => w.id === id);
+  const match = detectWallets().find((wallet) => wallet.id === id);
   if (!match) return false;
-  chosen = match.provider;
+  chosen = match;
+  // The connection is RPC state, not wallet state, but it was cached against a
+  // wallet the person may have just replaced.
+  connection = null;
   return true;
 }
 
 export class WalletError extends Error {}
 
-export function getWallet(): InjectedWallet {
-  const injected = chosen ?? detectWallets()[0]?.provider ?? null;
-  if (!injected) {
+/**
+ * The selected wallet, or the only one there is.
+ *
+ * Re-detecting per call is deliberate: wallets register on their own schedule and
+ * a page that loaded before its wallet was ready should still be able to sign in.
+ */
+function getWallet(): WalletOption {
+  const wallet = chosen ?? detectWallets()[0] ?? null;
+  if (!wallet) {
     throw new WalletError(
       "No Solana wallet found in this browser. Install one, then reload this page.",
     );
   }
-  return injected;
+  return wallet;
 }
 
 export function walletAvailable(): boolean {
@@ -122,24 +415,28 @@ export function walletAvailable(): boolean {
 }
 
 export async function connectWallet(): Promise<string> {
-  const wallet = getWallet();
-  const { publicKey } = await wallet.connect();
-  return publicKey.toString();
+  return getWallet().connect();
 }
 
 export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 
 let connection: Connection | null = null;
 
-export function getConnection(): Connection {
-  connection ??= new Connection(RPC_URL, "confirmed");
+export async function getConnection(): Promise<Connection> {
+  if (!connection) {
+    // web3.js is a couple of hundred kilobytes that neither the login page nor a
+    // reader who never signs anything should have to download, so it is fetched
+    // at the first moment a connection is genuinely needed.
+    const { Connection } = await import("@solana/web3.js");
+    connection = new Connection(RPC_URL, "confirmed");
+  }
   return connection;
 }
 
-export async function signOwnershipProof(message: string): Promise<string> {
+export async function signOwnershipProof(message: string, address?: string): Promise<string> {
   const wallet = getWallet();
   const encoded = new TextEncoder().encode(message);
-  const { signature } = await wallet.signMessage(encoded, "utf8");
+  const signature = await wallet.signMessage(encoded, address);
   const { default: bs58 } = await import("./base58");
   return bs58.encode(signature);
 }
@@ -152,7 +449,11 @@ export interface SentTransfer {
 
 export async function sendSol(to: string, lamports: number): Promise<SentTransfer> {
   const wallet = getWallet();
-  const from = wallet.publicKey?.toString() ?? (await connectWallet());
+  const from = await wallet.connect();
+
+  const { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } = await import(
+    "@solana/web3.js"
+  );
 
   const transaction = new Transaction().add(
     SystemProgram.transfer({
@@ -162,17 +463,15 @@ export async function sendSol(to: string, lamports: number): Promise<SentTransfe
     }),
   );
 
-  const conn = getConnection();
+  const conn = await getConnection();
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
   transaction.recentBlockhash = blockhash;
   transaction.lastValidBlockHeight = lastValidBlockHeight;
   transaction.feePayer = new PublicKey(from);
 
-  const { signature } = await wallet.signAndSendTransaction(transaction);
+  const { signature } = await wallet.signAndSend(transaction, from);
   return { signature, payer: from };
 }
-
-export { LAMPORTS_PER_SOL };
 
 /* -------------------------------------------------------------------------
  * The sponsorship program
@@ -190,12 +489,16 @@ export { LAMPORTS_PER_SOL };
  * ---------------------------------------------------------------------- */
 
 /** The program's Config account, seeds `[b"config"]`. */
-function configPda(program: PublicKey): PublicKey {
+function configPda(PublicKey: typeof PublicKeyType, program: PublicKeyType): PublicKeyType {
   return PublicKey.findProgramAddressSync([new TextEncoder().encode("config")], program)[0];
 }
 
 /** A creator's on-chain tally, seeds `[b"creator", creator]`. */
-function creatorStatsPda(program: PublicKey, creator: PublicKey): PublicKey {
+function creatorStatsPda(
+  PublicKey: typeof PublicKeyType,
+  program: PublicKeyType,
+  creator: PublicKeyType,
+): PublicKeyType {
   return PublicKey.findProgramAddressSync(
     [new TextEncoder().encode("creator"), creator.toBuffer()],
     program,
@@ -226,8 +529,10 @@ export interface ProgramConfig {
  * the bump — so the treasury is bytes 40..72 and the fee follows it.
  */
 export async function readProgramConfig(programID: string): Promise<ProgramConfig> {
+  const { PublicKey } = await import("@solana/web3.js");
   const program = new PublicKey(programID);
-  const info = await getConnection().getAccountInfo(configPda(program), "confirmed");
+  const conn = await getConnection();
+  const info = await conn.getAccountInfo(configPda(PublicKey, program), "confirmed");
   if (!info) {
     throw new WalletError(
       "The sponsorship program has not been set up on this cluster yet. Tell the site operator to run initialize_config.",
@@ -250,7 +555,12 @@ export async function sponsorViaProgram(
   lamports: number,
 ): Promise<SentTransfer> {
   const wallet = getWallet();
-  const from = wallet.publicKey?.toString() ?? (await connectWallet());
+  const from = await wallet.connect();
+
+  const { Buffer } = await import("buffer");
+  const { PublicKey, SystemProgram, Transaction, TransactionInstruction } = await import(
+    "@solana/web3.js"
+  );
 
   const program = new PublicKey(programID);
   const creatorKey = new PublicKey(creator);
@@ -273,20 +583,20 @@ export async function sponsorViaProgram(
       { pubkey: new PublicKey(from), isSigner: true, isWritable: true },
       { pubkey: creatorKey, isSigner: false, isWritable: true },
       { pubkey: new PublicKey(treasury), isSigner: false, isWritable: true },
-      { pubkey: configPda(program), isSigner: false, isWritable: false },
-      { pubkey: creatorStatsPda(program, creatorKey), isSigner: false, isWritable: true },
+      { pubkey: configPda(PublicKey, program), isSigner: false, isWritable: false },
+      { pubkey: creatorStatsPda(PublicKey, program, creatorKey), isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(data),
   });
 
   const transaction = new Transaction().add(instruction);
-  const conn = getConnection();
+  const conn = await getConnection();
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
   transaction.recentBlockhash = blockhash;
   transaction.lastValidBlockHeight = lastValidBlockHeight;
   transaction.feePayer = new PublicKey(from);
 
-  const { signature } = await wallet.signAndSendTransaction(transaction);
+  const { signature } = await wallet.signAndSend(transaction, from);
   return { signature, payer: from };
 }

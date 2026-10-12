@@ -90,15 +90,24 @@ func (s *Server) handleSignInVerify(w http.ResponseWriter, r *http.Request) erro
 	return s.startSession(w, r, user)
 }
 
-// grantAdminIfListed gives the operator role to a wallet named in ADMIN_WALLETS.
+// grantAdminIfListed gives the operator role to an account named in the
+// environment, by wallet address or by email address.
 //
 // Admin access lives in the environment rather than in the database so that
 // restoring a backup, or provisioning a new deployment, cannot silently drop the
 // only person who can review anything. The grant is written to the audit log,
 // because "who made themselves an admin, and when" is exactly the question an
 // audit trail exists to answer.
+//
+// This runs on every sign-in, not only the first, so it is also how the role comes
+// back after a database is rebuilt: the environment is the source of truth and the
+// row follows it.
 func (s *Server) grantAdminIfListed(ctx context.Context, user auth.User) auth.User {
-	if user.IsAdmin() || !s.cfg.IsAdminWallet(user.WalletAddress) {
+	if user.IsAdmin() {
+		return user
+	}
+	source := s.cfg.AdminSource(user.WalletAddress, user.Email)
+	if source == "" {
 		return user
 	}
 	if err := s.store.PromoteToAdmin(ctx, user.ID); err != nil {
@@ -106,9 +115,10 @@ func (s *Server) grantAdminIfListed(ctx context.Context, user auth.User) auth.Us
 		return user
 	}
 	if err := s.store.RecordAudit(ctx, user.ID, "member.promote", "user", user.ID,
-		map[string]any{"wallet": user.WalletAddress, "source": "ADMIN_WALLETS"}); err != nil {
+		map[string]any{"wallet": user.WalletAddress, "email": user.Email, "source": source}); err != nil {
 		s.log.WarnContext(ctx, "audit admin promotion", "error", err)
 	}
+	s.log.InfoContext(ctx, "operator role granted", "user", user.ID, "source", source)
 	user.Role = roleAdmin
 	return user
 }
