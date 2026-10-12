@@ -204,7 +204,7 @@ export function Feed({
             description={
               items.length
                 ? "Try another topic, or clear the filter to see everything."
-                : "Every session here has been read by a person. The first ones are on their way."
+                : "Every session here was uploaded by somebody who showed their work. The first ones are on their way."
             }
             action={emptyAction}
           />
