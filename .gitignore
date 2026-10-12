@@ -64,3 +64,8 @@ ADMIN-ACCESS.md
 # what to do when the faucet says no. Gitignored because it names the wallet that
 # holds the program's upgrade authority.
 solana.md
+
+# The launch checklist: domains, storage credentials, operator addresses and the
+# mainnet RPC. Gitignored for the same reason as solana.md — it names the
+# deployment's hosts and who can administer them.
+public.md

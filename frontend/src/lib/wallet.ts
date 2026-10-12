@@ -382,10 +382,32 @@ export function installableWallets(): { name: string; install: string }[] {
  */
 let chosen: WalletOption | null = null;
 
+/**
+ * Bumped whenever the person picks a wallet or leaves one behind.
+ *
+ * A connected session belongs to one wallet and one epoch; the bump is how the
+ * session helpers below notice it is stale after a switch.
+ */
+let epoch = 0;
+
+/**
+ * The most recent connection, so a challenge can be signed by the same account
+ * that asked for it.
+ *
+ * `connectWallet()` and `signOwnershipProof()` are separate calls made by a page
+ * that has no way to pass a session between them — the login flow in particular
+ * would otherwise connect to the wallet twice and risk signing as a different
+ * account than the address it just sent.
+ */
+let session: WalletSession | null = null;
+let sessionEpoch = -1;
+
 export function selectWallet(id: string): boolean {
   const match = detectWallets().find((wallet) => wallet.id === id);
   if (!match) return false;
   chosen = match;
+  epoch += 1;
+  session = null;
   // The connection is RPC state, not wallet state, but it was cached against a
   // wallet the person may have just replaced.
   connection = null;
@@ -410,12 +432,19 @@ function getWallet(): WalletOption {
   return wallet;
 }
 
+async function activeSession(): Promise<WalletSession> {
+  if (session && sessionEpoch === epoch) return session;
+  session = await getWallet().connect();
+  sessionEpoch = epoch;
+  return session;
+}
+
 export function walletAvailable(): boolean {
   return detectWallets().length > 0;
 }
 
 export async function connectWallet(): Promise<string> {
-  return getWallet().connect();
+  return (await activeSession()).address;
 }
 
 export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
@@ -433,10 +462,10 @@ export async function getConnection(): Promise<Connection> {
   return connection;
 }
 
-export async function signOwnershipProof(message: string, address?: string): Promise<string> {
-  const wallet = getWallet();
+export async function signOwnershipProof(message: string): Promise<string> {
+  const current = await activeSession();
   const encoded = new TextEncoder().encode(message);
-  const signature = await wallet.signMessage(encoded, address);
+  const signature = await current.signMessage(encoded);
   const { default: bs58 } = await import("./base58");
   return bs58.encode(signature);
 }
@@ -448,8 +477,8 @@ export interface SentTransfer {
 }
 
 export async function sendSol(to: string, lamports: number): Promise<SentTransfer> {
-  const wallet = getWallet();
-  const from = await wallet.connect();
+  const current = await activeSession();
+  const from = current.address;
 
   const { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } = await import(
     "@solana/web3.js"
@@ -469,7 +498,7 @@ export async function sendSol(to: string, lamports: number): Promise<SentTransfe
   transaction.lastValidBlockHeight = lastValidBlockHeight;
   transaction.feePayer = new PublicKey(from);
 
-  const { signature } = await wallet.signAndSend(transaction, from);
+  const { signature } = await current.signAndSend(transaction);
   return { signature, payer: from };
 }
 
@@ -554,8 +583,8 @@ export async function sponsorViaProgram(
   creator: string,
   lamports: number,
 ): Promise<SentTransfer> {
-  const wallet = getWallet();
-  const from = await wallet.connect();
+  const current = await activeSession();
+  const from = current.address;
 
   const { Buffer } = await import("buffer");
   const { PublicKey, SystemProgram, Transaction, TransactionInstruction } = await import(
@@ -597,6 +626,6 @@ export async function sponsorViaProgram(
   transaction.lastValidBlockHeight = lastValidBlockHeight;
   transaction.feePayer = new PublicKey(from);
 
-  const { signature } = await wallet.signAndSend(transaction, from);
+  const { signature } = await current.signAndSend(transaction);
   return { signature, payer: from };
 }

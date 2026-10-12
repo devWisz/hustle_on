@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
-import { Button } from "../ui";
+import { SpinnerIcon, WalletIcon } from "../ui/icons";
 
 /**
  * What the wallet is doing, named. Each of these is a distinct wait and the
@@ -29,6 +29,7 @@ interface Challenge {
 interface Detected {
   id: string;
   name: string;
+  icon?: string;
 }
 
 /**
@@ -55,7 +56,7 @@ export function WalletSignIn({ next, className }: { next?: string; className?: s
     let cancelled = false;
     void import("@/lib/wallet").then(({ detectWallets, installableWallets }) => {
       if (cancelled) return;
-      setWallets(detectWallets().map(({ id, name }) => ({ id, name })));
+      setWallets(detectWallets().map(({ id, name, icon }) => ({ id, name, icon })));
       setInstalls(installableWallets());
     });
     return () => {
@@ -120,10 +121,10 @@ export function WalletSignIn({ next, className }: { next?: string; className?: s
     return (
       <div className={className}>
         <p className="text-[13.5px] leading-relaxed text-fg-muted">
-          No Solana wallet found in this browser. Install one and reload — or use the email form
-          above, which needs no wallet at all.
+          No Solana wallet found in this browser. Install one and reload — or use the email form,
+          which needs no wallet at all.
         </p>
-        <div className="mt-3 flex flex-wrap gap-4">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
           {installs.map((w) => (
             <a
               key={w.name}
@@ -142,20 +143,45 @@ export function WalletSignIn({ next, className }: { next?: string; className?: s
 
   return (
     <div className={className}>
-      <ul className="flex flex-wrap gap-2">
-        {wallets.map((w) => (
-          <li key={w.id}>
-            <Button
-              type="button"
-              variant="secondary"
-              loading={active === w.id && step !== "idle"}
-              disabled={step !== "idle"}
-              onClick={() => void signIn(w.id)}
-            >
-              {active === w.id && step !== "idle" ? LABELS[step] : w.name}
-            </Button>
-          </li>
-        ))}
+      {/* Row height is fixed and only this list scrolls, because the page around it
+          must not: a chooser that pushes the rest of the sign-in options below the
+          fold is the thing being fixed here. */}
+      <ul className="max-h-[19rem] divide-y divide-border overflow-y-auto rounded-[var(--radius-card)] border border-border bg-surface">
+        {wallets.map((w) => {
+          const busy = active === w.id && step !== "idle";
+          return (
+            <li key={w.id}>
+              <button
+                type="button"
+                disabled={step !== "idle"}
+                onClick={() => void signIn(w.id)}
+                className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-surface-raised disabled:pointer-events-none disabled:opacity-60"
+              >
+                {w.icon ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={w.icon}
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px] shrink-0 rounded-[6px]"
+                  />
+                ) : (
+                  <WalletIcon size={20} className="h-[22px] w-[22px] shrink-0 text-fg-muted" />
+                )}
+                <span className="truncate text-[13.5px] font-medium text-fg">{w.name}</span>
+                {/* The step is the only thing that changes while a wallet works, so
+                    it is the only thing shown beside the name. */}
+                {busy ? (
+                  <span className="ml-auto flex shrink-0 items-center gap-2 text-[12.5px] text-fg-muted">
+                    <SpinnerIcon size={14} />
+                    {LABELS[step]}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
       </ul>
       {error ? (
         <p role="alert" className="mt-3 text-[13px] leading-relaxed text-danger">
@@ -197,9 +223,15 @@ function describe(err: unknown): string {
   return "Sign-in failed. Try again.";
 }
 
-/** Wallets signal "the person pressed cancel" with code 4001, among other shapes. */
+/**
+ * Wallets do not share an error shape, so a rejection is looked for in both the
+ * code the protocol suggests and the words most of them actually use. Nothing here
+ * rewraps a wallet's failure: the original object is what carries the code.
+ */
 function isUserRejection(err: unknown): boolean {
   if (typeof err !== "object" || err === null) return false;
   const code = (err as { code?: unknown }).code;
-  return code === 4001 || code === "4001";
+  if (code === 4001 || code === "4001") return true;
+  const message = (err as { message?: unknown }).message;
+  return typeof message === "string" && /reject|denied|cancel/i.test(message);
 }

@@ -32,68 +32,71 @@ export default async function LoginPage({
       : "Hustle On";
 
   return (
-    <Container width="narrow" className="py-14 sm:py-20">
+    <Container width="narrow" className="py-10 sm:py-14">
       <div className="max-w-md">
         <p className="text-eyebrow">{eyebrow}</p>
-        <SplitHeading as="h1" onScroll={false} className="text-headline mt-4">
+        <SplitHeading as="h1" onScroll={false} className="text-headline mt-3">
           Sign in
         </SplitHeading>
-        <p className="mt-3 text-[15px] leading-relaxed text-fg-muted">
+        <p className="mt-2.5 text-[15px] leading-relaxed text-fg-muted">
           {sponsoring
             ? "Sponsorships are tied to an account so the creator knows who backed them."
             : uploading
               ? "Uploads are tied to an account so reviewers can reach you and sponsors can find you."
               : "One account, whichever way you prefer to sign in."}
         </p>
+      </div>
 
-        <Reveal immediate delay={0.15}>
-          {viewer.online ? (
-            <>
-              {/* Email first: it is the path that needs nothing installed and
-                  nothing delivered, so it is the one that always works. */}
+      <Reveal immediate delay={0.15}>
+        {viewer.online ? (
+          <>
+            {/* Two ways in, side by side once there is room for both: on a laptop the
+                wallet chooser then sits at the top of the page with the email form,
+                rather than below the fold where it has to be scrolled to. Below `lg`
+                the grid is one column and the order in the source is the order read. */}
+            <div className="mt-8 grid gap-8 lg:grid-cols-2 lg:items-start">
+              {/* Email first in the source: it is the path that needs nothing
+                  installed and nothing delivered, so it is the one that always
+                  works, and it is the left-hand column on a wide screen. */}
               <EmailAuthForm
                 next={destination === "/" ? undefined : destination}
-                className="mt-8"
+                className="min-w-0"
               />
 
-              <div className="mt-8 flex items-center gap-4">
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-[12px] uppercase tracking-[0.12em] text-fg-subtle">or</span>
-                <span className="h-px flex-1 bg-border" />
-              </div>
-
-              <div className="mt-6">
-                <p className="text-[13.5px] font-medium text-fg">Use a Solana wallet</p>
+              <section aria-labelledby="wallet-signin-heading" className="min-w-0">
+                <h2 id="wallet-signin-heading" className="text-[13.5px] font-medium text-fg">
+                  Use a Solana wallet
+                </h2>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
                   Your wallet signs one message. No password, and your address is set up to receive
                   sponsorships straight away.
                 </p>
                 <WalletSignIn
                   next={destination === "/" ? undefined : destination}
-                  className="mt-4"
+                  className="mt-3"
                 />
-              </div>
-            </>
-          ) : (
-            <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft p-4 text-[13.5px] leading-relaxed text-warning">
-              <AlertIcon size={18} className="mt-0.5 shrink-0" />
-              <p>
-                Sign-in is unavailable while the API is offline. You can still browse published
-                sessions; try again once the API is back.
-              </p>
+              </section>
             </div>
-          )}
 
-          <div className="mt-10 border-t border-border pt-6">
-            <p className="text-[13.5px] font-medium text-fg">Just looking?</p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
-              Everything published is open to anyone. Continue as a guest and look around — you can
-              read every session, and an account is only needed to upload, sponsor or save.
+            <div className="mt-8 border-t border-border pt-5">
+              <p className="text-[13.5px] font-medium text-fg">Just looking?</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
+                Everything published is open to anyone. Continue as a guest and look around — you
+                can read every session, and an account is only needed to upload, sponsor or save.
+              </p>
+              <ContinueAsGuest next={destination} className="mt-4" />
+            </div>
+          </>
+        ) : (
+          <div className="mt-8 flex gap-3 rounded-[var(--radius-card)] border border-warning/30 bg-warning-soft p-4 text-[13.5px] leading-relaxed text-warning">
+            <AlertIcon size={18} className="mt-0.5 shrink-0" />
+            <p>
+              Sign-in is unavailable while the API is offline. You can still browse published
+              sessions; try again once the API is back.
             </p>
-            <ContinueAsGuest next={destination} className="mt-4" />
           </div>
-        </Reveal>
-      </div>
+        )}
+      </Reveal>
     </Container>
   );
 }
