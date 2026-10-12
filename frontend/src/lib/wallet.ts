@@ -480,9 +480,7 @@ export async function sendSol(to: string, lamports: number): Promise<SentTransfe
   const current = await activeSession();
   const from = current.address;
 
-  const { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } = await import(
-    "@solana/web3.js"
-  );
+  const { PublicKey, SystemProgram, Transaction } = await import("@solana/web3.js");
 
   const transaction = new Transaction().add(
     SystemProgram.transfer({

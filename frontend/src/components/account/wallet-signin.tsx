@@ -158,6 +158,9 @@ export function WalletSignIn({ next, className }: { next?: string; className?: s
                 className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-surface-raised disabled:pointer-events-none disabled:opacity-60"
               >
                 {w.icon ? (
+                  // A data URI from the wallet itself. next/image would try to run a
+                  // 22px brand mark through the optimiser, which is both pointless
+                  // here and a request this page does not need to make.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={w.icon}

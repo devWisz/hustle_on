@@ -14,8 +14,10 @@ services:
         - auth/**
         - database/migrations/**
     envVars:
+      # Fail closed. Left to the dashboard, forgetting it would silently enable
+      # every development relaxation on a public deployment.
       - key: APP_ENV
-        sync: false
+        value: production
       - key: DATABASE_URL
         sync: false
       - key: SESSION_SECRET
@@ -27,6 +29,13 @@ services:
       - key: API_PUBLIC_URL
         sync: false
       - key: ADMIN_WALLETS
+        sync: false
+      # The same thing for an operator who signs in with an email and a password.
+      # At least one of these two must be set, or the API refuses to start.
+      - key: ADMIN_EMAILS
+        sync: false
+      # Optional. Addresses or CIDR ranges allowed to reach the console.
+      - key: ADMIN_ALLOWED_IPS
         sync: false
       - key: HUSTLEON_PAY_PROGRAM_ID
         sync: false
