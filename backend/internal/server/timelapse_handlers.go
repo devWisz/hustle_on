@@ -192,6 +192,11 @@ func (s *Server) handleCreateUpload(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
+	// Make the bucket accept this page's origin before handing out a URL it
+	// would refuse. A stale CORS rule is invisible until the browser's
+	// preflight fails, and then the upload never starts.
+	s.media.EnsureCORSOrigin(r.Context(), r.Header.Get("Origin"))
+
 	upload, err := s.media.NewUpload(user.ID, body.ContentType, body.SizeBytes)
 	switch {
 	case err == nil:

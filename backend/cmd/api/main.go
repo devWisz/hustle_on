@@ -102,6 +102,16 @@ func run() error {
 	})
 	store.SetMediaResolver(storage.Resolve)
 
+	// Keep the bucket's CORS rule in step with the origins this deployment is
+	// served from. A stale rule refuses the browser's preflight and every upload
+	// fails before it starts, which is indistinguishable from storage being down.
+	// Non-fatal: a key without bucket-configuration rights must not stop the API.
+	if err := storage.SetCORS(context.Background(), cfg.AllowedOrigins); err != nil {
+		log.Warn("storage: could not update the bucket's CORS rule; add CORS_ALLOWED_ORIGINS to the bucket by hand", "err", err)
+	} else if !storage.IsLocal() {
+		log.Info("storage: bucket CORS rule updated", "origins", cfg.AllowedOrigins)
+	}
+
 	hops, _ := strconv.Atoi(os.Getenv("TRUSTED_PROXY_HOPS"))
 	if hops == 0 && os.Getenv("TRUST_PROXY_HEADERS") == "true" {
 		hops = 1

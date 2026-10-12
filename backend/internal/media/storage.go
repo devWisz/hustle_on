@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -37,7 +38,13 @@ type Config struct {
 	URLTTL         time.Duration
 }
 
-type Storage struct{ cfg Config }
+type Storage struct {
+	cfg Config
+	// corsMu guards corsOrigins, the set of browser origins the bucket's CORS
+	// rule has been made to accept. It is read and written on the upload path.
+	corsMu      sync.Mutex
+	corsOrigins map[string]bool
+}
 
 func New(cfg Config) *Storage {
 	if cfg.URLTTL == 0 {
