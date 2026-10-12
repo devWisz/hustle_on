@@ -7,6 +7,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { ScrollScale } from "@/components/motion/scroll-scale";
 import { SplitHeading } from "@/components/motion/split-heading";
 import { parseSort } from "@/lib/feed";
+import { SITE_TAGLINE } from "@/lib/brand";
 import { Feed } from "@/components/timelapse/feed";
 import { Showcase } from "@/components/timelapse/showcase";
 import { ButtonLink, Container, SectionHeader } from "@/components/ui";
@@ -77,7 +78,7 @@ function Hero() {
       <Container width="wide" className="pb-12 pt-14 sm:pb-16 sm:pt-20 lg:pb-20 lg:pt-28">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
           <SplitHeading as="h1" onScroll={false} className="text-display lg:col-span-8">
-            Rewards your hustle.
+            {SITE_TAGLINE}
           </SplitHeading>
 
           <Reveal immediate delay={0.35} className="lg:col-span-4 lg:pb-3">

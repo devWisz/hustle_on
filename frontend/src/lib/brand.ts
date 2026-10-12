@@ -7,4 +7,7 @@
  * `auth.Config.ProductName`, because it cannot import TypeScript.
  */
 export const SITE_NAME = "Hustle On";
-export const SITE_TAGLINE = "Rewards your hustle.";
+export const SITE_TAGLINE = "Your Hustle Matters.";
+
+/** The tagline without its full stop, for places that already punctuate. */
+export const SITE_TAGLINE_BARE = SITE_TAGLINE.replace(/\.$/, "");

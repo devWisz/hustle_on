@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { getViewer } from "@/lib/data";
-import { SITE_NAME } from "@/lib/brand";
+import { SITE_NAME, SITE_TAGLINE_BARE } from "@/lib/brand";
 import { ApiWatcher } from "@/components/layout/api-watcher";
 import { CommandSearch } from "@/components/layout/command-search";
 import { CookieBanner } from "@/components/layout/cookie-banner";
@@ -36,7 +36,7 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: `${SITE_NAME} — Rewards your hustle`, template: `%s — ${SITE_NAME}` },
+  title: { default: `${SITE_NAME} — ${SITE_TAGLINE_BARE}`, template: `%s — ${SITE_NAME}` },
   description: DESCRIPTION,
   openGraph: { type: "website", siteName: SITE_NAME, description: DESCRIPTION },
   twitter: { card: "summary_large_image" },
