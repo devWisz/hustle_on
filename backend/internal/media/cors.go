@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -107,6 +108,12 @@ func (s *Storage) knownCORS() []string {
 // putCORS writes the rule. The origins have already been reduced to bare origins
 // by cleanOrigins, so they are safe to place in the XML body unescaped.
 func (s *Storage) putCORS(ctx context.Context, origins []string) error {
+	// The rule is shared: local development and the deployed API write to the
+	// same bucket. Replacing it wholesale would make each one delete the other's
+	// origins, which is exactly what happened the first time this ran, so what is
+	// already there is read first and unioned with what is being added. Nothing
+	// here ever removes an origin.
+	origins = cleanOrigins(append(origins, s.currentCORS(ctx)...))
 	if len(origins) == 0 {
 		return nil
 	}
@@ -145,6 +152,55 @@ func (s *Storage) putCORS(ctx context.Context, origins []string) error {
 		return fmt.Errorf("media: set bucket cors: %s: %s", resp.Status, strings.TrimSpace(string(detail)))
 	}
 	return nil
+}
+
+// allowedOriginRE pulls the origins out of a CORS configuration document. A
+// regular expression is used rather than a full XML decoder because the document
+// is a flat list of simple elements and the API only ever reads it back to union
+// it with its own.
+var allowedOriginRE = regexp.MustCompile(`<AllowedOrigin>\s*([^<]+?)\s*</AllowedOrigin>`)
+
+// currentCORS reads the origins already in the bucket's rule, returning nothing
+// if the rule cannot be read. An unreadable rule is not fatal: the write that
+// follows still succeeds, it simply does not preserve what was there.
+func (s *Storage) currentCORS(ctx context.Context) []string {
+	endpoint, err := url.Parse(s.cfg.Endpoint)
+	if err != nil {
+		return nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		endpoint.Scheme+"://"+endpoint.Host+"/"+s.cfg.Bucket+"?cors", nil)
+	if err != nil {
+		return nil
+	}
+
+	emptyHash := hex.EncodeToString(sha256sum(nil))
+	now := time.Now().UTC()
+	stamp := now.Format("20060102T150405Z")
+	scope := strings.Join([]string{now.Format("20060102"), s.cfg.Region, "s3", "aws4_request"}, "/")
+	req.Header.Set("X-Amz-Content-Sha256", emptyHash)
+	req.Header.Set("X-Amz-Date", stamp)
+	req.Header.Set("Authorization", s.authorization(req, emptyHash, stamp, scope))
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	if err != nil {
+		return nil
+	}
+	matches := allowedOriginRE.FindAllStringSubmatch(string(body), -1)
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		out = append(out, m[1])
+	}
+	return out
 }
 
 // authorization builds the SigV4 Authorization header for a request whose
