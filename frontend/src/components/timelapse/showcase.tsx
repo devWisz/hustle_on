@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Timelapse } from "@/lib/types";
 import { cx, formatDuration, formatSession } from "@/lib/format";
 import { MOTION, gsap, useGSAP } from "../motion/gsap";
-import { ArrowRightIcon, PlayIcon } from "../ui/icons";
+import { ButtonLink } from "../ui";
+import { ArrowRightIcon, PlayIcon, WalletIcon } from "../ui/icons";
 import { compression } from "./card";
 
 export function Showcase({ items }: { items: Timelapse[] }) {
@@ -86,25 +86,18 @@ export function Showcase({ items }: { items: Timelapse[] }) {
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"
           />
 
-          <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white/85 sm:left-6 sm:right-6 sm:top-6">
-            <span className="flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 backdrop-blur-md">
-              <span
-                aria-hidden
-                className={cx("h-1.5 w-1.5 rounded-full bg-white", playing && "animate-blink")}
-              />
-              Now playing
-            </span>
-            {ratio ? (
+          {ratio ? (
+            <div className="pointer-events-none absolute right-4 top-4 font-mono text-[11px] uppercase tracking-[0.12em] text-white/85 sm:right-6 sm:top-6">
               <span className="rounded-full bg-black/45 px-3 py-1.5 tabular-nums backdrop-blur-md">
                 {formatSession(current.sessionMinutes).replace(" of work", "")} in{" "}
                 {formatDuration(current.durationSeconds)}
               </span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           <div
             ref={caption}
-            className="absolute inset-x-4 bottom-4 flex flex-col gap-4 sm:inset-x-6 sm:bottom-6 sm:flex-row sm:items-end sm:justify-between"
+            className="absolute inset-x-4 bottom-4 sm:inset-x-6 sm:bottom-6"
           >
             <div className="min-w-0 overflow-hidden text-white">
               <p data-caption className="text-[13px] text-white/70">
@@ -118,32 +111,34 @@ export function Showcase({ items }: { items: Timelapse[] }) {
                 {current.title}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPlaying((p) => !p)}
-                aria-label={playing ? "Pause the reel" : "Play the reel"}
-                className="press flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/25"
-              >
-                {playing ? (
-                  <span aria-hidden className="flex gap-1">
-                    <span className="h-3.5 w-1 rounded-sm bg-current" />
-                    <span className="h-3.5 w-1 rounded-sm bg-current" />
-                  </span>
-                ) : (
-                  <PlayIcon size={16} />
-                )}
-              </button>
-              <Link
-                href={`/watch/${current.slug}`}
-                className="press group inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-medium text-black transition-opacity hover:opacity-90"
-              >
-                Watch session
-                <ArrowRightIcon size={15} className="nudge-icon" />
-              </Link>
-            </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <ButtonLink href={`/watch/${current.slug}`} size="lg">
+          Watch this session
+          <ArrowRightIcon size={16} className="nudge-icon" />
+        </ButtonLink>
+        <ButtonLink href={`/watch/${current.slug}#sponsor`} variant="secondary" size="lg">
+          <WalletIcon size={16} />
+          Fund this hustle
+        </ButtonLink>
+        <button
+          type="button"
+          onClick={() => setPlaying((p) => !p)}
+          className="press ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-border text-fg-muted transition-colors hover:text-fg"
+          aria-label={playing ? "Pause the reel" : "Play the reel"}
+        >
+          {playing ? (
+            <span aria-hidden className="flex gap-1">
+              <span className="h-3.5 w-1 rounded-sm bg-current" />
+              <span className="h-3.5 w-1 rounded-sm bg-current" />
+            </span>
+          ) : (
+            <PlayIcon size={16} />
+          )}
+        </button>
       </div>
 
       <div
