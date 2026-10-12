@@ -30,6 +30,11 @@ type Config struct {
 	// MaxChallengeAttempts caps how many unspent nonces one address may hold at
 	// once, so a client cannot fill the table by asking in a loop.
 	MaxChallengeAttempts int
+	// AllowLocalOrigins accepts any loopback, private or link-local origin, on any
+	// port. It exists for development, where a dev server prints a Network URL
+	// that people reasonably copy. It must be false in production, where the
+	// allowlist is the list of domains we serve.
+	AllowLocalOrigins bool
 	// CSRFKey signs double-submit CSRF tokens. Must be at least 32 bytes.
 	CSRFKey []byte
 }

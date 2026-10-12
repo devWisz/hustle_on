@@ -23,6 +23,11 @@ type Config struct {
 	WebURL         string
 	AdminURL       string
 	AllowedOrigins []string
+	// AllowLocalOrigins accepts any loopback, private or link-local origin on any
+	// port. It is true outside production and false in it, and that gate is the
+	// whole safety of the thing: in production the allowlist is the list of
+	// domains we serve and must be matched exactly.
+	AllowLocalOrigins bool
 
 	DatabaseURL      string
 	DatabaseMaxConns int32
@@ -213,6 +218,10 @@ func Load() (Config, error) {
 		// address still cannot make unbounded work.
 		RateLimitIPCeiling: envInt("RATE_LIMIT_IP_CEILING", 1200),
 	}
+
+	// Development convenience, never on in production. A dev server prints a
+	// Network URL next to the local one and that is the address people copy.
+	c.AllowLocalOrigins = !c.IsProduction()
 
 	origins := env("CORS_ALLOWED_ORIGINS", c.WebURL+","+c.AdminURL)
 	for _, o := range strings.Split(origins, ",") {

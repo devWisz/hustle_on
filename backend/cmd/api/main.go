@@ -66,7 +66,9 @@ func run() error {
 		Secure:       strings.HasPrefix(cfg.WebURL, "https://"),
 		SessionTTL:   cfg.SessionTTL,
 		ChallengeTTL: cfg.ChallengeTTL,
-		CSRFKey:      cfg.SessionSecret,
+		// Off in production, where the origin allowlist is exact.
+		AllowLocalOrigins: cfg.AllowLocalOrigins,
+		CSRFKey:           cfg.SessionSecret,
 	}, st, password.New())
 	if err != nil {
 		return err

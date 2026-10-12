@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -154,7 +155,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 // Two copies of an origin rule is two places for it to drift, and the one that
 // drifts is the one nobody is looking at.
 func (s *Server) originAllowed(origin string) bool {
-	return auth.OriginAllowed(origin, s.cfg.AllowedOrigins)
+	return auth.OriginAllowed(origin, s.cfg.AllowedOrigins, s.cfg.AllowLocalOrigins)
 }
 
 // ipCeiling bounds how much work one address can cause before its session has
@@ -219,8 +220,22 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 func (s *Server) csrfGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins); err != nil {
-			s.writeError(w, r, apierr.Forbidden(
-				"This request could not be verified. Reload the page and try again."))
+			// The origin is the caller's own, so naming it leaks nothing and turns
+			// an afternoon of guessing into one line of log. In development it goes
+			// into the response too, because that is where the person who needs it
+			// is actually looking.
+			origin := r.Header.Get("Origin")
+			_, hasSession := r.Cookie(s.cfg.SessionCookieName)
+			s.log.WarnContext(r.Context(), "csrf refused",
+				"origin", origin, "method", r.Method, "path", r.URL.Path,
+				"session_cookie", hasSession)
+			message := "This request could not be verified. Reload the page and try again."
+			if !s.cfg.IsProduction() {
+				message = fmt.Sprintf(
+					"This request could not be verified (origin %q is not allowed; this request had a session cookie: %t). Add that origin to CORS_ALLOWED_ORIGINS.",
+					origin, hasSession)
+			}
+			s.writeError(w, r, apierr.Forbidden(message))
 			return
 		}
 		next.ServeHTTP(w, r)

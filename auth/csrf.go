@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -46,7 +47,7 @@ func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
 			}
 		}
 	}
-	if !OriginAllowed(origin, allowedOrigins) {
+	if !OriginAllowed(origin, allowedOrigins, s.cfg.AllowLocalOrigins) {
 		return ErrCSRF
 	}
 
@@ -69,21 +70,34 @@ func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
 
 // OriginAllowed reports whether a request's origin is one this deployment serves.
 //
-// The comparison is exact, with one deliberate exception: the loopback spellings
-// are treated as the same address. `localhost`, `127.0.0.1` and `[::1]` are one
-// server, and which of them a browser, a dev server or a printed URL happens to
-// use is not a security-relevant distinction — but it is the difference between a
-// site that works and one where every write is refused, because reads are not
-// origin-checked and the page itself loads perfectly.
+// The comparison is exact, with two deliberate exceptions.
 //
-// The exception is confined to loopback on both sides, so any other origin still
-// has to be listed exactly. That restriction is the point: in production the
-// allowlist is the set of domains we serve, and loosening it there would be the
-// vulnerability rather than the fix.
-func OriginAllowed(origin string, allowed []string) bool {
+// The first is that the loopback spellings are one address. `localhost`,
+// `127.0.0.1` and `[::1]` are one server, and which of them a browser, a dev server
+// or a printed URL happens to use is not a security-relevant distinction — but it
+// is the difference between a site that works and one where every write is
+// refused, because reads are not origin-checked and the page itself loads
+// perfectly. That exception is confined to loopback on both sides.
+//
+// The second is allowLocalNetwork, which is set only outside production. A dev
+// server prints a "Network" URL alongside the local one — `next dev` prints
+// `http://192.168.1.132:3001` — and that is the URL people copy, because it is the
+// one that works from a phone. Refusing it means the site appears completely
+// broken while every request is in fact arriving from the developer's own machine.
+// When this is on, any http(s) origin on a loopback, private or link-local address
+// is accepted, on any port.
+//
+// The gate matters more than the exception. In production this is always false and
+// the allowlist is matched exactly, because there the list of origins is the list
+// of domains we serve and loosening it would be the vulnerability rather than the
+// fix. Nothing here ever matches a public host loosely.
+func OriginAllowed(origin string, allowed []string, allowLocalNetwork bool) bool {
 	o := strings.TrimRight(strings.TrimSpace(origin), "/")
 	if o == "" {
 		return false
+	}
+	if allowLocalNetwork && isLocalNetworkOrigin(o) {
+		return true
 	}
 	for _, a := range allowed {
 		a = strings.TrimRight(strings.TrimSpace(a), "/")
@@ -95,6 +109,27 @@ func OriginAllowed(origin string, allowed []string) bool {
 		}
 	}
 	return false
+}
+
+// isLocalNetworkOrigin reports whether an origin points at this machine or the
+// network it is on: loopback, an RFC 1918 private range, or a link-local address.
+func isLocalNetworkOrigin(origin string) bool {
+	_, host, _, ok := splitOrigin(origin)
+	if !ok || host == "" {
+		return false
+	}
+	if isLoopbackHost(host) {
+		return true
+	}
+	// ParseIP returns nil for anything that is not an address, which includes
+	// every ordinary hostname. A name like `dev.local` is therefore deliberately
+	// not accepted: knowing what it resolves to would need a DNS lookup, and
+	// guessing is the wrong direction to guess in.
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
 }
 
 // sameLoopbackService reports whether two origins name the same loopback service:

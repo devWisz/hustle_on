@@ -94,7 +94,7 @@ func TestOriginAllowedTreatsLoopbackSpellingsAsOne(t *testing.T) {
 		"http://127.0.0.1:3001",
 		"http://[::1]:3001",
 	} {
-		if !OriginAllowed(origin, allowed) {
+		if !OriginAllowed(origin, allowed, false) {
 			t.Errorf("%q was refused, and it is the same server", origin)
 		}
 	}
@@ -115,19 +115,64 @@ func TestOriginAllowedIsStrictEverywhereElse(t *testing.T) {
 		{"http://127.0.0.1.evil.com:3001", "a host that merely starts with a loopback address"},
 		{"null", "the literal null origin a sandboxed frame sends"},
 	} {
-		if OriginAllowed(tc.origin, allowed) {
+		if OriginAllowed(tc.origin, allowed, false) {
 			t.Errorf("%s (%q) was accepted", tc.why, tc.origin)
 		}
 	}
 
 	// And a public origin is only ever matched exactly.
-	if !OriginAllowed("https://hustleon.com", []string{"https://hustleon.com"}) {
+	if !OriginAllowed("https://hustleon.com", []string{"https://hustleon.com"}, false) {
 		t.Error("an exact production origin was refused")
 	}
-	if OriginAllowed("http://hustleon.com", []string{"https://hustleon.com"}) {
+	if OriginAllowed("http://hustleon.com", []string{"https://hustleon.com"}, false) {
 		t.Error("the http form of a production origin was accepted")
 	}
-	if OriginAllowed("https://api.hustleon.com", []string{"https://hustleon.com"}) {
+	if OriginAllowed("https://api.hustleon.com", []string{"https://hustleon.com"}, false) {
 		t.Error("a subdomain was accepted as its parent")
+	}
+}
+
+// A development server prints a Network URL beside the local one — that is the
+// address people copy, because it is the one that works from a phone. Refusing it
+// makes the site look broken while every request is arriving from the developer's
+// own machine, which is exactly the afternoon this rule was written to end.
+func TestLocalNetworkOriginsAreAcceptedOnlyWhenAllowed(t *testing.T) {
+	allowed := []string{"http://localhost:3001"}
+
+	for _, origin := range []string{
+		"http://192.168.1.132:3001",
+		"http://10.0.0.5:3000",
+		"http://172.16.4.9:8080",
+		"http://169.254.10.20:3001",
+		"http://127.0.0.1:9999",
+		"https://192.168.1.132:3001",
+	} {
+		if !OriginAllowed(origin, allowed, true) {
+			t.Errorf("%q was refused in development, and it is this machine or its network", origin)
+		}
+		// The same origin must be refused when the relaxation is off, which is
+		// what production does.
+		if OriginAllowed(origin, allowed, false) {
+			t.Errorf("%q was accepted with the relaxation off", origin)
+		}
+	}
+}
+
+// Even with the relaxation on, a public host is never matched loosely. This is the
+// property that makes the development convenience safe to have at all.
+func TestLocalNetworkRelaxationNeverAcceptsAPublicHost(t *testing.T) {
+	for _, origin := range []string{
+		"https://hustleon.com",
+		"https://evil.example.com",
+		"http://192.168.1.132.evil.com:3001",
+		"http://8.8.8.8:3001",
+		"http://1.1.1.1",
+		"http://dev.local:3001",
+		"",
+		"null",
+	} {
+		if OriginAllowed(origin, []string{"http://localhost:3001"}, true) {
+			t.Errorf("%q was accepted, and it is not on this network", origin)
+		}
 	}
 }
