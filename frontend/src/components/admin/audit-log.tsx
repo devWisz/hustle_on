@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DECISION_ACTIONS } from "@/lib/audit";
 import type { AuditEntry } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
 import { cx, formatStamp, timeAgo } from "@/lib/format";
