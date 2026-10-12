@@ -117,9 +117,9 @@ export function HeaderClient({ user, guest = false }: { user?: HeaderUser; guest
     <header
       ref={bar}
       data-scrolled="false"
-      className="group/header sticky top-0 z-40 border-b border-transparent bg-bg/80 backdrop-blur-xl transition-colors duration-300 data-[scrolled=true]:border-border"
+      className="group/header sticky top-0 z-40 px-3 pt-3 sm:px-4 sm:pt-4"
     >
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 rounded-full border border-border bg-bg/70 px-3 shadow-[var(--shadow-raised)] backdrop-blur-xl sm:px-4">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2.5 text-[15px] font-semibold tracking-tight"

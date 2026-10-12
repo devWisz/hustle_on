@@ -1,5 +1,5 @@
 import { FEED_PAGE_SIZE, getFeatured, getFeed, getStats, getViewer } from "@/lib/data";
-import type { Stats } from "@/lib/types";
+import type { Stats, Timelapse } from "@/lib/types";
 import { CountUp } from "@/components/motion/count-up";
 import { Magnetic } from "@/components/motion/magnetic";
 import { ProgressRail } from "@/components/motion/progress-rail";
@@ -11,7 +11,7 @@ import { SITE_TAGLINE } from "@/lib/brand";
 import { Feed } from "@/components/timelapse/feed";
 import { Showcase } from "@/components/timelapse/showcase";
 import { ButtonLink, Container, SectionHeader } from "@/components/ui";
-import { ArrowRightIcon, ShieldIcon, WalletIcon, ZapIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, PlayIcon, ShieldIcon, WalletIcon, ZapIcon } from "@/components/ui/icons";
 
 export default async function HomePage({
   searchParams,
@@ -32,11 +32,10 @@ export default async function HomePage({
   return (
     <>
       <Hero />
+      <Stage items={reel} />
 
-      <Container width="wide">
-        <ScrollScale>
-          <Showcase items={reel} />
-        </ScrollScale>
+      <Container width="wide" className="pt-12 sm:pt-16">
+        <ProofBar />
       </Container>
 
       {stats ? <Figures stats={stats.data} /> : null}
@@ -78,69 +77,115 @@ const PROOF = [
 ];
 
 /**
- * The hero is four full-width bands rather than two columns: a chip, the
- * statement, a rule with the pitch and the buttons on it, and a proof bar. An
- * earlier version put the heading in eight columns and the pitch in four, which
- * left a hole above the pitch because the statement is only three words long.
+ * One centred statement, one line of pitch, two buttons — and then the product
+ * itself in the next section. The statement is the only thing competing for
+ * attention, which is the whole trick of the reference: an earlier version put
+ * the heading in eight columns beside the pitch and left a hole where the
+ * heading ran out.
  */
 function Hero() {
   return (
     <section className="grid-backdrop">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 mx-auto h-[420px] w-full max-w-4xl rounded-full bg-accent/15 blur-[120px]"
+        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 mx-auto h-[460px] w-full max-w-5xl rounded-full bg-accent/15 blur-[130px]"
       />
-      <Container width="wide" className="pb-14 pt-12 sm:pb-16 sm:pt-16 lg:pb-20 lg:pt-24">
-        <Reveal immediate>
+      <Container width="wide" className="pt-14 text-center sm:pt-16 lg:pt-20">
+        <Reveal immediate className="flex justify-center">
           <span className="inline-flex items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-3 pr-4">
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
             <span className="text-eyebrow text-fg-muted">Show the work. Get funded.</span>
           </span>
         </Reveal>
 
-        <SplitHeading as="h1" onScroll={false} className="text-hero mt-8">
+        <SplitHeading as="h1" onScroll={false} className="text-hero mx-auto mt-8 max-w-5xl">
           {SITE_TAGLINE}
         </SplitHeading>
 
-        <Reveal immediate delay={0.4} className="mt-10 border-t border-border pt-8 sm:mt-12">
-          <div className="grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-10">
-            <p className="text-lede max-w-2xl text-fg-muted lg:col-span-7">
-              Record the session. Say what you did. Viewers send SOL straight to your wallet, or
-              reach out to hire you for the next one.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row lg:col-span-5 lg:justify-end">
-              <Magnetic className="inline-flex w-full sm:w-auto">
-                <ButtonLink href="/upload" size="lg" className="w-full sm:w-auto">
-                  Upload a timelapse
-                  <ArrowRightIcon size={16} className="nudge-icon" />
-                </ButtonLink>
-              </Magnetic>
-              <ButtonLink
-                href="/#feed"
-                variant="secondary"
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                Browse as a guest
+        <Reveal immediate delay={0.4}>
+          <p className="text-lede mx-auto mt-8 max-w-2xl text-fg-muted">
+            Record the session. Say what you did. Viewers send SOL straight to your wallet, or
+            reach out to hire you for the next one.
+          </p>
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Magnetic className="inline-flex w-full sm:w-auto">
+              <ButtonLink href="/upload" size="lg" className="w-full sm:w-auto">
+                Upload a timelapse
+                <ArrowRightIcon size={16} className="nudge-icon" />
               </ButtonLink>
-            </div>
+            </Magnetic>
+            <ButtonLink
+              href="/#feed"
+              variant="secondary"
+              size="lg"
+              className="w-full sm:w-auto"
+            >
+              Browse as a guest
+            </ButtonLink>
           </div>
-        </Reveal>
-
-        <Reveal
-          immediate
-          delay={0.55}
-          className="mt-8 grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-3"
-        >
-          {PROOF.map((p) => (
-            <div key={p.label} className="flex items-center gap-3 bg-surface px-5 py-4">
-              <p.icon size={16} className="shrink-0 text-accent" />
-              <span className="text-[13.5px] font-medium tracking-tight">{p.label}</span>
-            </div>
-          ))}
         </Reveal>
       </Container>
     </section>
+  );
+}
+
+/** The three promises, as a thin strip under the product panel. */
+function ProofBar() {
+  return (
+    <Reveal className="grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-3">
+      {PROOF.map((p) => (
+        <div key={p.label} className="flex items-center gap-3 bg-surface px-5 py-4">
+          <p.icon size={16} className="shrink-0 text-accent" />
+          <span className="text-[13.5px] font-medium tracking-tight">{p.label}</span>
+        </div>
+      ))}
+    </Reveal>
+  );
+}
+
+/**
+ * The product shot, sitting directly under the hero so the fold cuts it — the
+ * composition the reference uses. With nothing published yet the reel would
+ * render nothing at all and the whole first screen would go blank, so the empty
+ * state holds the identical frame and aspect instead.
+ */
+function Stage({ items }: { items: Timelapse[] }) {
+  const hasReel = items.some((t) => t.playbackUrl);
+  return (
+    <section className="pt-14 sm:pt-20">
+      <Container width="wide">
+        <div className="relative isolate">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-4 -top-8 bottom-8 -z-10 rounded-[48px] bg-accent/10 blur-[110px]"
+          />
+          {hasReel ? (
+            <ScrollScale>
+              <Showcase items={items} />
+            </ScrollScale>
+          ) : (
+            <StageEmpty />
+          )}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+function StageEmpty() {
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface shadow-[var(--shadow-lifted)]">
+      <div className="grid-backdrop flex h-[380px] flex-col items-center justify-center gap-6 px-6 text-center sm:h-[460px]">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-bg text-fg-muted">
+          <PlayIcon size={20} />
+        </span>
+        <p className="max-w-md text-[15px] leading-relaxed text-fg-muted">
+          Nothing has been published yet. Every session is read before it goes up, so the first
+          ones are being reviewed right now.
+        </p>
+        <ButtonLink href="/upload">Upload the first one</ButtonLink>
+      </div>
+    </div>
   );
 }
 
