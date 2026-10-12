@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DECISION_ACTIONS } from "@/lib/audit";
 import type { AuditEntry } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
 import { cx, formatStamp, timeAgo } from "@/lib/format";
@@ -28,8 +29,6 @@ const ACTIONS: Record<string, { label: string; tone: Tone }> = {
 };
 
 /** The decisions on a submission, in the order the overview counts them. */
-export const DECISION_ACTIONS: readonly string[] = ["timelapse.approve", "timelapse.reject"];
-
 function meta(action: string) {
   return ACTIONS[action] ?? { label: action, tone: "neutral" as Tone };
 }
