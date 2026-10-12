@@ -47,7 +47,7 @@ export default async function HomePage({
             <SectionHeader
               eyebrow="The feed"
               title={
-                <span id="feed-heading">Real sessions, read by a person before they went up</span>
+                <span id="feed-heading">Real sessions, from people who showed their work</span>
               }
               description="Filter by the kind of work, or sort by what people funded and watched most."
             />
@@ -186,8 +186,8 @@ function HowItWorks() {
               </SplitHeading>
               <Reveal delay={0.2}>
                 <p className="mt-5 max-w-md text-[15px] leading-relaxed text-fg-muted">
-                  Every session is read by a person before it goes public, so what people fund is
-                  work that actually happened.
+                  A session is reviewed before it goes public, and if it is sent back you get a
+                  reason you can act on. What people fund is work that actually happened.
                 </p>
                 <ButtonLink href="/about" variant="secondary" className="mt-7">
                   Read the details

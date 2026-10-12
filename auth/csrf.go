@@ -29,7 +29,22 @@ func (s *Service) CSRFToken(sessionValue string) string {
 // ours, which stops the request at the browser boundary, and the header must
 // match the token derived from this exact session, which stops anything that
 // managed to get past it.
-func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
+//
+// originVerified is for the same-origin proxy deployment, where the browser talks
+// to the web app and the web app forwards the call here. In that arrangement the
+// app's server knows the real public host and this API does not: the allowlist
+// would have to be kept in step with a domain that the API never sees, and when it
+// drifts every write fails with "this request could not be verified" while the
+// site itself loads perfectly. The proxy checks the origin against the host it was
+// actually reached on — a stricter test than this one, since it compares against
+// the very origin the browser used rather than a configured list — and vouches for
+// it with the secret shared between the two services.
+//
+// That vouching is worth nothing unless the caller can be sure it came from the
+// proxy, so the caller must only set originVerified when the shared secret
+// matched. The token check below still runs either way: the proxy vouches for
+// where a request came from, never for who sent it.
+func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string, originVerified bool) error {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 		return nil // Safe methods must not change state.
@@ -47,7 +62,7 @@ func (s *Service) CheckCSRF(r *http.Request, allowedOrigins []string) error {
 			}
 		}
 	}
-	if !OriginAllowed(origin, allowedOrigins, s.cfg.AllowLocalOrigins) {
+	if !originVerified && !OriginAllowed(origin, allowedOrigins, s.cfg.AllowLocalOrigins) {
 		return ErrCSRF
 	}
 

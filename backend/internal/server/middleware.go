@@ -219,7 +219,7 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 // decides that it runs and what a refusal looks like.
 func (s *Server) csrfGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins); err != nil {
+		if err := s.auth.CheckCSRF(r, s.cfg.AllowedOrigins, s.originVouchedByProxy(r)); err != nil {
 			// The origin is the caller's own, so naming it leaks nothing and turns
 			// an afternoon of guessing into one line of log. In development it goes
 			// into the response too, because that is where the person who needs it
@@ -478,7 +478,30 @@ func internalClientIP(r *http.Request) (netip.Addr, bool) {
 const (
 	internalKeyHeader = "X-Hustleon-Proxy-Key"
 	internalIPHeader  = "X-Hustleon-Client-IP"
+	// Set by the web app's server only after it has compared the browser's Origin
+	// against the host the browser actually reached. It is stripped from anything
+	// arriving at the web app, so it cannot be set by a browser.
+	internalOriginHeader = "X-Hustleon-Origin-Verified"
+	internalOriginValue  = "1"
 )
+
+// originVouchedByProxy reports whether the web app's server has already checked
+// this request's origin.
+//
+// It requires the shared secret, in constant time, exactly as the forwarded-address
+// check does: without it this header would let anyone claim their own origin was
+// verified, which is the whole of the protection. The vouch is only a statement
+// about where the request came from.
+func (s *Server) originVouchedByProxy(r *http.Request) bool {
+	if len(internalProxySecret) == 0 {
+		return false
+	}
+	key := r.Header.Get(internalKeyHeader)
+	if key == "" || subtle.ConstantTimeCompare([]byte(key), internalProxySecret) != 1 {
+		return false
+	}
+	return r.Header.Get(internalOriginHeader) == internalOriginValue
+}
 
 var internalProxySecret []byte
 

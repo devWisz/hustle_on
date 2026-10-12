@@ -26,14 +26,39 @@ function proxyToApi(request: NextRequest): NextResponse {
     );
   }
   const headers = new Headers(request.headers);
+  // Anything a browser could set that the API trusts by name is removed before the
+  // request goes on. The API only believes these when they arrive with the shared
+  // secret, which a browser cannot know.
   headers.delete("x-hustleon-client-ip");
   headers.delete("x-hustleon-proxy-key");
+  headers.delete("x-hustleon-origin-verified");
+
+  // The browser's origin is checked here rather than at the API, because this
+  // server knows the host the browser actually reached and the API does not. A
+  // request from somewhere else is refused outright: it cannot be legitimate,
+  // since the browser would be sending this site's cookies for a page we do not
+  // own. `origin` is absent on same-origin GETs, which is fine — only
+  // state-changing methods are protected, and browsers always send it for those.
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  if (origin !== null && origin !== `${proto}://${host}`) {
+    return NextResponse.json(
+      { error: { code: "forbidden", message: "Cross-site request refused." } },
+      { status: 403 },
+    );
+  }
+
   const ip =
     request.headers.get("x-real-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (proxySecret && ip) {
     headers.set("x-hustleon-client-ip", ip);
     headers.set("x-hustleon-proxy-key", proxySecret);
+    // The vouch, sent only when the check above passed. The API accepts it only
+    // alongside the shared secret, and uses it in place of matching this
+    // deployment's domain against a list that has to be kept in step by hand.
+    if (origin !== null) headers.set("x-hustleon-origin-verified", "1");
   }
   return NextResponse.rewrite(new URL(`${rest}${search}`, proxyTarget), { request: { headers } });
 }
