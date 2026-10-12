@@ -33,12 +33,11 @@ export default async function HomePage({
     <>
       <Hero />
 
-      <Container width="wide" className="-mt-2 sm:mt-0">
+      <Container width="wide">
         <ScrollScale>
           <Showcase items={reel} />
         </ScrollScale>
       </Container>
-
 
       {stats ? <Figures stats={stats.data} /> : null}
 
@@ -72,21 +71,44 @@ export default async function HomePage({
   );
 }
 
+const PROOF = [
+  { icon: ShieldIcon, label: "Reviewed by a person" },
+  { icon: ZapIcon, label: "A reason if it is sent back" },
+  { icon: WalletIcon, label: "SOL goes wallet to wallet" },
+];
+
+/**
+ * The hero is four full-width bands rather than two columns: a chip, the
+ * statement, a rule with the pitch and the buttons on it, and a proof bar. An
+ * earlier version put the heading in eight columns and the pitch in four, which
+ * left a hole above the pitch because the statement is only three words long.
+ */
 function Hero() {
   return (
     <section className="grid-backdrop">
-      <Container width="wide" className="pb-12 pt-14 sm:pb-16 sm:pt-20 lg:pb-20 lg:pt-28">
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
-          <SplitHeading as="h1" onScroll={false} className="text-display lg:col-span-8">
-            {SITE_TAGLINE}
-          </SplitHeading>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 mx-auto h-[420px] w-full max-w-4xl rounded-full bg-accent/15 blur-[120px]"
+      />
+      <Container width="wide" className="pb-14 pt-12 sm:pb-16 sm:pt-16 lg:pb-20 lg:pt-24">
+        <Reveal immediate>
+          <span className="inline-flex items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-3 pr-4">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="text-eyebrow text-fg-muted">Show the work. Get funded.</span>
+          </span>
+        </Reveal>
 
-          <Reveal immediate delay={0.35} className="lg:col-span-4 lg:pb-3">
-            <p className="text-lede text-fg-muted">
-              Record the session. Say what you did. Viewers can sponsor you in SOL, or hire you for
-              the next one.
+        <SplitHeading as="h1" onScroll={false} className="text-hero mt-8">
+          {SITE_TAGLINE}
+        </SplitHeading>
+
+        <Reveal immediate delay={0.4} className="mt-10 border-t border-border pt-8 sm:mt-12">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-10">
+            <p className="text-lede max-w-2xl text-fg-muted lg:col-span-7">
+              Record the session. Say what you did. Viewers send SOL straight to your wallet, or
+              reach out to hire you for the next one.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row lg:col-span-5 lg:justify-end">
               <Magnetic className="inline-flex w-full sm:w-auto">
                 <ButtonLink href="/upload" size="lg" className="w-full sm:w-auto">
                   Upload a timelapse
@@ -102,8 +124,21 @@ function Hero() {
                 Browse as a guest
               </ButtonLink>
             </div>
-          </Reveal>
-        </div>
+          </div>
+        </Reveal>
+
+        <Reveal
+          immediate
+          delay={0.55}
+          className="mt-8 grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border sm:grid-cols-3"
+        >
+          {PROOF.map((p) => (
+            <div key={p.label} className="flex items-center gap-3 bg-surface px-5 py-4">
+              <p.icon size={16} className="shrink-0 text-accent" />
+              <span className="text-[13.5px] font-medium tracking-tight">{p.label}</span>
+            </div>
+          ))}
+        </Reveal>
       </Container>
     </section>
   );

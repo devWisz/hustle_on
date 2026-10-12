@@ -200,6 +200,15 @@ button:not(:disabled),
   font-weight: 600;
 }
 
+/* The landing statement. Larger than .text-display so it reaches the right edge
+   of the widest container instead of stopping two thirds of the way across. */
+.text-hero {
+  font-size: clamp(2.75rem, 1rem + 8.2vw, 9rem);
+  line-height: 0.92;
+  letter-spacing: -0.055em;
+  font-weight: 600;
+}
+
 .text-headline {
   font-size: clamp(2rem, 1.3rem + 3vw, 3.75rem);
   line-height: 1.02;
