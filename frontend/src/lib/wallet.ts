@@ -488,7 +488,26 @@ export async function connectWallet(): Promise<string> {
   return (await activeSession()).address;
 }
 
-export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+/**
+ * The RPC endpoint the browser talks to.
+ *
+ * A blank value is not a missing one. Next inlines NEXT_PUBLIC_* at build time,
+ * so a variable left empty in the hosting dashboard arrives as "" — and `??`
+ * never fires, because it only catches null and undefined, not "". The empty
+ * string then reaches the wallet adapter and surfaces as "Endpoint URL must
+ * start with http: or https:", which names the symptom and hides the cause.
+ *
+ * Blank is treated as absent, and a value that is not an absolute http(s) URL is
+ * replaced rather than trusted, so a typo degrades to a working default instead
+ * of a broken donation.
+ */
+function resolveRpcUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim();
+  if (configured && /^https?:\/\//i.test(configured)) return configured;
+  return "https://api.devnet.solana.com";
+}
+
+export const RPC_URL = resolveRpcUrl();
 
 let connection: Connection | null = null;
 
