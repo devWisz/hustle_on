@@ -1,6 +1,5 @@
-import { FEED_PAGE_SIZE, getFeatured, getFeed, getStats, getViewer } from "@/lib/data";
-import type { Stats, Timelapse } from "@/lib/types";
-import { CountUp } from "@/components/motion/count-up";
+import { FEED_PAGE_SIZE, getFeatured, getFeed, getViewer } from "@/lib/data";
+import type { Timelapse } from "@/lib/types";
 import { Magnetic } from "@/components/motion/magnetic";
 import { ProgressRail } from "@/components/motion/progress-rail";
 import { Reveal } from "@/components/motion/reveal";
@@ -19,9 +18,8 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sort = parseSort((await searchParams).sort);
-  const [feed, stats, viewer, featured] = await Promise.all([
+  const [feed, viewer, featured] = await Promise.all([
     getFeed(sort),
-    getStats(),
     getViewer(),
     getFeatured(),
   ]);
@@ -38,16 +36,12 @@ export default async function HomePage({
         <ProofBar />
       </Container>
 
-      {stats ? <Figures stats={stats.data} /> : null}
-
-      <section id="feed" className="scroll-mt-20 pt-20 sm:pt-28" aria-labelledby="feed-heading">
+        <section id="feed" className="scroll-mt-20 pt-20 sm:pt-28" aria-labelledby="feed-heading">
         <Container width="wide">
           <Reveal>
             <SectionHeader
               eyebrow="The feed"
-              title={
-                <span id="feed-heading">Real sessions, from people who showed their work</span>
-              }
+              title={<span id="feed-heading">Work that actually happened</span>}
               description="Filter by the kind of work, or sort by what people funded and watched most."
             />
           </Reveal>
@@ -171,48 +165,6 @@ function StageEmpty() {
         <ButtonLink href="/upload">Upload the first one</ButtonLink>
       </div>
     </div>
-  );
-}
-
-function Figures({ stats }: { stats: Stats }) {
-  const figures = [
-    {
-      label: "Hours of work recorded",
-      value: <CountUp value={Math.round(stats.sessionMinutesRecorded / 60)} format="plain" />,
-    },
-    {
-      label: "Sessions published",
-      value: <CountUp value={stats.publishedTimelapses} format="plain" />,
-    },
-    { label: "Creators", value: <CountUp value={stats.creators} format="plain" /> },
-    {
-      label: "Sent straight to creators",
-      value: <CountUp value={stats.donationTotalLamports} format="sol" />,
-    },
-  ];
-
-  return (
-    <section aria-label="By the numbers" className="pt-20 sm:pt-28">
-      <Container width="wide">
-        <div className="flex items-center gap-3">
-          <p className="text-eyebrow">By the numbers</p>
-        </div>
-        <Reveal
-          as="dl"
-          stagger={0.1}
-          className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-border bg-border lg:grid-cols-4"
-        >
-          {figures.map((f) => (
-            <div key={f.label} className="bg-surface p-5 sm:p-8">
-              <dd className="tnum text-[clamp(1.75rem,1.2rem+2.4vw,3.25rem)] font-semibold leading-none tracking-tight">
-                {f.value}
-              </dd>
-              <dt className="mt-3 text-[13px] text-fg-muted">{f.label}</dt>
-            </div>
-          ))}
-        </Reveal>
-      </Container>
-    </section>
   );
 }
 
