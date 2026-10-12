@@ -5,13 +5,11 @@
 import type { Connection, PublicKey as PublicKeyType, Transaction } from "@solana/web3.js";
 
 /**
- * Every Wallet Standard wallet in this browser.
+ * A wallet as it announces itself, in the shape Wallet Standard defines.
  *
- * A wallet announces itself by answering `wallet-standard:app-ready` — either by
- * emitting `wallet-standard:register-wallet` or by calling the `register` callback
- * carried in the event detail — so both have to be listened for. The announcement
- * is synchronous, which is why `detectWallets` waits a turn before reading the
- * list: a wallet that answers in a microtask or a timer is otherwise missed.
+ * `chains` and `features` are opaque from here on purpose: the protocol lets a
+ * wallet offer whatever it likes, so what it offers is inspected rather than
+ * assumed.
  */
 type WalletStandardWallet = {
   name: string;
@@ -20,6 +18,16 @@ type WalletStandardWallet = {
   features: Record<string, unknown>;
 };
 
+/**
+ * Wallets announce themselves in answer to `wallet-standard:app-ready`, either by
+ * emitting `wallet-standard:register-wallet` or by calling the `register` callback
+ * in that event's detail. Both are listened for, because wallets differ on which
+ * one they use.
+ *
+ * The registry outlives a single question — a wallet installs itself once, while
+ * `detectWallets` is asked on every render that needs a list — so registrations
+ * accumulate here and are deduplicated as they arrive, not per call.
+ */
 const standardWallets: WalletStandardWallet[] = [];
 const seenStandardNames = new Set<string>();
 
@@ -47,7 +55,9 @@ function announceAppReady(): void {
 
   window.dispatchEvent(
     new CustomEvent("wallet-standard:app-ready", {
-      detail: { register: (...wallets: WalletStandardWallet[]) => wallets.forEach(addStandardWallet) },
+      detail: {
+        register: (...wallets: WalletStandardWallet[]) => wallets.forEach(addStandardWallet),
+      },
     }),
   );
 }
@@ -88,12 +98,37 @@ const INJECTED_WALLETS: {
   install: string;
   get: (w: Window) => InjectedWallet | undefined;
 }[] = [
-  { id: "phantom", name: "Phantom", install: "https://phantom.app/download", get: (w) => w.phantom?.solana },
-  { id: "solflare", name: "Solflare", install: "https://solflare.com/download", get: (w) => w.solflare },
-  { id: "backpack", name: "Backpack", install: "https://backpack.app/download", get: (w) => w.backpack },
+  {
+    id: "phantom",
+    name: "Phantom",
+    install: "https://phantom.app/download",
+    get: (w) => w.phantom?.solana,
+  },
+  {
+    id: "solflare",
+    name: "Solflare",
+    install: "https://solflare.com/download",
+    get: (w) => w.solflare,
+  },
+  {
+    id: "backpack",
+    name: "Backpack",
+    install: "https://backpack.app/download",
+    get: (w) => w.backpack,
+  },
   { id: "glow", name: "Glow", install: "https://glow.app/download", get: (w) => w.glow },
-  { id: "exodus", name: "Exodus", install: "https://exodus.com/download", get: (w) => w.exodus?.solana },
-  { id: "okx", name: "OKX Wallet", install: "https://www.okx.com/web3", get: (w) => w.okxwallet?.solana },
+  {
+    id: "exodus",
+    name: "Exodus",
+    install: "https://exodus.com/download",
+    get: (w) => w.exodus?.solana,
+  },
+  {
+    id: "okx",
+    name: "OKX Wallet",
+    install: "https://www.okx.com/web3",
+    get: (w) => w.okxwallet?.solana,
+  },
 ];
 
 /**
@@ -127,9 +162,10 @@ interface ConnectFeature {
 }
 
 interface SignMessageFeature {
-  signMessage(input: { account: StandardAccount; message: Uint8Array }): Promise<
-    { signature: Uint8Array; signedMessage: Uint8Array }[]
-  >;
+  signMessage(input: {
+    account: StandardAccount;
+    message: Uint8Array;
+  }): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }[]>;
 }
 
 interface SignAndSendFeature {
@@ -184,7 +220,10 @@ function signMessageFeature(wallet: WalletStandardWallet): SignMessageFeature | 
   const signMessage = wallet.features["solana:signMessage"] as SignMessageFeature | undefined;
   // Without both of these the wallet cannot do what this site asks, and a button
   // that fails on press is worse than no button.
-  return connect && typeof connect.connect === "function" && signMessage && typeof signMessage.signMessage === "function"
+  return connect &&
+    typeof connect.connect === "function" &&
+    signMessage &&
+    typeof signMessage.signMessage === "function"
     ? signMessage
     : undefined;
 }
@@ -198,7 +237,10 @@ function isSolanaWallet(wallet: WalletStandardWallet): boolean {
 }
 
 /** The account a multi-account wallet should be signed in as. */
-function signingAccount(wallet: WalletStandardWallet, accounts: StandardAccount[]): StandardAccount {
+function signingAccount(
+  wallet: WalletStandardWallet,
+  accounts: StandardAccount[],
+): StandardAccount {
   const supported = accounts.filter((account) => account.features?.includes("solana:signMessage"));
   return supported[0] ?? accounts[0]!;
 }
@@ -241,8 +283,7 @@ function standardConnector(wallet: WalletStandardWallet): WalletConnector {
   const connect = wallet.features["standard:connect"] as ConnectFeature;
   const signMessage = signMessageFeature(wallet)!;
   const signAndSend = wallet.features["solana:signAndSendTransaction"] as
-    | SignAndSendFeature
-    | undefined;
+    SignAndSendFeature | undefined;
 
   // Kept for the life of the connector so a re-connect reuses the account the
   // person already agreed to rather than asking the wallet to choose again.
@@ -585,9 +626,8 @@ export async function sponsorViaProgram(
   const from = current.address;
 
   const { Buffer } = await import("buffer");
-  const { PublicKey, SystemProgram, Transaction, TransactionInstruction } = await import(
-    "@solana/web3.js"
-  );
+  const { PublicKey, SystemProgram, Transaction, TransactionInstruction } =
+    await import("@solana/web3.js");
 
   const program = new PublicKey(programID);
   const creatorKey = new PublicKey(creator);
@@ -611,7 +651,11 @@ export async function sponsorViaProgram(
       { pubkey: creatorKey, isSigner: false, isWritable: true },
       { pubkey: new PublicKey(treasury), isSigner: false, isWritable: true },
       { pubkey: configPda(PublicKey, program), isSigner: false, isWritable: false },
-      { pubkey: creatorStatsPda(PublicKey, program, creatorKey), isSigner: false, isWritable: true },
+      {
+        pubkey: creatorStatsPda(PublicKey, program, creatorKey),
+        isSigner: false,
+        isWritable: true,
+      },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(data),

@@ -14,7 +14,7 @@ below.
 ## Setup
 
 ```bash
-cp .env.example .env      # fill in DATABASE_URL, SESSION_SECRET and ADMIN_WALLETS
+cp .env.example .env      # fill in DATABASE_URL, SESSION_SECRET and ADMIN_EMAILS
 make setup                # go mod download, npm install
 make db-migrate           # apply migrations
 make db-seed              # optional: empties every table and creates nothing
@@ -70,7 +70,7 @@ wallet with devnet SOL; everything up to the signature works without one. Leave
 point it at a deployed program — see [contracts/README.md](../contracts/README.md).
 
 None of these are available in production. `config.Load` refuses to start
-without at least one `ADMIN_WALLETS` address, without storage credentials, or on
+without an operator in `ADMIN_WALLETS` or `ADMIN_EMAILS`, without storage credentials, or on
 any cluster other than `mainnet-beta` when `APP_ENV=production` — a missing
 variable fails loudly rather than silently weakening the deployment.
 

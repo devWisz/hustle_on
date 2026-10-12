@@ -19,7 +19,7 @@ wallet to wallet, or get in touch to hire you.
 ## Quick start
 
 ```bash
-cp .env.example .env                     # fill in DATABASE_URL, SESSION_SECRET, ADMIN_WALLETS
+cp .env.example .env                     # fill in DATABASE_URL, SESSION_SECRET, ADMIN_EMAILS
 make setup                               # install dependencies
 make db-migrate                          # apply migrations
 scripts/create-api-role.sh --write-env   # the API's least-privilege login role
@@ -35,7 +35,8 @@ action fails.
 To give yourself the console:
 
 ```bash
-# wallet operator — put your address in ADMIN_WALLETS, restart, sign in with it
+# Operator: put your email in ADMIN_EMAILS, restart, and sign up with it — or
+# with a wallet named in ADMIN_WALLETS — or create the account directly:
 cd backend && go run ./cmd/setpassword --email you@example.com --name "Your Name" --admin
 ```
 
@@ -108,8 +109,9 @@ holding the role, a request must pass:
 | Admin traffic stays inside its own rate limit | `RATE_LIMIT_ADMIN` |
 
 Admin access is granted by the environment rather than by a database row, so no
-endpoint bug can create one: a wallet in `ADMIN_WALLETS` is promoted on its first
-sign-in and the promotion is audited. The variable is required in production and
+endpoint bug can create one: an account listed in `ADMIN_WALLETS` (by wallet) or
+`ADMIN_EMAILS` (by email) is promoted when it signs in, and the promotion is audited
+with the variable that granted it. The variable is required in production and
 validated at boot, so a typo stops the process with the offending value named
 instead of leaving nobody able to reach the console.
 
@@ -213,7 +215,7 @@ never in the browser.
 
 | Piece | Where | Key settings |
 |---|---|---|
-| API | Render, from `render.yaml` | `DATABASE_URL`, `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS`, `SESSION_COOKIE_DOMAIN`, `ADMIN_WALLETS`, `HUSTLEON_PAY_PROGRAM_ID`, `INTERNAL_PROXY_SECRET`, `TRUSTED_PROXY_HOPS=1` |
+| API | Render, from `render.yaml` | `DATABASE_URL`, `WEB_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS`, `SESSION_COOKIE_DOMAIN`, `ADMIN_WALLETS`/`ADMIN_EMAILS`, `HUSTLEON_PAY_PROGRAM_ID`, `INTERNAL_PROXY_SECRET`, `TRUSTED_PROXY_HOPS=1` |
 | Web | Vercel, project root `frontend` | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `INTERNAL_PROXY_SECRET` |
 | Database | Neon | a pooled URL for the API, a direct URL for migrations |
 

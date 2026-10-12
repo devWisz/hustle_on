@@ -138,8 +138,26 @@ if [[ -n "${ADMIN_WALLETS:-}" ]]; then
   else
     pass "ADMIN_WALLETS is set"
   fi
-else
-  fail "ADMIN_WALLETS is empty; nobody can reach the admin console"
+fi
+
+# An operator may equally sign in with an email and a password, so the requirement
+# is one list or the other rather than this one specifically.
+if [[ -n "${ADMIN_EMAILS:-}" ]]; then
+  bad=""
+  for addr in ${ADMIN_EMAILS//,/ }; do
+    # Deliberately loose: the address is matched case-insensitively at sign-in and
+    # never sent anywhere, so the only thing worth catching here is a missing @.
+    if [[ "$addr" != *"@"*"."* ]]; then bad="$bad $addr"; fi
+  done
+  if [[ -n "$bad" ]]; then
+    fail "ADMIN_EMAILS contains something that is not an email address:$bad"
+  else
+    pass "ADMIN_EMAILS is set"
+  fi
+fi
+
+if [[ -z "${ADMIN_WALLETS:-}" && -z "${ADMIN_EMAILS:-}" ]]; then
+  fail "neither ADMIN_WALLETS nor ADMIN_EMAILS is set; nobody can reach the admin console"
 fi
 echo
 
