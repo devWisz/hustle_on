@@ -79,27 +79,9 @@ record yourself ──▶ make a timelapse ──▶ upload with a write-up ─�
 |---|---|
 | [docs/getting-started.md](docs/getting-started.md) | Setup, everyday commands, the end-to-end check |
 | [docs/workflow.md](docs/workflow.md) | Upload, review, publish and sponsor, end to end |
-| [docs/security.md](docs/security.md) | Threat model, cookies, CSRF, rate limits, database privileges |
 | [docs/api.md](docs/api.md) | Endpoints, paging, error codes, rate-limit budgets |
 | [docs/database.md](docs/database.md) | Schema, constraints, the application role, the audit trail |
 | [docs/deployment.md](docs/deployment.md) | Render, Vercel, Neon and the launch checklist |
 | [contracts/README.md](contracts/README.md) | Building, deploying and verifying the sponsorship program |
 
-## Security
-
-Passwords are Argon2id. Every state-changing request passes one CSRF middleware —
-an allowlisted origin plus a double-submit token bound to the session. Rate limits
-are per class of work, and page renders forward the visitor's address so limits
-apply per visitor rather than to the web server. Recordings live in a private
-bucket behind signed, expiring links. The API does not own the database: it
-connects as a role that cannot delete an account, a timelapse or a donation,
-cannot touch the audit trail, and carries a statement timeout. Production refuses
-to start rather than degrade.
-
-Report a vulnerability privately — see [SECURITY.md](SECURITY.md).
-
-## Design
-
-Typography-led, one accent colour, and no invented content ever: every record was
-uploaded by a person and approved by a reviewer. No emoji, no glow. Responsive
-from 320px, and every animation collapses under `prefers-reduced-motion`.
+Developed by Sarjak Khanal
